@@ -1,0 +1,58 @@
+import React, { type ReactNode } from 'react';
+import { Linking } from 'react-native';
+
+import { ScreenState } from '../../../shared/components/ScreenState';
+import { reportError } from '../../../shared/logger';
+import { useMediaPermission } from '../hooks/useMediaPermission';
+import { hasMediaAccess } from '../services/mediaPermissions';
+
+function openSettings() {
+  Linking.openSettings().catch(error =>
+    reportError('Opening system settings failed', error),
+  );
+}
+
+/** Renders its children only once the media library is readable. */
+export function PermissionGate({ children }: { children: ReactNode }) {
+  const { status, request } = useMediaPermission();
+
+  if (status === null) {
+    return <ScreenState loading testID="permission-checking" />;
+  }
+
+  if (hasMediaAccess(status)) {
+    return <>{children}</>;
+  }
+
+  if (status === 'unavailable') {
+    return (
+      <ScreenState
+        title="Video library unavailable"
+        message="This device doesn't allow apps to read its video library."
+        testID="permission-unavailable"
+      />
+    );
+  }
+
+  if (status === 'blocked') {
+    return (
+      <ScreenState
+        title="Access to videos is off"
+        message="Turn on video access for Play-Z in Settings to browse your library."
+        actionLabel="Open Settings"
+        onAction={openSettings}
+        testID="permission-blocked"
+      />
+    );
+  }
+
+  return (
+    <ScreenState
+      title="See your videos"
+      message="Play-Z reads your device's video library to show your folders. Your videos never leave your device."
+      actionLabel="Allow access"
+      onAction={request}
+      testID="permission-request"
+    />
+  );
+}
