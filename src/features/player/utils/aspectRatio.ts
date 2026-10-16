@@ -1,3 +1,5 @@
+import { clamp } from '../../../shared/utils/math';
+
 export type AspectMode = 'fit' | 'fill' | 'crop' | 'stretch';
 
 export interface Size {
@@ -34,19 +36,59 @@ export interface VideoLayout {
   resizeMode: 'contain' | 'cover' | 'stretch';
   /** Explicit view size, or null to fill the container. */
   size: Size | null;
+  /** Shift from the centre while zoomed in, in points. */
+  offset?: { x: number; y: number };
+}
+
+/** Pinch zoom on top of the aspect mode: a scale and a pan from the centre. */
+export interface Zoom {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+export const NO_ZOOM: Zoom = { scale: 1, offsetX: 0, offsetY: 0 };
+export const MAX_ZOOM = 4;
+/** A pinch that ends below this snaps back to the unzoomed picture. */
+export const ZOOM_SNAP = 1.05;
+
+/**
+ * Limits a zoom to 1–4× and its pan so the picture never slides away from a screen edge
+ * it is wider (or taller) than; a side that still fits stays centred.
+ */
+export function clampZoom(zoom: Zoom, frame: Size, container: Size): Zoom {
+  const scale = clamp(zoom.scale, 1, MAX_ZOOM);
+  const maxX = Math.max(0, (frame.width * scale - container.width) / 2);
+  const maxY = Math.max(0, (frame.height * scale - container.height) / 2);
+  return {
+    scale,
+    offsetX: clamp(zoom.offsetX, -maxX, maxX),
+    offsetY: clamp(zoom.offsetY, -maxY, maxY),
+  };
 }
 
 /**
  * Fit / Fill / Stretch use the player's native resize modes on a full-screen view, which
  * keeps natively rendered (embedded) subtitles inside the screen. Crop needs the view
- * sized to the video's native pixels.
+ * sized to the video's native pixels. Zooming enlarges the view itself (Android's video
+ * surface doesn't take scale transforms) and pans it by moving its position.
  */
 export function resolveVideoLayout(
   mode: AspectMode,
   container: Size,
   video: Size | null,
   pixelRatio: number,
+  zoom: Zoom = NO_ZOOM,
 ): VideoLayout {
+  if (zoom.scale > 1 && video) {
+    const frame = computeVideoFrame(mode, container, video, pixelRatio);
+    const { scale, offsetX, offsetY } = clampZoom(zoom, frame, container);
+    return {
+      resizeMode: 'stretch',
+      size: { width: frame.width * scale, height: frame.height * scale },
+      offset: { x: offsetX, y: offsetY },
+    };
+  }
   switch (mode) {
     case 'fill':
       return { resizeMode: 'cover', size: null };

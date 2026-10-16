@@ -11,6 +11,7 @@ import type { VideoRef } from 'react-native-video';
 import {
   ActivityIndicator,
   Image,
+  PixelRatio,
   Platform,
   StyleSheet,
   View,
@@ -19,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAfterSheetClose } from '../../../shared/components/Sheet';
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
+import { useStateWithRef } from '../../../shared/hooks/useStateWithRef';
 import { playerColors, spacing } from '../../../shared/theme';
 import { formatDuration } from '../../../shared/utils/format';
 import { clamp } from '../../../shared/utils/math';
@@ -70,9 +72,13 @@ import { activePlaybackStore } from '../nowPlaying';
 import {
   ASPECT_MODE_DESCRIPTIONS,
   ASPECT_MODE_LABELS,
+  clampZoom,
+  computeVideoFrame,
   nextAspectMode,
+  NO_ZOOM,
   type AspectMode,
   type Size,
+  type Zoom,
 } from '../utils/aspectRatio';
 
 type SheetName =
@@ -374,12 +380,14 @@ export function PlayerSession(props: PlayerSessionProps) {
       seek: settings.gestureSeek,
       doubleTap: settings.gestureDoubleTap,
       holdForSpeed: settings.gestureHoldForSpeed,
+      zoom: settings.gestureZoom && !isAudio,
     }),
     [
       isAudio,
       settings.gestureBrightness,
       settings.gestureDoubleTap,
       settings.gestureHoldForSpeed,
+      settings.gestureZoom,
       settings.gestureSeek,
       settings.gestureVolume,
     ],
@@ -435,6 +443,33 @@ export function PlayerSession(props: PlayerSessionProps) {
     onSeek: seekTo,
   });
 
+  // Pinch zoom, kept within the screen for the current aspect mode and orientation.
+  const [zoom, setZoom, zoomRef] = useStateWithRef<Zoom>(NO_ZOOM);
+  const naturalSizeRef = useLatestRef(playback.naturalSize);
+  const getZoom = useCallback(() => zoomRef.current, [zoomRef]);
+  const changeZoom = useCallback(
+    (next: Zoom) => {
+      if (next.scale <= 1) {
+        setZoom(NO_ZOOM);
+        return;
+      }
+      const { layout: container, aspectMode } = latest.current;
+      const frame = computeVideoFrame(
+        aspectMode,
+        container,
+        naturalSizeRef.current,
+        PixelRatio.get(),
+      );
+      setZoom(clampZoom(next, frame, container));
+    },
+    [latest, naturalSizeRef, setZoom],
+  );
+  const resetZoom = useCallback(() => {
+    keepAlive();
+    setZoom(NO_ZOOM);
+  }, [keepAlive, setZoom]);
+  useEffect(() => setZoom(NO_ZOOM), [props.aspectMode, setZoom]);
+
   const surface = useMemo<SurfaceConfig>(
     () => ({
       sourceKey: playback.sourceKey,
@@ -447,6 +482,7 @@ export function PlayerSession(props: PlayerSessionProps) {
       rate: boosted ? 2 : props.speed,
       repeat: props.repeatMode === 'one',
       aspectMode: pictureInPicture ? 'fit' : props.aspectMode,
+      zoom: pictureInPicture ? NO_ZOOM : zoom,
       naturalSize: playback.naturalSize,
       audioTrackIndex,
       textTrack: nativeTextTrack,
@@ -472,6 +508,7 @@ export function PlayerSession(props: PlayerSessionProps) {
       title,
       video.artist,
       video.uri,
+      zoom,
     ],
   );
   // Layout effects, so the native player switches source in the same frame.
@@ -521,6 +558,8 @@ export function PlayerSession(props: PlayerSessionProps) {
             togglePlayback={togglePlayback}
             toggleControls={toggleControls}
             onBoostChange={setBoosted}
+            getZoom={getZoom}
+            onZoomChange={changeZoom}
             brightness={props.brightness}
             volume={props.volume}
           />
@@ -537,6 +576,8 @@ export function PlayerSession(props: PlayerSessionProps) {
           {showControls ? (
             <PlayerControls
               mode={isAudio ? 'audio' : 'video'}
+              zoom={zoom.scale}
+              onResetZoom={resetZoom}
               title={isAudio ? 'Now playing' : title}
               queueLabel={props.queueLabel}
               paused={playback.paused}

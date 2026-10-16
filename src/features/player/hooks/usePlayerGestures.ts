@@ -4,14 +4,23 @@ import {
   useExclusiveGestures,
   useLongPressGesture,
   usePanGesture,
+  usePinchGesture,
   useTapGesture,
   type LongPressGestureConfig,
   type PanGestureConfig,
+  type PinchGestureConfig,
   type TapGestureConfig,
 } from 'react-native-gesture-handler';
 
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
-import type { Size } from '../utils/aspectRatio';
+import { clamp } from '../../../shared/utils/math';
+import {
+  MAX_ZOOM,
+  NO_ZOOM,
+  ZOOM_SNAP,
+  type Size,
+  type Zoom,
+} from '../utils/aspectRatio';
 import {
   computeLevel,
   computeSeekTarget,
@@ -34,6 +43,7 @@ export type GestureFeedback =
   | { kind: 'brightness' | 'volume'; level: number }
   | { kind: 'seek'; target: number; delta: number; duration: number }
   | { kind: 'skip'; seconds: number }
+  | { kind: 'zoom'; scale: number }
   | { kind: 'boost' };
 
 export interface GestureToggles {
@@ -42,6 +52,7 @@ export interface GestureToggles {
   seek: boolean;
   doubleTap: boolean;
   holdForSpeed: boolean;
+  zoom: boolean;
 }
 
 export interface PlayerGestureOptions {
@@ -56,13 +67,17 @@ export interface PlayerGestureOptions {
   togglePlayback: () => void;
   toggleControls: () => void;
   onBoostChange: (active: boolean) => void;
+  getZoom: () => Zoom;
+  onZoomChange: (zoom: Zoom) => void;
   brightness: LevelControl;
   volume: LevelControl;
 }
 
 interface PanSession {
-  intent: PanIntent | null;
+  /** `move` pans a zoomed-in picture. */
+  intent: PanIntent | 'move' | null;
   startX: number;
+  startZoom: Zoom;
   startTime: number;
   startLevel: number;
   target: number;
@@ -74,6 +89,7 @@ interface PanSession {
  * - horizontal drag → seek, committed on release
  * - double tap: left / right zone → skip back / forward, centre → play/pause
  * - press and hold → 2× speed while held
+ * - pinch → zoom (1–4×); while zoomed, a drag moves the picture instead
  * - single tap → toggle the controls
  */
 export function usePlayerGestures(options: PlayerGestureOptions) {
@@ -89,14 +105,18 @@ export function usePlayerGestures(options: PlayerGestureOptions) {
   const session = useRef<PanSession>({
     intent: null,
     startX: 0,
+    startZoom: NO_ZOOM,
     startTime: 0,
     startLevel: 0,
     target: 0,
   });
+  const pinchStart = useRef<Zoom>(NO_ZOOM);
 
   const { locked, toggles } = options;
+  const zoomEnabled = !locked && toggles.zoom;
   const panEnabled =
-    !locked && (toggles.brightness || toggles.volume || toggles.seek);
+    !locked &&
+    (toggles.brightness || toggles.volume || toggles.seek || toggles.zoom);
   const doubleTapEnabled = !locked && toggles.doubleTap;
   const holdEnabled = !locked && toggles.holdForSpeed;
 
@@ -126,7 +146,13 @@ export function usePlayerGestures(options: PlayerGestureOptions) {
     (translationX: number, translationY: number) => {
       const current = session.current;
       const { layout, duration, brightness, volume } = latest.current;
-      if (current.intent === 'seek') {
+      if (current.intent === 'move') {
+        latest.current.onZoomChange({
+          scale: current.startZoom.scale,
+          offsetX: current.startZoom.offsetX + translationX,
+          offsetY: current.startZoom.offsetY + translationY,
+        });
+      } else if (current.intent === 'seek') {
         current.target = computeSeekTarget(
           current.startTime,
           translationX,
@@ -175,6 +201,13 @@ export function usePlayerGestures(options: PlayerGestureOptions) {
           toggles: enabled,
         } = latest.current;
         const current = session.current;
+        const zoom = latest.current.getZoom();
+        if (zoom.scale > 1) {
+          current.intent = 'move';
+          current.startZoom = zoom;
+          applyPan(event.translationX, event.translationY);
+          return;
+        }
         const intent = resolvePanIntent(
           current.startX,
           layout.width,
@@ -207,13 +240,37 @@ export function usePlayerGestures(options: PlayerGestureOptions) {
         }
       },
       onFinalize: () => {
-        if (session.current.intent) {
+        if (session.current.intent && session.current.intent !== 'move') {
           hideFeedbackSoon();
         }
         session.current.intent = null;
       },
     }),
     [applyPan, hideFeedbackSoon, latest, panEnabled],
+  );
+
+  const pinchConfig = useMemo<PinchGestureConfig>(
+    () => ({
+      runOnJS: true,
+      testID: 'player-pinch',
+      enabled: zoomEnabled,
+      onActivate: () => {
+        pinchStart.current = latest.current.getZoom();
+      },
+      onUpdate: event => {
+        const start = pinchStart.current;
+        const scale = clamp(start.scale * event.scale, 1, MAX_ZOOM);
+        latest.current.onZoomChange({ ...start, scale });
+        showFeedback({ kind: 'zoom', scale });
+      },
+      onDeactivate: () => {
+        if (latest.current.getZoom().scale < ZOOM_SNAP) {
+          latest.current.onZoomChange(NO_ZOOM);
+        }
+        hideFeedbackSoon();
+      },
+    }),
+    [hideFeedbackSoon, latest, showFeedback, zoomEnabled],
   );
 
   const doubleTapConfig = useMemo<TapGestureConfig>(
@@ -281,13 +338,14 @@ export function usePlayerGestures(options: PlayerGestureOptions) {
     [cancelHide, holdEnabled, latest, showFeedback],
   );
 
+  const pinch = usePinchGesture(pinchConfig);
   const pan = usePanGesture(panConfig);
   const hold = useLongPressGesture(holdConfig);
   const doubleTap = useTapGesture(doubleTapConfig);
   const singleTap = useTapGesture(singleTapConfig);
-  // Single tap waits for the double tap to fail; a drag or a hold beats both.
+  // Single tap waits for the double tap to fail; a pinch, drag or hold beats both.
   const taps = useExclusiveGestures(doubleTap, singleTap);
-  const gesture = useCompetingGestures(pan, hold, taps);
+  const gesture = useCompetingGestures(pinch, pan, hold, taps);
 
   return { gesture, feedback };
 }

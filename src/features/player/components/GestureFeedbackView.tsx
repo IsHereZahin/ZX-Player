@@ -10,6 +10,7 @@ import {
   SunIcon,
   Volume2Icon,
   VolumeXIcon,
+  ZoomInIcon,
 } from '../../../shared/icons';
 import {
   playerColors,
@@ -118,6 +119,18 @@ export function GestureFeedbackView({
         </View>
       );
     }
+    case 'zoom':
+      return (
+        <View
+          pointerEvents="none"
+          style={[styles.topLayer, { top: insets.top + spacing.xl }]}
+        >
+          <View style={styles.zoomChip} testID="gesture-feedback-zoom">
+            <ZoomInIcon size={16} color={playerColors.white} />
+            <Text style={styles.boostText}>{feedback.scale.toFixed(1)}×</Text>
+          </View>
+        </View>
+      );
     case 'boost':
       return (
         <View
@@ -241,6 +254,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
     backgroundColor: playerColors.primary,
+  },
+  zoomChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: playerColors.playerPanel,
   },
   boostText: {
     ...typography.captionStrong,

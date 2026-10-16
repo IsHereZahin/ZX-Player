@@ -21,6 +21,7 @@ import {
   resolveVideoLayout,
   type AspectMode,
   type Size,
+  type Zoom,
 } from '../utils/aspectRatio';
 
 const PROGRESS_INTERVAL_MS = 250;
@@ -101,6 +102,7 @@ export interface SurfaceConfig {
   rate: number;
   repeat: boolean;
   aspectMode: AspectMode;
+  zoom: Zoom;
   naturalSize: Size | null;
   audioTrackIndex: number | null;
   textTrack: NativeTextTrack;
@@ -130,6 +132,7 @@ export const VideoSurface = memo(function VideoSurfaceView({
   rate,
   repeat,
   aspectMode,
+  zoom,
   container,
   naturalSize,
   audioTrackIndex,
@@ -153,6 +156,7 @@ export const VideoSurface = memo(function VideoSurfaceView({
     container,
     naturalSize,
     PixelRatio.get(),
+    zoom,
   );
 
   const selectedAudioTrack = useMemo<SelectedTrack | undefined>(
@@ -188,7 +192,10 @@ export const VideoSurface = memo(function VideoSurfaceView({
         rate={rate}
         repeat={repeat}
         resizeMode={layout.resizeMode}
-        style={layout.size ?? StyleSheet.absoluteFill}
+        style={[
+          layout.size ?? StyleSheet.absoluteFill,
+          layout.offset && { left: layout.offset.x, top: layout.offset.y },
+        ]}
         selectedAudioTrack={selectedAudioTrack}
         selectedTextTrack={selectedTextTrack}
         subtitleStyle={subtitleStyle}

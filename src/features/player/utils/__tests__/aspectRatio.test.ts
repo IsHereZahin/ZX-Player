@@ -1,5 +1,6 @@
 import {
   ASPECT_MODES,
+  clampZoom,
   computeVideoFrame,
   nextAspectMode,
   normalizeNaturalSize,
@@ -105,5 +106,45 @@ describe('resolveVideoLayout', () => {
       resizeMode: 'contain',
       size: null,
     });
+  });
+});
+
+describe('zoom', () => {
+  const container = { width: 800, height: 400 };
+  const frame = { width: 711.1, height: 400 };
+
+  it('limits zoom to 1–4× and the pan to the picture edges', () => {
+    expect(
+      clampZoom({ scale: 9, offsetX: 0, offsetY: 0 }, frame, container),
+    ).toMatchObject({ scale: 4 });
+    const zoomed = clampZoom(
+      { scale: 2, offsetX: 900, offsetY: 50 },
+      frame,
+      container,
+    );
+    expect(zoomed.offsetX).toBeCloseTo((711.1 * 2 - 800) / 2, 1);
+    expect(zoomed.offsetY).toBe(50);
+  });
+
+  it('keeps a side centred while it still fits the screen', () => {
+    const zoomed = clampZoom(
+      { scale: 1.1, offsetX: 300, offsetY: 0 },
+      { width: 400, height: 225 },
+      container,
+    );
+    expect(zoomed.offsetX).toBe(0);
+  });
+
+  it('sizes and shifts the video view when zoomed in', () => {
+    const layout = resolveVideoLayout(
+      'fit',
+      container,
+      { width: 1920, height: 1080 },
+      2,
+      { scale: 2, offsetX: -40, offsetY: 0 },
+    );
+    expect(layout.resizeMode).toBe('stretch');
+    expect(layout.size?.width).toBeCloseTo(1422.2, 0);
+    expect(layout.offset).toEqual({ x: -40, y: 0 });
   });
 });

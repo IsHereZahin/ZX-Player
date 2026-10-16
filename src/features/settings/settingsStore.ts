@@ -32,6 +32,7 @@ export interface Settings {
   gestureSeek: boolean;
   gestureDoubleTap: boolean;
   gestureHoldForSpeed: boolean;
+  gestureZoom: boolean;
   subtitleSize: SubtitleSize;
   subtitleBackground: boolean;
 }
@@ -49,6 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
   gestureSeek: true,
   gestureDoubleTap: true,
   gestureHoldForSpeed: true,
+  gestureZoom: true,
   subtitleSize: 'medium',
   subtitleBackground: true,
 };
@@ -87,6 +89,7 @@ export function parseSettings(raw: unknown): Settings {
     gestureSeek: bool('gestureSeek'),
     gestureDoubleTap: bool('gestureDoubleTap'),
     gestureHoldForSpeed: bool('gestureHoldForSpeed'),
+    gestureZoom: bool('gestureZoom'),
     subtitleSize: oneOf('subtitleSize', SUBTITLE_SIZES),
     subtitleBackground: bool('subtitleBackground'),
   };

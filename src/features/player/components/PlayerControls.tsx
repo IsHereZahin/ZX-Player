@@ -33,6 +33,9 @@ import { SeekBar } from './SeekBar';
 export interface PlayerControlsProps {
   /** Audio has no picture: no subtitles, aspect, rotation, PiP or lock, and the transport sits low. */
   mode: 'video' | 'audio';
+  /** Current pinch zoom; above 1 a "Reset zoom" pill appears. */
+  zoom: number;
+  onResetZoom: () => void;
   title: string;
   /** e.g. "3 of 12" when playing through a list. */
   queueLabel: string | null;
@@ -153,6 +156,27 @@ export function PlayerControls(props: PlayerControlsProps) {
           testID="more-button"
         />
       </View>
+
+      {props.zoom > 1 ? (
+        <View style={styles.zoomRow} pointerEvents="box-none">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Zoomed to ${props.zoom.toFixed(
+              1,
+            )}×. Reset zoom`}
+            onPress={props.onResetZoom}
+            style={({ pressed }) => [
+              styles.zoomPill,
+              pressed && styles.speedPillPressed,
+            ]}
+            testID="reset-zoom"
+          >
+            <Text style={styles.speedText}>
+              {props.zoom.toFixed(1)}× · Reset
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       <View
         style={[styles.center, isAudio && styles.centerAudio]}
@@ -290,6 +314,16 @@ const styles = StyleSheet.create({
   },
   speedTextActive: {
     color: playerColors.primaryText,
+  },
+  zoomRow: {
+    alignItems: 'center',
+  },
+  zoomPill: {
+    height: 32,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: playerColors.playerButton,
   },
   center: {
     flex: 1,

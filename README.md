@@ -46,6 +46,7 @@ Each gesture can be turned off in Settings.
 | Double tap, left / right third | Skip back / forward (interval set in Settings); repeated taps add up |
 | Double tap, centre             | Play / pause                                                         |
 | Press and hold                 | 2× speed while held                                                  |
+| Pinch                          | Zoom up to 4×; while zoomed, a drag moves the picture                |
 | Single tap                     | Show / hide controls                                                 |
 
 ### Settings

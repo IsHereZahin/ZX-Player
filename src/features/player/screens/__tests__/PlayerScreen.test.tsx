@@ -1,5 +1,10 @@
 import React from 'react';
-import { AppState, Platform, type AppStateStatus } from 'react-native';
+import {
+  AppState,
+  Platform,
+  StyleSheet,
+  type AppStateStatus,
+} from 'react-native';
 import {
   act,
   fireEvent,
@@ -44,6 +49,7 @@ const onClose = jest.fn();
 const onOrientationChange = jest.fn();
 
 const video = () => screen.getByTestId('video-surface');
+const videoStyle = () => StyleSheet.flatten(video().props.style);
 
 async function loadVideo(overrides: Record<string, unknown> = {}) {
   await fireEvent(video(), 'load', {
@@ -188,10 +194,10 @@ describe('controls', () => {
 
     await fireEvent.press(screen.getByTestId('aspect-button'));
     expect(video().props.resizeMode).toBe('stretch');
-    expect(video().props.style).toEqual({ width: 960, height: 540 }); // 100 % at 2× density
+    expect(videoStyle()).toEqual({ width: 960, height: 540 }); // 100 % at 2× density
 
     await fireEvent.press(screen.getByTestId('aspect-button'));
-    expect(video().props.style).not.toEqual({ width: 960, height: 540 });
+    expect(videoStyle()).not.toEqual({ width: 960, height: 540 });
     expect(video().props.resizeMode).toBe('stretch');
   });
 
@@ -632,6 +638,55 @@ describe('gestures', () => {
 
     await runGesture('player-double-tap', tap(400));
     expect(video().props.paused).toBe(true);
+  });
+
+  it('pinches to zoom and drags the zoomed picture', async () => {
+    await renderPlayer();
+    // Fit on an 800×400 screen: a 16:9 frame of 711×400.
+    await runGesture('player-pinch', [
+      ['begin', { scale: 1 }],
+      ['activate', { scale: 1 }],
+      ['update', { scale: 2 }],
+      ['end', { scale: 2 }],
+    ]);
+    expect(videoStyle().width).toBeCloseTo(1422.2, 0);
+    expect(videoStyle().height).toBeCloseTo(800, 0);
+    expect(
+      screen.getByLabelText('Zoomed to 2.0×. Reset zoom'),
+    ).toBeOnTheScreen();
+
+    // While zoomed, a drag moves the picture (up to its edge) instead of seeking.
+    await runGesture('player-pan', [
+      ['begin', { x: 400, y: 200, translationX: 0, translationY: 0 }],
+      ['activate', { x: 1000, y: 200, translationX: 600, translationY: 0 }],
+      ['end', { x: 1000, y: 200, translationX: 600, translationY: 0 }],
+    ]);
+    expect(videoStyle().left).toBeCloseTo(311.1, 0);
+    expect(mockVideoRef.seek).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByTestId('reset-zoom'));
+    expect(videoStyle()).toEqual(StyleSheet.flatten(StyleSheet.absoluteFill));
+  });
+
+  it('snaps back when a pinch barely zooms, and caps zoom at 4×', async () => {
+    await renderPlayer();
+    await runGesture('player-pinch', [
+      ['begin', { scale: 1 }],
+      ['activate', { scale: 1 }],
+      ['update', { scale: 1.03 }],
+      ['end', { scale: 1.03 }],
+    ]);
+    expect(screen.queryByTestId('reset-zoom')).toBeNull();
+
+    await runGesture('player-pinch', [
+      ['begin', { scale: 1 }],
+      ['activate', { scale: 1 }],
+      ['update', { scale: 9 }],
+      ['end', { scale: 9 }],
+    ]);
+    expect(
+      screen.getByLabelText('Zoomed to 4.0×. Reset zoom'),
+    ).toBeOnTheScreen();
   });
 
   it('plays at 2× while the screen is held', async () => {

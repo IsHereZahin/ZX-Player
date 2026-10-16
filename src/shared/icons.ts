@@ -60,3 +60,4 @@ export { default as VideoIcon } from 'lucide-react-native/icons/video';
 export { default as Volume2Icon } from 'lucide-react-native/icons/volume-2';
 export { default as VolumeXIcon } from 'lucide-react-native/icons/volume-x';
 export { default as XIcon } from 'lucide-react-native/icons/x';
+export { default as ZoomInIcon } from 'lucide-react-native/icons/zoom-in';

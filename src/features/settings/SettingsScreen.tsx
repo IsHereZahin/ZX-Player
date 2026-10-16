@@ -21,6 +21,7 @@ import {
   Trash2Icon,
   TypeIcon,
   Volume2Icon,
+  ZoomInIcon,
 } from '../../shared/icons';
 import { spacing, typography } from '../../shared/theme';
 import { makeStyles } from '../../shared/theming';
@@ -205,6 +206,14 @@ export function SettingsScreen(_props: Props) {
               updateSettings({ gestureHoldForSpeed: value })
             }
             testID="setting-gesture-hold"
+          />
+          <SettingSwitchRow
+            icon={ZoomInIcon}
+            title="Pinch to zoom"
+            description="Zoom in up to 4× and drag to look around"
+            value={settings.gestureZoom}
+            onValueChange={value => updateSettings({ gestureZoom: value })}
+            testID="setting-gesture-zoom"
           />
         </SettingsSection>
 
