@@ -59,3 +59,29 @@ export const sampleVideo: VideoItem = {
   height: 1080,
   modifiedAtSec: 1_700_000_500,
 };
+
+export const SAMPLE_SRT = `1
+00:00:01,000 --> 00:00:04,000
+Hello <i>there</i>!
+
+2
+00:00:05,500 --> 00:00:07,250
+Second line one
+Second line two
+`;
+
+export const SAMPLE_ASS = `[Script Info]
+Title: Sample
+ScriptType: v4.00+
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour
+Style: Default,Arial,20,&H00FFFFFF
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:01.00,0:00:03.50,Default,,0,0,0,,{\\i1}Hello{\\i0}, world\\NSecond line
+Comment: 0,0:00:02.00,0:00:03.00,Default,,0,0,0,,Not shown
+Dialogue: 0,0:00:04.00,0:00:05.00,Default,,0,0,0,,{\\p1}m 0 0 l 100 0 100 100{\\p0}
+Dialogue: 0,0:00:06.00,0:00:08.00,Default,,0,0,0,,Soft\\nbreak and\\hspace
+`;
