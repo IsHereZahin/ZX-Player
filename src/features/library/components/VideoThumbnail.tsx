@@ -3,7 +3,8 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { ProgressBar } from '../../../shared/components/ProgressBar';
 import { FilmIcon } from '../../../shared/icons';
-import { colors, radius, spacing, typography } from '../../../shared/theme';
+import { radius, spacing, typography } from '../../../shared/theme';
+import { makeStyles, useColors } from '../../../shared/theming';
 import { formatDuration } from '../../../shared/utils/format';
 import { useThumbnail } from '../hooks/useThumbnail';
 import type { VideoItem } from '../types';
@@ -20,6 +21,8 @@ export function VideoThumbnail({
   width,
   progress = 0,
 }: VideoThumbnailProps) {
+  const styles = useStyles();
+  const colors = useColors();
   const uri = useThumbnail(video);
   const [failed, setFailed] = useState(false);
   const height = Math.round((width * 9) / 16);
@@ -66,7 +69,7 @@ export function VideoThumbnail({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   frame: {
     overflow: 'hidden',
     borderRadius: radius.md,
@@ -98,4 +101,4 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
-});
+}));

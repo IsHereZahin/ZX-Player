@@ -1,14 +1,16 @@
 import React, { useCallback, useMemo } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, Text, View } from 'react-native';
 
 import type { MainTabScreenProps } from '../../../app/navigation/types';
 import { useOpenPlayer } from '../../../app/navigation/useOpenPlayer';
+import { AppLogo } from '../../../shared/components/AppLogo';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { IconButton } from '../../../shared/components/IconButton';
 import { ScreenHeader } from '../../../shared/components/ScreenHeader';
 import { ListSkeleton } from '../../../shared/components/Skeleton';
 import { CircleAlertIcon, FilmIcon, SearchIcon } from '../../../shared/icons';
-import { colors, spacing, typography } from '../../../shared/theme';
+import { spacing, typography } from '../../../shared/theme';
+import { makeStyles, useColors } from '../../../shared/theming';
 import { isInProgress, useHistoryList } from '../../history/watchHistory';
 import { ContinueWatchingRail } from '../components/ContinueWatchingRail';
 import { FolderRow } from '../components/FolderRow';
@@ -21,15 +23,17 @@ const CONTINUE_WATCHING_LIMIT = 12;
 type Props = MainTabScreenProps<'Library'>;
 
 export function LibraryScreen({ navigation }: Props) {
+  const styles = useStyles();
   const openFolder = useCallback(
     (folder: VideoFolder) => navigation.navigate('FolderVideos', { folder }),
     [navigation],
   );
 
   return (
-    <View style={styles.screen}>
+    <View style={styles.screen} testID="library-screen">
       <ScreenHeader
         title="Library"
+        leading={<AppLogo size={36} />}
         actions={
           <IconButton
             icon={SearchIcon}
@@ -51,6 +55,8 @@ function FolderList({
 }: {
   onOpenFolder: (folder: VideoFolder) => void;
 }) {
+  const styles = useStyles();
+  const colors = useColors();
   const { folders, loadState, refreshing, reload, refresh } = useVideoFolders();
   const history = useHistoryList();
   const openPlayer = useOpenPlayer();
@@ -137,7 +143,7 @@ function FolderList({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -152,4 +158,4 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xs,
     color: colors.textPrimary,
   },
-});
+}));

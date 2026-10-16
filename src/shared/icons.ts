@@ -20,7 +20,6 @@ export { default as FastForwardIcon } from 'lucide-react-native/icons/fast-forwa
 export { default as FileTextIcon } from 'lucide-react-native/icons/file-text';
 export { default as FilmIcon } from 'lucide-react-native/icons/film';
 export { default as FolderIcon } from 'lucide-react-native/icons/folder';
-export { default as FolderSearchIcon } from 'lucide-react-native/icons/folder-search';
 export { default as GaugeIcon } from 'lucide-react-native/icons/gauge';
 export { default as HandIcon } from 'lucide-react-native/icons/hand';
 export { default as HardDriveIcon } from 'lucide-react-native/icons/hard-drive';
@@ -52,6 +51,7 @@ export { default as ShieldCheckIcon } from 'lucide-react-native/icons/shield-che
 export { default as SkipBackIcon } from 'lucide-react-native/icons/skip-back';
 export { default as SkipForwardIcon } from 'lucide-react-native/icons/skip-forward';
 export { default as SunIcon } from 'lucide-react-native/icons/sun';
+export { default as SunMoonIcon } from 'lucide-react-native/icons/sun-moon';
 export { default as TimerIcon } from 'lucide-react-native/icons/timer';
 export { default as Trash2Icon } from 'lucide-react-native/icons/trash';
 export { default as TypeIcon } from 'lucide-react-native/icons/type';

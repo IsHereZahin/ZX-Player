@@ -1,48 +1,62 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StatusBar, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   DarkTheme,
+  DefaultTheme,
   NavigationContainer,
   type Theme,
 } from '@react-navigation/native';
 
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
-import { colors } from '../shared/theme';
+import { palettes, type ColorScheme } from '../shared/theme';
+import { ThemeProvider } from '../shared/theming';
 import { RootNavigator } from './navigation/RootNavigator';
+import { useAppColorScheme } from './useAppColorScheme';
 import { usePersistedStores } from './usePersistedStores';
 
-const navigationTheme: Theme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    primary: colors.primaryText,
-    background: colors.background,
-    card: colors.surface,
-    text: colors.textPrimary,
-    border: colors.border,
-    notification: colors.primary,
-  },
-};
+function navigationTheme(scheme: ColorScheme): Theme {
+  const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+  const colors = palettes[scheme];
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: colors.primaryText,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.textPrimary,
+      border: colors.border,
+      notification: colors.primary,
+    },
+  };
+}
 
 export default function App() {
   const storesReady = usePersistedStores();
+  const scheme = useAppColorScheme();
+  const theme = useMemo(() => navigationTheme(scheme), [scheme]);
+  const background = { backgroundColor: palettes[scheme].background };
 
   return (
-    <GestureHandlerRootView style={styles.root}>
+    <GestureHandlerRootView style={[styles.root, background]}>
       <SafeAreaProvider>
-        <StatusBar barStyle="light-content" />
-        <ErrorBoundary>
-          {storesReady ? (
-            <NavigationContainer theme={navigationTheme}>
-              <RootNavigator />
-            </NavigationContainer>
-          ) : (
-            // Saved settings and history load in milliseconds; avoid flashing defaults.
-            <View style={styles.root} testID="app-loading" />
-          )}
-        </ErrorBoundary>
+        <StatusBar
+          barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'}
+        />
+        <ThemeProvider scheme={scheme}>
+          <ErrorBoundary>
+            {storesReady ? (
+              <NavigationContainer theme={theme}>
+                <RootNavigator />
+              </NavigationContainer>
+            ) : (
+              // Saved settings and history load in milliseconds; avoid flashing defaults.
+              <View style={[styles.root, background]} testID="app-loading" />
+            )}
+          </ErrorBoundary>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
@@ -51,6 +65,5 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 });

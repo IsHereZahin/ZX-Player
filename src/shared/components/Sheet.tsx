@@ -13,7 +13,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CheckIcon, type IconComponent } from '../icons';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography } from '../theme';
+import { makeStyles, useColors } from '../theming';
 
 interface SheetProps {
   visible: boolean;
@@ -41,6 +42,7 @@ export function Sheet({
   onDismissed,
   testID,
 }: SheetProps) {
+  const styles = useStyles();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const landscape = width > height;
@@ -179,6 +181,8 @@ export function OptionRow({
   trailing,
   testID,
 }: OptionRowProps) {
+  const styles = useStyles();
+  const colors = useColors();
   const tint = destructive
     ? colors.danger
     : selected
@@ -224,10 +228,11 @@ export function OptionRow({
 }
 
 export function SheetSectionTitle({ children }: { children: string }) {
+  const styles = useStyles();
   return <Text style={styles.sectionTitle}>{children}</Text>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   root: {
     flex: 1,
     backgroundColor: colors.backdrop,
@@ -307,4 +312,4 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
     color: colors.textMuted,
   },
-});
+}));

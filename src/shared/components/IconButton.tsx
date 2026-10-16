@@ -1,8 +1,9 @@
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import type { IconComponent } from '../icons';
-import { colors, hitSlop, radius } from '../theme';
+import { hitSlop, radius, type ColorTokens } from '../theme';
+import { makeStyles, useColors } from '../theming';
 
 type Variant = 'ghost' | 'tonal' | 'filled' | 'overlay';
 type Size = 'sm' | 'md' | 'lg';
@@ -22,7 +23,11 @@ interface IconButtonProps {
 const CONTAINER: Record<Size, number> = { sm: 36, md: 44, lg: 64 };
 const ICON: Record<Size, number> = { sm: 18, md: 22, lg: 30 };
 
-function iconColor(variant: Variant, active: boolean): string {
+function iconColor(
+  colors: ColorTokens,
+  variant: Variant,
+  active: boolean,
+): string {
   if (variant === 'filled') {
     return colors.onPrimary;
   }
@@ -42,6 +47,9 @@ export function IconButton({
   disabled = false,
   testID,
 }: IconButtonProps) {
+  const styles = useStyles();
+  const pressedStyles = usePressedStyles();
+  const colors = useColors();
   const dimension = CONTAINER[size];
   return (
     <Pressable
@@ -64,7 +72,7 @@ export function IconButton({
       <View pointerEvents="none">
         <Icon
           size={ICON[size]}
-          color={iconColor(variant, active)}
+          color={iconColor(colors, variant, active)}
           strokeWidth={variant === 'filled' ? 2.25 : 2}
           fill={
             variant === 'filled' && size === 'lg' ? colors.onPrimary : 'none'
@@ -75,7 +83,7 @@ export function IconButton({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   base: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -87,11 +95,11 @@ const styles = StyleSheet.create({
   overlay: { backgroundColor: colors.playerButton },
   overlayActive: { backgroundColor: colors.primarySoft },
   disabled: { opacity: 0.35 },
-});
+}));
 
-const pressedStyles = StyleSheet.create({
+const usePressedStyles = makeStyles(colors => ({
   ghost: { backgroundColor: colors.pressed },
   tonal: { backgroundColor: colors.primarySoftPressed },
   filled: { backgroundColor: colors.primaryPressed },
   overlay: { backgroundColor: 'rgba(255, 255, 255, 0.22)' },
-});
+}));

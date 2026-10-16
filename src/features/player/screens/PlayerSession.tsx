@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAfterSheetClose } from '../../../shared/components/Sheet';
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
-import { colors, spacing } from '../../../shared/theme';
+import { playerColors, spacing } from '../../../shared/theme';
 import { formatDuration } from '../../../shared/utils/format';
 import { clamp } from '../../../shared/utils/math';
 import { historyStore, resumePosition } from '../../history/watchHistory';
@@ -404,7 +404,10 @@ export function PlayerSession(props: PlayerSessionProps) {
 
           {showSpinner ? (
             <View style={styles.centerLayer} pointerEvents="none">
-              <ActivityIndicator size="large" color={colors.primaryBright} />
+              <ActivityIndicator
+                size="large"
+                color={playerColors.primaryBright}
+              />
             </View>
           ) : null}
 

@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, Text, View } from 'react-native';
 
-import { colors, spacing, typography } from '../../../shared/theme';
+import { spacing, typography } from '../../../shared/theme';
+import { makeStyles } from '../../../shared/theming';
 import { formatTimeLeft } from '../../../shared/utils/format';
 import { watchProgress, type WatchEntry } from '../../history/watchHistory';
 import { describeFileName } from '../services/mediaLibrary';
@@ -19,6 +20,7 @@ export function ContinueWatchingRail({
   entries,
   onPlay,
 }: ContinueWatchingRailProps) {
+  const styles = useStyles();
   const renderItem = useCallback(
     ({ item, index }: { item: WatchEntry; index: number }) => {
       const { title } = describeFileName(item.video.fileName);
@@ -44,7 +46,7 @@ export function ContinueWatchingRail({
         </Pressable>
       );
     },
-    [onPlay],
+    [onPlay, styles],
   );
 
   return (
@@ -65,7 +67,7 @@ export function ContinueWatchingRail({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   container: {
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
@@ -97,4 +99,4 @@ const styles = StyleSheet.create({
     marginTop: 2,
     color: colors.primaryText,
   },
-});
+}));

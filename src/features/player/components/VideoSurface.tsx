@@ -14,7 +14,7 @@ import Video, {
   type VideoRef,
 } from 'react-native-video';
 
-import { colors } from '../../../shared/theme';
+import { playerColors } from '../../../shared/theme';
 import {
   resolveVideoLayout,
   type AspectMode,
@@ -171,6 +171,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    backgroundColor: colors.black,
+    backgroundColor: playerColors.black,
   },
 });

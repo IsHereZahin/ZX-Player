@@ -1,7 +1,12 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, spacing, typography } from '../../../shared/theme';
+import {
+  playerColors,
+  radius,
+  spacing,
+  typography,
+} from '../../../shared/theme';
 import type { ToastMessage } from '../hooks/useToast';
 
 interface PlayerToastProps {
@@ -63,26 +68,26 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     minHeight: 44,
     borderRadius: radius.pill,
-    backgroundColor: colors.playerPanel,
+    backgroundColor: playerColors.playerPanel,
   },
   text: {
     ...typography.caption,
     flexShrink: 1,
     paddingRight: spacing.sm,
-    color: colors.white,
+    color: playerColors.white,
   },
   action: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 2,
     borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: playerColors.primarySoft,
   },
   actionPressed: {
-    backgroundColor: colors.primarySoftPressed,
+    backgroundColor: playerColors.primarySoftPressed,
   },
   actionText: {
     ...typography.label,
     fontSize: 13,
-    color: colors.primaryText,
+    color: playerColors.primaryText,
   },
 });

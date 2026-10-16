@@ -1,11 +1,14 @@
 import type { TextStyle } from 'react-native';
 
+export type ColorScheme = 'light' | 'dark';
+
 /**
  * ZX Player design tokens. Blue is the single brand colour: filled buttons and active
  * states use `primary`, progress/selection marks use `primaryBright`, and blue text or
- * icons on dark surfaces use `primaryText` (chosen for WCAG AA contrast on `background`).
+ * icons on surfaces use `primaryText` (chosen for WCAG AA contrast on `background`).
+ * Components read the active palette through `useColors` / `makeStyles` (theming.tsx).
  */
-export const colors = {
+export const darkColors = {
   primary: '#2563EB',
   primaryPressed: '#1D4ED8',
   primaryBright: '#3B82F6',
@@ -38,7 +41,52 @@ export const colors = {
   playerButton: 'rgba(255, 255, 255, 0.12)',
   trackInactive: 'rgba(255, 255, 255, 0.24)',
   trackBuffered: 'rgba(255, 255, 255, 0.42)',
-} as const;
+};
+
+export type ColorTokens = { readonly [K in keyof typeof darkColors]: string };
+
+export const lightColors: ColorTokens = {
+  primary: '#2563EB',
+  primaryPressed: '#1D4ED8',
+  primaryBright: '#2563EB',
+  primaryText: '#1D4ED8',
+  primarySoft: 'rgba(37, 99, 235, 0.10)',
+  primarySoftPressed: 'rgba(37, 99, 235, 0.18)',
+  onPrimary: '#FFFFFF',
+
+  background: '#F4F6FA',
+  surface: '#FFFFFF',
+  surfaceRaised: '#E9EDF3',
+  surfaceHigh: '#DDE3EC',
+  border: '#D5DBE5',
+  divider: 'rgba(15, 23, 42, 0.08)',
+  pressed: 'rgba(15, 23, 42, 0.06)',
+
+  textPrimary: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
+
+  danger: '#DC2626',
+  dangerSoft: 'rgba(220, 38, 38, 0.10)',
+  success: '#059669',
+
+  white: '#FFFFFF',
+  black: '#000000',
+  backdrop: 'rgba(15, 23, 42, 0.45)',
+  playerPanel: 'rgba(17, 20, 27, 0.94)',
+  playerChip: 'rgba(17, 20, 27, 0.72)',
+  playerButton: 'rgba(15, 23, 42, 0.08)',
+  trackInactive: 'rgba(15, 23, 42, 0.14)',
+  trackBuffered: 'rgba(15, 23, 42, 0.28)',
+};
+
+export const palettes: Record<ColorScheme, ColorTokens> = {
+  dark: darkColors,
+  light: lightColors,
+};
+
+/** The player is always dark, whatever the app appearance: video reads best on black. */
+export const playerColors: ColorTokens = darkColors;
 
 export const spacing = {
   xxs: 2,

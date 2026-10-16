@@ -1,9 +1,10 @@
 import React, { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { IconButton } from '../../../shared/components/IconButton';
 import { EllipsisVerticalIcon } from '../../../shared/icons';
-import { colors, radius, spacing, typography } from '../../../shared/theme';
+import { radius, spacing, typography } from '../../../shared/theme';
+import { makeStyles } from '../../../shared/theming';
 import { useWatchEntry, watchProgress } from '../../history/watchHistory';
 import type { VideoItem } from '../types';
 import { describeVideo } from './videoMeta';
@@ -24,6 +25,7 @@ export const VideoGridCard = memo(function VideoGridCardView({
   onMore,
   highlighted = false,
 }: VideoGridCardProps) {
+  const styles = useStyles();
   const entry = useWatchEntry(video.id);
   const { title, details, status } = describeVideo(video, entry);
 
@@ -68,7 +70,7 @@ export const VideoGridCard = memo(function VideoGridCardView({
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   card: {
     borderRadius: radius.md,
   },
@@ -97,4 +99,4 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: colors.textSecondary,
   },
-});
+}));

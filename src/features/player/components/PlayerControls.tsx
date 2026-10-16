@@ -19,7 +19,12 @@ import {
   SkipBackIcon,
   SkipForwardIcon,
 } from '../../../shared/icons';
-import { colors, radius, spacing, typography } from '../../../shared/theme';
+import {
+  playerColors,
+  radius,
+  spacing,
+  typography,
+} from '../../../shared/theme';
 import { formatSpeed } from '../../../shared/utils/format';
 import type { PlaybackClock } from '../playbackClock';
 import { Scrim } from './Scrim';
@@ -245,11 +250,11 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.headline,
-    color: colors.white,
+    color: playerColors.white,
   },
   queue: {
     ...typography.label,
-    color: colors.textSecondary,
+    color: playerColors.textSecondary,
   },
   speedPill: {
     minWidth: 52,
@@ -259,10 +264,10 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.xs,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.pill,
-    backgroundColor: colors.playerButton,
+    backgroundColor: playerColors.playerButton,
   },
   speedPillActive: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: playerColors.primarySoft,
   },
   speedPillPressed: {
     backgroundColor: 'rgba(255, 255, 255, 0.22)',
@@ -270,10 +275,10 @@ const styles = StyleSheet.create({
   speedText: {
     ...typography.label,
     fontSize: 13,
-    color: colors.white,
+    color: playerColors.white,
   },
   speedTextActive: {
-    color: colors.primaryText,
+    color: playerColors.primaryText,
   },
   center: {
     flex: 1,

@@ -1,9 +1,10 @@
 import React, { type ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArrowLeftIcon } from '../icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography } from '../theme';
+import { makeStyles } from '../theming';
 import { IconButton } from './IconButton';
 
 interface ScreenHeaderProps {
@@ -11,6 +12,8 @@ interface ScreenHeaderProps {
   subtitle?: string;
   /** Shows a back button; tab root screens omit it and get a large title instead. */
   onBack?: () => void;
+  /** Shown before the title, e.g. the app logo on the home tab. */
+  leading?: ReactNode;
   actions?: ReactNode;
 }
 
@@ -18,8 +21,10 @@ export function ScreenHeader({
   title,
   subtitle,
   onBack,
+  leading,
   actions,
 }: ScreenHeaderProps) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const large = !onBack;
 
@@ -41,6 +46,7 @@ export function ScreenHeader({
           onPress={onBack}
         />
       ) : null}
+      {leading ? <View style={styles.leading}>{leading}</View> : null}
       <View style={[styles.titles, onBack && styles.titlesWithBack]}>
         <Text
           style={large ? styles.largeTitle : styles.title}
@@ -60,12 +66,15 @@ export function ScreenHeader({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingBottom: spacing.sm,
     backgroundColor: colors.background,
+  },
+  leading: {
+    marginRight: spacing.md,
   },
   titles: {
     flex: 1,
@@ -89,4 +98,4 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-});
+}));

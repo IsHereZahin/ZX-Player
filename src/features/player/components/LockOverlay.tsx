@@ -4,7 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '../../../shared/components/IconButton';
 import { LockOpenIcon } from '../../../shared/icons';
-import { colors, radius, spacing, typography } from '../../../shared/theme';
+import {
+  playerColors,
+  radius,
+  spacing,
+  typography,
+} from '../../../shared/theme';
 
 /** Shown briefly after a tap while the screen is locked; the only way out of lock mode. */
 export function LockOverlay({ onUnlock }: { onUnlock: () => void }) {
@@ -57,7 +62,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
-    backgroundColor: colors.playerChip,
-    color: colors.white,
+    backgroundColor: playerColors.playerChip,
+    color: playerColors.white,
   },
 });

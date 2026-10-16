@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View, type DimensionValue } from 'react-native';
+import { Animated, View, type DimensionValue } from 'react-native';
 
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing } from '../theme';
+import { makeStyles, useColors } from '../theming';
 
 interface SkeletonBlockProps {
   width: DimensionValue;
@@ -14,6 +15,7 @@ function SkeletonBlock({
   height,
   rounded = radius.sm,
 }: SkeletonBlockProps) {
+  const colors = useColors();
   return (
     <View
       style={{
@@ -36,6 +38,7 @@ export function ListSkeleton({
   thumbnail?: boolean;
   testID?: string;
 }) {
+  const styles = useStyles();
   const pulse = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
@@ -80,7 +83,7 @@ export function ListSkeleton({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   container: {
     flex: 1,
     paddingTop: spacing.sm,
@@ -97,4 +100,4 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.sm,
   },
-});
+}));

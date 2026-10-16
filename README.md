@@ -7,7 +7,7 @@ Offline local video player for Android and iOS, built with React Native (New Arc
 
 ## Features
 
-The UI is a dark design built on one brand colour (blue). Tokens live in `src/shared/theme.ts`, icons come from Lucide, and screens share the components in `src/shared/components`.
+The UI is built on one brand colour (blue), with light and dark themes. The theme follows the device by default and can be fixed to Light or Dark in Settings. The player always stays dark. Colour tokens for both themes live in `src/shared/theme.ts`. Components read the active palette through `useColors` / `makeStyles` (`src/shared/theming.tsx`), which build each style sheet once per theme. Icons come from Lucide, and screens share the components in `src/shared/components`.
 
 ### Library
 
@@ -47,7 +47,7 @@ Each gesture can be turned off in Settings.
 
 ### Settings
 
-Saved on the device: resume playback, auto-play next, background play, skip interval, default aspect ratio, each gesture, subtitle size and background, clear watch history.
+Saved on the device: theme (system, light, dark), resume playback, auto-play next, background play, skip interval, default aspect ratio, each gesture, subtitle size and background, clear watch history.
 
 ### Aspect modes
 
@@ -65,6 +65,14 @@ Change with the aspect button or More → Aspect ratio.
 ### External subtitles
 
 Picked through the system file picker and parsed by ZX Player itself, so they render identically on both platforms. ASS styling and positioning are dropped and vector drawings are skipped. Files must be UTF-8.
+
+## Logo
+
+The ZX Player mark is a rounded play button split by a Z-shaped seam, in white and pale blue on the brand-blue gradient. The master artwork is `assets/brand/zx-player-icon.svg` (with a 512 px PNG for stores).
+
+- **Android:** adaptive icon (`res/drawable/ic_launcher_{background,foreground,monochrome}.xml`), including a monochrome layer for Android 13+ themed icons. PNG launcher icons cover Android 7.
+- **iOS:** a single 1024 px `AppIcon` (Xcode generates the other sizes).
+- **In the app:** `src/shared/components/AppLogo.tsx` draws the same geometry with react-native-svg. It appears in the Library header, the first-run permission screen and Settings.
 
 ## Requirements
 
@@ -140,7 +148,8 @@ src/
   shared/
     storage/                  Observable stores persisted to AsyncStorage (validated on load)
     components/  hooks/  utils/
-    theme.ts  icons.ts        Design tokens; per-icon Lucide imports
+    theme.ts  theming.tsx     Light / dark design tokens; theme context and makeStyles
+    icons.ts                  Per-icon Lucide imports
   test/                       Fixtures, navigation doubles, store reset
 modules/zxplayer-brightness/  In-repo TurboModule for screen brightness (Kotlin + Obj-C++)
 modules/zxplayer-media/       In-repo TurboModule for the Android video library and thumbnails (Kotlin)

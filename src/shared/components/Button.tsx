@@ -1,14 +1,9 @@
 import React from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { Pressable, Text, type StyleProp, type ViewStyle } from 'react-native';
 
 import type { IconComponent } from '../icons';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography, type ColorTokens } from '../theme';
+import { makeStyles, useColors } from '../theming';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -21,12 +16,15 @@ interface ButtonProps {
   testID?: string;
 }
 
-const TEXT_COLOR: Record<Variant, string> = {
-  primary: colors.onPrimary,
-  secondary: colors.textPrimary,
-  ghost: colors.primaryText,
-  danger: colors.danger,
-};
+function textColor(colors: ColorTokens, variant: Variant): string {
+  const byVariant: Record<Variant, string> = {
+    primary: colors.onPrimary,
+    secondary: colors.textPrimary,
+    ghost: colors.primaryText,
+    danger: colors.danger,
+  };
+  return byVariant[variant];
+}
 
 export function Button({
   label,
@@ -36,6 +34,9 @@ export function Button({
   style,
   testID,
 }: ButtonProps) {
+  const styles = useStyles();
+  const pressedStyles = usePressedStyles();
+  const color = textColor(useColors(), variant);
   return (
     <Pressable
       accessibilityRole="button"
@@ -48,17 +49,13 @@ export function Button({
         style,
       ]}
     >
-      {Icon ? (
-        <Icon size={18} color={TEXT_COLOR[variant]} strokeWidth={2.25} />
-      ) : null}
-      <Text style={[styles.label, { color: TEXT_COLOR[variant] }]}>
-        {label}
-      </Text>
+      {Icon ? <Icon size={18} color={color} strokeWidth={2.25} /> : null}
+      <Text style={[styles.label, { color }]}>{label}</Text>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   base: {
     minHeight: 48,
     flexDirection: 'row',
@@ -75,11 +72,11 @@ const styles = StyleSheet.create({
   label: {
     ...typography.bodyStrong,
   },
-});
+}));
 
-const pressedStyles = StyleSheet.create({
+const usePressedStyles = makeStyles(colors => ({
   primary: { backgroundColor: colors.primaryPressed },
   secondary: { backgroundColor: colors.border },
   ghost: { backgroundColor: colors.primarySoft },
-  danger: { backgroundColor: 'rgba(248, 113, 113, 0.24)' },
-});
+  danger: { backgroundColor: colors.dangerSoft },
+}));

@@ -9,7 +9,8 @@ import {
 
 import type { RootStackScreenProps } from '../../../app/navigation/types';
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
-import { colors } from '../../../shared/theme';
+import { playerColors } from '../../../shared/theme';
+import { ThemeProvider } from '../../../shared/theming';
 import { clamp } from '../../../shared/utils/math';
 import { useSettings } from '../../settings/settingsStore';
 import type { RepeatMode } from '../components/PlayerSheets';
@@ -143,43 +144,48 @@ export function PlayerScreen({ navigation, route }: Props) {
   }
 
   return (
-    <View style={styles.root} onLayout={onLayout} testID="player-screen">
-      <StatusBar hidden animated />
-      <PlayerSession
-        key={`${index}-${video.id}`}
-        video={video}
-        queueLabel={queue.length > 1 ? `${index + 1} of ${queue.length}` : null}
-        hasNext={hasNext}
-        hasPrevious={hasPrevious}
-        layout={layout}
-        ignoreSavedPosition={ignoreSavedPosition}
-        speed={speed}
-        repeatMode={repeatMode}
-        aspectMode={aspectMode}
-        locked={locked}
-        sleepTimer={sleep.timer}
-        pauseSignal={pauseSignal}
-        brightness={brightness}
-        volume={volume}
-        onNext={goNext}
-        onPrevious={goPrevious}
-        onEnded={handleEnded}
-        onSpeedChange={setSpeed}
-        onRepeatModeChange={setRepeatMode}
-        onAspectModeChange={setAspectMode}
-        onLockChange={setLocked}
-        onSleepTimerChange={sleep.setTimer}
-        onRotate={rotate}
-        onNaturalSize={onNaturalSize}
-        onClose={navigation.goBack}
-      />
-    </View>
+    // Shared components (sheets, buttons) inside the player stay dark in a light app.
+    <ThemeProvider scheme="dark">
+      <View style={styles.root} onLayout={onLayout} testID="player-screen">
+        <StatusBar hidden animated />
+        <PlayerSession
+          key={`${index}-${video.id}`}
+          video={video}
+          queueLabel={
+            queue.length > 1 ? `${index + 1} of ${queue.length}` : null
+          }
+          hasNext={hasNext}
+          hasPrevious={hasPrevious}
+          layout={layout}
+          ignoreSavedPosition={ignoreSavedPosition}
+          speed={speed}
+          repeatMode={repeatMode}
+          aspectMode={aspectMode}
+          locked={locked}
+          sleepTimer={sleep.timer}
+          pauseSignal={pauseSignal}
+          brightness={brightness}
+          volume={volume}
+          onNext={goNext}
+          onPrevious={goPrevious}
+          onEnded={handleEnded}
+          onSpeedChange={setSpeed}
+          onRepeatModeChange={setRepeatMode}
+          onAspectModeChange={setAspectMode}
+          onLockChange={setLocked}
+          onSleepTimerChange={sleep.setTimer}
+          onRotate={rotate}
+          onNaturalSize={onNaturalSize}
+          onClose={navigation.goBack}
+        />
+      </View>
+    </ThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.black,
+    backgroundColor: playerColors.black,
   },
 });

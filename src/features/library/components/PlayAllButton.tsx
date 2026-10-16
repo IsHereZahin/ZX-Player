@@ -1,12 +1,15 @@
 import React from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PlayIcon } from '../../../shared/icons';
-import { colors, spacing } from '../../../shared/theme';
+import { spacing } from '../../../shared/theme';
+import { makeStyles, useColors } from '../../../shared/theming';
 
 /** Floating action button that plays the current list from the top. */
 export function PlayAllButton({ onPress }: { onPress: () => void }) {
+  const styles = useStyles();
+  const colors = useColors();
   const insets = useSafeAreaInsets();
   return (
     <Pressable
@@ -28,7 +31,7 @@ export function PlayAllButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   fab: {
     position: 'absolute',
     width: 60,
@@ -47,4 +50,4 @@ const styles = StyleSheet.create({
   pressed: {
     backgroundColor: colors.primaryPressed,
   },
-});
+}));

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { OptionRow, Sheet } from '../../../shared/components/Sheet';
 import {
@@ -9,7 +9,8 @@ import {
   RotateCcwIcon,
   Trash2Icon,
 } from '../../../shared/icons';
-import { colors, spacing, typography } from '../../../shared/theme';
+import { spacing, typography } from '../../../shared/theme';
+import { makeStyles } from '../../../shared/theming';
 import {
   formatBytes,
   formatDate,
@@ -116,6 +117,7 @@ export function VideoActionsSheet({
 }
 
 function InfoRow({ label, value }: { label: string; value: string | null }) {
+  const styles = useStyles();
   if (!value) {
     return null;
   }
@@ -205,7 +207,7 @@ export function SortSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   infoRow: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
@@ -219,4 +221,4 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textPrimary,
   },
-});
+}));

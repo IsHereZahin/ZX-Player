@@ -1,8 +1,9 @@
 import React, { type ReactNode } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, Switch, Text, View } from 'react-native';
 
 import { ChevronRightIcon, type IconComponent } from '../../shared/icons';
-import { colors, radius, spacing, typography } from '../../shared/theme';
+import { radius, spacing, typography } from '../../shared/theme';
+import { makeStyles, useColors } from '../../shared/theming';
 
 export function SettingsSection({
   title,
@@ -11,6 +12,7 @@ export function SettingsSection({
   title: string;
   children: ReactNode;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -34,6 +36,8 @@ function RowContent({
   description,
   destructive,
 }: RowBaseProps) {
+  const styles = useStyles();
+  const colors = useColors();
   return (
     <>
       <View style={[styles.iconTile, destructive && styles.iconTileDanger]}>
@@ -66,6 +70,8 @@ export function SettingSwitchRow({
   testID,
   ...content
 }: SwitchRowProps) {
+  const styles = useStyles();
+  const colors = useColors();
   return (
     <Pressable
       accessibilityRole="switch"
@@ -102,6 +108,8 @@ export function SettingActionRow({
   testID,
   ...content
 }: ActionRowProps) {
+  const styles = useStyles();
+  const colors = useColors();
   return (
     <Pressable
       accessibilityRole="button"
@@ -119,7 +127,7 @@ export function SettingActionRow({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   section: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
@@ -176,4 +184,4 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.primaryText,
   },
-});
+}));

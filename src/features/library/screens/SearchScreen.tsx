@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { RootStackScreenProps } from '../../../app/navigation/types';
@@ -11,7 +11,8 @@ import {
   SearchIcon,
   XIcon,
 } from '../../../shared/icons';
-import { colors, radius, spacing, typography } from '../../../shared/theme';
+import { radius, spacing, typography } from '../../../shared/theme';
+import { makeStyles, useColors } from '../../../shared/theming';
 import { MEDIA_LIST_TUNING } from '../../../shared/utils/listTuning';
 import { useLastPlayedId } from '../../history/watchHistory';
 import { VIDEO_ROW_HEIGHT, VideoRow } from '../components/VideoRow';
@@ -22,6 +23,8 @@ import type { VideoItem } from '../types';
 type Props = RootStackScreenProps<'Search'>;
 
 export function SearchScreen({ navigation }: Props) {
+  const styles = useStyles();
+  const colors = useColors();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const { results, loading, failed, retry } = useVideoSearch(query);
@@ -150,7 +153,7 @@ export function SearchScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -183,4 +186,4 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     color: colors.textSecondary,
   },
-});
+}));

@@ -1,7 +1,7 @@
 import React from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors } from '../theme';
+import { makeStyles, useColors } from '../theming';
 import { clamp } from '../utils/math';
 
 interface ProgressBarProps {
@@ -16,13 +16,19 @@ interface ProgressBarProps {
 export function ProgressBar({
   progress,
   height = 3,
-  trackColor = colors.trackInactive,
+  trackColor,
   style,
   testID,
 }: ProgressBarProps) {
+  const styles = useStyles();
+  const colors = useColors();
   return (
     <View
-      style={[styles.track, { height, backgroundColor: trackColor }, style]}
+      style={[
+        styles.track,
+        { height, backgroundColor: trackColor ?? colors.trackInactive },
+        style,
+      ]}
       accessibilityRole="progressbar"
       accessibilityValue={{
         min: 0,
@@ -38,7 +44,7 @@ export function ProgressBar({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   track: {
     width: '100%',
     overflow: 'hidden',
@@ -47,4 +53,4 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: colors.primaryBright,
   },
-});
+}));

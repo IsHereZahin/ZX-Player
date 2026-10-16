@@ -1,7 +1,8 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography } from '../theme';
+import { makeStyles } from '../theming';
 
 interface SegmentedControlProps<T extends string | number> {
   options: ReadonlyArray<{ value: T; label: string }>;
@@ -19,6 +20,7 @@ export function SegmentedControl<T extends string | number>({
   accessibilityLabel,
   testID,
 }: SegmentedControlProps<T>) {
+  const styles = useStyles();
   return (
     <View
       style={styles.row}
@@ -50,7 +52,7 @@ export function SegmentedControl<T extends string | number>({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -79,4 +81,4 @@ const styles = StyleSheet.create({
   labelSelected: {
     color: colors.onPrimary,
   },
-});
+}));

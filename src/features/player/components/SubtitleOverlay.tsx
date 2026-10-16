@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useStore } from '../../../shared/storage/store';
-import { colors, radius, spacing } from '../../../shared/theme';
+import { playerColors, radius, spacing } from '../../../shared/theme';
 import { clamp } from '../../../shared/utils/math';
 import type { PlaybackClock } from '../playbackClock';
 import { getSubtitleText, type SubtitleTrack } from '../subtitles';
@@ -76,14 +76,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   text: {
-    color: colors.white,
+    color: playerColors.white,
     fontWeight: '600',
     textAlign: 'center',
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     overflow: 'hidden',
     borderRadius: radius.xs,
-    textShadowColor: colors.black,
+    textShadowColor: playerColors.black,
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },

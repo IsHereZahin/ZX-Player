@@ -11,7 +11,12 @@ import {
   Volume2Icon,
   VolumeXIcon,
 } from '../../../shared/icons';
-import { colors, radius, spacing, typography } from '../../../shared/theme';
+import {
+  playerColors,
+  radius,
+  spacing,
+  typography,
+} from '../../../shared/theme';
 import {
   formatDuration,
   formatPercent,
@@ -55,7 +60,7 @@ export function GestureFeedbackView({
             style={styles.levelPill}
             testID={`gesture-feedback-${feedback.kind}`}
           >
-            <Icon size={20} color={colors.white} />
+            <Icon size={20} color={playerColors.white} />
             <View style={styles.levelTrack}>
               <View
                 style={[
@@ -104,7 +109,7 @@ export function GestureFeedbackView({
           testID="gesture-feedback-skip"
         >
           <View style={styles.skipBubble}>
-            <Icon size={26} color={colors.white} />
+            <Icon size={26} color={playerColors.white} />
           </View>
           <Text style={styles.skipText}>
             {forward ? '+' : '−'}
@@ -122,8 +127,8 @@ export function GestureFeedbackView({
           <View style={styles.boostChip} testID="gesture-feedback-boost">
             <FastForwardIcon
               size={16}
-              color={colors.onPrimary}
-              fill={colors.onPrimary}
+              color={playerColors.onPrimary}
+              fill={playerColors.onPrimary}
             />
             <Text style={styles.boostText}>2× speed</Text>
           </View>
@@ -145,7 +150,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingVertical: spacing.lg,
     borderRadius: radius.pill,
-    backgroundColor: colors.playerPanel,
+    backgroundColor: playerColors.playerPanel,
   },
   levelTrack: {
     width: 6,
@@ -153,15 +158,15 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     overflow: 'hidden',
     borderRadius: radius.pill,
-    backgroundColor: colors.trackInactive,
+    backgroundColor: playerColors.trackInactive,
   },
   levelFill: {
     width: '100%',
-    backgroundColor: colors.primaryBright,
+    backgroundColor: playerColors.primaryBright,
   },
   levelText: {
     ...typography.label,
-    color: colors.white,
+    color: playerColors.white,
     fontVariant: ['tabular-nums'],
   },
   centerLayer: {
@@ -176,16 +181,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xxl,
     paddingVertical: spacing.lg,
     borderRadius: radius.lg,
-    backgroundColor: colors.playerPanel,
+    backgroundColor: playerColors.playerPanel,
   },
   seekDelta: {
     ...typography.display,
-    color: colors.white,
+    color: playerColors.white,
     fontVariant: ['tabular-nums'],
   },
   seekPosition: {
     ...typography.caption,
-    color: colors.textSecondary,
+    color: playerColors.textSecondary,
     fontVariant: ['tabular-nums'],
   },
   seekBar: {
@@ -218,8 +223,8 @@ const styles = StyleSheet.create({
   },
   skipText: {
     ...typography.bodyStrong,
-    color: colors.white,
-    textShadowColor: colors.black,
+    color: playerColors.white,
+    textShadowColor: playerColors.black,
     textShadowRadius: 4,
   },
   topLayer: {
@@ -235,11 +240,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
-    backgroundColor: colors.primary,
+    backgroundColor: playerColors.primary,
   },
   boostText: {
     ...typography.label,
     fontSize: 13,
-    color: colors.onPrimary,
+    color: playerColors.onPrimary,
   },
 });

@@ -1,12 +1,9 @@
 import React, { type ReactNode } from 'react';
 import { Linking } from 'react-native';
 
+import { AppLogo } from '../../../shared/components/AppLogo';
 import { EmptyState } from '../../../shared/components/EmptyState';
-import {
-  CircleAlertIcon,
-  FolderSearchIcon,
-  LockIcon,
-} from '../../../shared/icons';
+import { CircleAlertIcon, LockIcon } from '../../../shared/icons';
 import { reportError } from '../../../shared/logger';
 import { useMediaPermission } from '../hooks/useMediaPermission';
 import { hasMediaAccess } from '../services/mediaPermissions';
@@ -55,7 +52,7 @@ export function PermissionGate({ children }: { children: ReactNode }) {
 
   return (
     <EmptyState
-      icon={FolderSearchIcon}
+      illustration={<AppLogo size={88} />}
       title="See your videos"
       message="ZX Player reads your device's video library to show your folders. Your videos never leave your device."
       actionLabel="Allow access"

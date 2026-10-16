@@ -47,6 +47,17 @@ describe('SettingsScreen', () => {
     expect(settingsStore.getState().defaultAspectMode).toBe('fill');
   });
 
+  it('switches the theme', async () => {
+    await renderScreen();
+    expect(screen.getByText('System default')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('setting-appearance'));
+    await fireEvent.press(screen.getByTestId('appearance-option-light'));
+
+    expect(settingsStore.getState().appearance).toBe('light');
+    expect(screen.getByText('Light')).toBeOnTheScreen();
+  });
+
   it('asks for notification permission when enabling background play on Android 13+', async () => {
     jest.replaceProperty(Platform, 'OS', 'android');
     jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);

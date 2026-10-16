@@ -86,6 +86,10 @@ describe('LibraryScreen', () => {
     getAlbums.mockResolvedValueOnce(sampleAlbums);
     await renderScreen();
 
+    // First run greets the user with the app logo above the request.
+    expect(await screen.findByText('See your videos')).toBeOnTheScreen();
+    expect(screen.getAllByLabelText('ZX Player logo')).toHaveLength(2);
+
     await fireEvent.press(await screen.findByText('Allow access'));
 
     expect(requestPermission).toHaveBeenCalled();

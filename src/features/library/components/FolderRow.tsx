@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import {
   CameraIcon,
@@ -11,7 +11,8 @@ import {
   VideoIcon,
   type IconComponent,
 } from '../../../shared/icons';
-import { colors, radius, spacing, typography } from '../../../shared/theme';
+import { radius, spacing, typography } from '../../../shared/theme';
+import { makeStyles, useColors } from '../../../shared/theming';
 import { formatVideoCount } from '../../../shared/utils/format';
 import type { VideoFolder } from '../types';
 
@@ -43,6 +44,8 @@ export const FolderRow = memo(function FolderRowView({
   folder,
   onPress,
 }: FolderRowProps) {
+  const styles = useStyles();
+  const colors = useColors();
   const Icon = folderIcon(folder);
   const subtitle =
     folder.count === null ? 'Entire library' : formatVideoCount(folder.count);
@@ -70,7 +73,7 @@ export const FolderRow = memo(function FolderRowView({
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   row: {
     height: FOLDER_ROW_HEIGHT,
     flexDirection: 'row',
@@ -101,4 +104,4 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
   },
-});
+}));

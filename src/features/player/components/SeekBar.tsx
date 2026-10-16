@@ -16,7 +16,12 @@ import {
 } from 'react-native-gesture-handler';
 
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
-import { colors, radius, spacing, typography } from '../../../shared/theme';
+import {
+  playerColors,
+  radius,
+  spacing,
+  typography,
+} from '../../../shared/theme';
 import { formatDuration } from '../../../shared/utils/format';
 import { clamp } from '../../../shared/utils/math';
 import { usePlaybackClock, type PlaybackClock } from '../playbackClock';
@@ -218,7 +223,7 @@ const styles = StyleSheet.create({
   time: {
     ...typography.label,
     minWidth: 48,
-    color: colors.white,
+    color: playerColors.white,
     fontVariant: ['tabular-nums'],
     textAlign: 'center',
   },
@@ -231,7 +236,7 @@ const styles = StyleSheet.create({
     height: TRACK_HEIGHT,
     overflow: 'hidden',
     borderRadius: radius.pill,
-    backgroundColor: colors.trackInactive,
+    backgroundColor: playerColors.trackInactive,
   },
   fill: {
     position: 'absolute',
@@ -240,17 +245,17 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   buffered: {
-    backgroundColor: colors.trackBuffered,
+    backgroundColor: playerColors.trackBuffered,
   },
   played: {
-    backgroundColor: colors.primaryBright,
+    backgroundColor: playerColors.primaryBright,
   },
   thumb: {
     position: 'absolute',
     borderRadius: radius.pill,
     borderWidth: 2,
-    borderColor: colors.white,
-    backgroundColor: colors.primaryBright,
+    borderColor: playerColors.white,
+    backgroundColor: playerColors.primaryBright,
   },
   bubble: {
     position: 'absolute',
@@ -259,11 +264,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.xs,
     borderRadius: radius.sm,
-    backgroundColor: colors.primary,
+    backgroundColor: playerColors.primary,
   },
   bubbleText: {
     ...typography.label,
-    color: colors.onPrimary,
+    color: playerColors.onPrimary,
     fontVariant: ['tabular-nums'],
   },
 });

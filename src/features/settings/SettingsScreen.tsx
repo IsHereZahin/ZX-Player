@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 import type { MainTabScreenProps } from '../../app/navigation/types';
+import { AppLogo } from '../../shared/components/AppLogo';
 import { ScreenHeader } from '../../shared/components/ScreenHeader';
 import { OptionRow, Sheet } from '../../shared/components/Sheet';
 import {
@@ -15,11 +16,13 @@ import {
   MoveHorizontalIcon,
   RatioIcon,
   SunIcon,
+  SunMoonIcon,
   Trash2Icon,
   TypeIcon,
   Volume2Icon,
 } from '../../shared/icons';
-import { colors, spacing, typography } from '../../shared/theme';
+import { spacing, typography } from '../../shared/theme';
+import { makeStyles } from '../../shared/theming';
 import { confirmClearHistory } from '../history/RecentScreen';
 import { useHistoryList } from '../history/watchHistory';
 import {
@@ -34,15 +37,28 @@ import {
   SettingSwitchRow,
 } from './SettingRows';
 import {
+  APPEARANCES,
   SKIP_INTERVALS,
   SUBTITLE_SIZES,
   updateSettings,
   useSettings,
+  type Appearance,
   type SubtitleSize,
 } from './settingsStore';
 
 type Props = MainTabScreenProps<'Settings'>;
-type Picker = 'skip' | 'aspect' | 'subtitleSize' | null;
+type Picker = 'appearance' | 'skip' | 'aspect' | 'subtitleSize' | null;
+
+const APPEARANCE_LABELS: Record<Appearance, string> = {
+  system: 'System default',
+  light: 'Light',
+  dark: 'Dark',
+};
+const APPEARANCE_DESCRIPTIONS: Record<Appearance, string> = {
+  system: 'Match your device’s light or dark setting',
+  light: 'Always use the light theme',
+  dark: 'Always use the dark theme',
+};
 
 const SUBTITLE_SIZE_LABELS: Record<SubtitleSize, string> = {
   small: 'Small',
@@ -51,6 +67,7 @@ const SUBTITLE_SIZE_LABELS: Record<SubtitleSize, string> = {
 };
 
 export function SettingsScreen(_props: Props) {
+  const styles = useStyles();
   const settings = useSettings();
   const historyCount = useHistoryList().length;
   const [picker, setPicker] = useState<Picker>(null);
@@ -60,6 +77,17 @@ export function SettingsScreen(_props: Props) {
     <View style={styles.screen}>
       <ScreenHeader title="Settings" />
       <ScrollView contentContainerStyle={styles.content} testID="settings-list">
+        <SettingsSection title="Appearance">
+          <SettingActionRow
+            icon={SunMoonIcon}
+            title="Theme"
+            description="The player always stays dark"
+            value={APPEARANCE_LABELS[settings.appearance]}
+            onPress={() => setPicker('appearance')}
+            testID="setting-appearance"
+          />
+        </SettingsSection>
+
         <SettingsSection title="Playback">
           <SettingSwitchRow
             icon={HistoryIcon}
@@ -185,6 +213,7 @@ export function SettingsScreen(_props: Props) {
         </SettingsSection>
 
         <View style={styles.about}>
+          <AppLogo size={56} testID="about-logo" />
           <Text style={styles.aboutTitle}>ZX Player</Text>
           <Text style={styles.aboutText}>
             Your videos stay on this device. ZX Player never uploads anything.
@@ -192,6 +221,25 @@ export function SettingsScreen(_props: Props) {
         </View>
       </ScrollView>
 
+      <Sheet
+        visible={picker === 'appearance'}
+        onClose={closePicker}
+        title="Theme"
+      >
+        {APPEARANCES.map(appearance => (
+          <OptionRow
+            key={appearance}
+            label={APPEARANCE_LABELS[appearance]}
+            description={APPEARANCE_DESCRIPTIONS[appearance]}
+            selected={settings.appearance === appearance}
+            onPress={() => {
+              updateSettings({ appearance });
+              closePicker();
+            }}
+            testID={`appearance-option-${appearance}`}
+          />
+        ))}
+      </Sheet>
       <Sheet
         visible={picker === 'skip'}
         onClose={closePicker}
@@ -249,7 +297,7 @@ export function SettingsScreen(_props: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -265,6 +313,7 @@ const styles = StyleSheet.create({
   },
   aboutTitle: {
     ...typography.bodyStrong,
+    marginTop: spacing.xs,
     color: colors.textSecondary,
   },
   aboutText: {
@@ -272,4 +321,4 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
   },
-});
+}));

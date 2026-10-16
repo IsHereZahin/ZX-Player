@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -20,7 +19,8 @@ import {
   LayoutGridIcon,
   ListIcon,
 } from '../../../shared/icons';
-import { colors, spacing } from '../../../shared/theme';
+import { spacing } from '../../../shared/theme';
+import { makeStyles, useColors } from '../../../shared/theming';
 import { formatVideoCount } from '../../../shared/utils/format';
 import { MEDIA_LIST_TUNING } from '../../../shared/utils/listTuning';
 import { useLastPlayedId } from '../../history/watchHistory';
@@ -46,6 +46,8 @@ function gridColumns(width: number): number {
 }
 
 export function FolderVideosScreen({ navigation, route }: Props) {
+  const styles = useStyles();
+  const colors = useColors();
   const { folder } = route.params;
   const { videos, loadState, complete, refreshing, reload, refresh } =
     useFolderVideos(folder);
@@ -207,7 +209,7 @@ export function FolderVideosScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -226,4 +228,4 @@ const styles = StyleSheet.create({
   footer: {
     paddingVertical: spacing.lg,
   },
-});
+}));

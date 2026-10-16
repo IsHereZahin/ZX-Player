@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../../../shared/components/Button';
 import { CircleAlertIcon } from '../../../shared/icons';
-import { colors, spacing, typography } from '../../../shared/theme';
+import { playerColors, spacing, typography } from '../../../shared/theme';
 import type { PlaybackError } from '../hooks/usePlayback';
 
 interface PlaybackErrorOverlayProps {
@@ -23,7 +23,11 @@ export function PlaybackErrorOverlay({
 }: PlaybackErrorOverlayProps) {
   return (
     <View style={styles.overlay} testID="playback-error">
-      <CircleAlertIcon size={40} color={colors.danger} strokeWidth={1.75} />
+      <CircleAlertIcon
+        size={40}
+        color={playerColors.danger}
+        strokeWidth={1.75}
+      />
       <Text style={styles.message} accessibilityRole="alert">
         {error.message}
       </Text>
@@ -54,13 +58,13 @@ const styles = StyleSheet.create({
   },
   message: {
     ...typography.headline,
-    color: colors.white,
+    color: playerColors.white,
     textAlign: 'center',
   },
   detail: {
     ...typography.caption,
     maxWidth: 480,
-    color: colors.textSecondary,
+    color: playerColors.textSecondary,
     textAlign: 'center',
   },
   actions: {

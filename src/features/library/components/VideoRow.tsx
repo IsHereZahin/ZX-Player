@@ -1,9 +1,10 @@
 import React, { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { IconButton } from '../../../shared/components/IconButton';
 import { EllipsisVerticalIcon } from '../../../shared/icons';
-import { colors, spacing, typography } from '../../../shared/theme';
+import { spacing, typography } from '../../../shared/theme';
+import { makeStyles, useColors } from '../../../shared/theming';
 import { formatDuration } from '../../../shared/utils/format';
 import { useWatchEntry, watchProgress } from '../../history/watchHistory';
 import type { VideoItem } from '../types';
@@ -27,6 +28,8 @@ export const VideoRow = memo(function VideoRowView({
   onMore,
   highlighted = false,
 }: VideoRowProps) {
+  const styles = useStyles();
+  const colors = useColors();
   const entry = useWatchEntry(video.id);
   const { title, details, status } = describeVideo(video, entry);
 
@@ -75,7 +78,7 @@ export const VideoRow = memo(function VideoRowView({
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   row: {
     height: VIDEO_ROW_HEIGHT,
     flexDirection: 'row',
@@ -106,4 +109,4 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.primaryText,
   },
-});
+}));

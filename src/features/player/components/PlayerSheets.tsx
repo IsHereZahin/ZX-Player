@@ -24,7 +24,12 @@ import {
   TimerIcon,
   type IconComponent,
 } from '../../../shared/icons';
-import { colors, radius, spacing, typography } from '../../../shared/theme';
+import {
+  playerColors,
+  radius,
+  spacing,
+  typography,
+} from '../../../shared/theme';
 import { formatSpeed } from '../../../shared/utils/format';
 import type { SubtitleSize } from '../../settings/settingsStore';
 import { SLEEP_TIMER_MINUTES, type SleepTimer } from '../hooks/useSleepTimer';
@@ -84,7 +89,7 @@ function Tile({
       <View style={[styles.tileIcon, active && styles.tileIconActive]}>
         <Icon
           size={22}
-          color={active ? colors.primaryText : colors.textPrimary}
+          color={active ? playerColors.primaryText : playerColors.textPrimary}
         />
       </View>
       <Text style={styles.tileLabel} numberOfLines={2}>
@@ -504,7 +509,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   tilePressed: {
-    backgroundColor: colors.pressed,
+    backgroundColor: playerColors.pressed,
   },
   tileIcon: {
     width: 52,
@@ -512,20 +517,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 26,
-    backgroundColor: colors.surfaceHigh,
+    backgroundColor: playerColors.surfaceHigh,
   },
   tileIconActive: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: playerColors.primarySoft,
   },
   tileLabel: {
     ...typography.label,
     fontWeight: '500',
-    color: colors.textPrimary,
+    color: playerColors.textPrimary,
     textAlign: 'center',
   },
   tileValue: {
     ...typography.label,
-    color: colors.primaryText,
+    color: playerColors.primaryText,
   },
   padded: {
     paddingHorizontal: spacing.xl,
@@ -541,12 +546,12 @@ const styles = StyleSheet.create({
   stepperLabel: {
     ...typography.body,
     flex: 1,
-    color: colors.textPrimary,
+    color: playerColors.textPrimary,
   },
   stepperValue: {
     ...typography.bodyStrong,
     minWidth: 76,
-    color: colors.textPrimary,
+    color: playerColors.textPrimary,
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },

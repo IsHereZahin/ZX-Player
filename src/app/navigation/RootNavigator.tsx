@@ -14,7 +14,8 @@ import {
   SettingsIcon,
   type IconComponent,
 } from '../../shared/icons';
-import { colors, typography } from '../../shared/theme';
+import { typography } from '../../shared/theme';
+import { useColors } from '../../shared/theming';
 import type { MainTabParamList, RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -30,6 +31,7 @@ const RecentTabIcon = tabIcon(HistoryIcon);
 const SettingsTabIcon = tabIcon(SettingsIcon);
 
 function MainTabs() {
+  const colors = useColors();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -72,6 +74,7 @@ function MainTabs() {
 }
 
 export function RootNavigator() {
+  const colors = useColors();
   return (
     <Stack.Navigator
       initialRouteName="Main"

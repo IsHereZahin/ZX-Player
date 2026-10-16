@@ -1,12 +1,13 @@
 import React, { useCallback, useMemo } from 'react';
-import { Alert, SectionList, StyleSheet, Text, View } from 'react-native';
+import { Alert, SectionList, Text, View } from 'react-native';
 
 import type { MainTabScreenProps } from '../../app/navigation/types';
 import { EmptyState } from '../../shared/components/EmptyState';
 import { IconButton } from '../../shared/components/IconButton';
 import { ScreenHeader } from '../../shared/components/ScreenHeader';
 import { HistoryIcon, Trash2Icon } from '../../shared/icons';
-import { colors, spacing, typography } from '../../shared/theme';
+import { spacing, typography } from '../../shared/theme';
+import { makeStyles } from '../../shared/theming';
 import { MEDIA_LIST_TUNING } from '../../shared/utils/listTuning';
 import { VideoRow } from '../library/components/VideoRow';
 import { useVideoActions } from '../library/hooks/useVideoActions';
@@ -32,6 +33,7 @@ export function confirmClearHistory(): void {
 }
 
 export function RecentScreen(_props: Props) {
+  const styles = useStyles();
   const history = useHistoryList();
   const { sections, queue } = useMemo(() => {
     const inProgress = history.filter(isInProgress).map(entry => entry.video);
@@ -99,7 +101,7 @@ export function RecentScreen(_props: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(colors => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -114,4 +116,4 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xs,
     color: colors.textPrimary,
   },
-});
+}));

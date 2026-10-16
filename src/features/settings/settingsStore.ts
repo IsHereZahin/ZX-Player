@@ -11,7 +11,12 @@ export type SkipInterval = (typeof SKIP_INTERVALS)[number];
 export const SUBTITLE_SIZES = ['small', 'medium', 'large'] as const;
 export type SubtitleSize = (typeof SUBTITLE_SIZES)[number];
 
+/** `system` follows the device's light / dark setting. */
+export const APPEARANCES = ['system', 'light', 'dark'] as const;
+export type Appearance = (typeof APPEARANCES)[number];
+
 export interface Settings {
+  appearance: Appearance;
   resumePlayback: boolean;
   autoPlayNext: boolean;
   backgroundPlay: boolean;
@@ -27,6 +32,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  appearance: 'system',
   resumePlayback: true,
   autoPlayNext: true,
   backgroundPlay: false,
@@ -63,6 +69,7 @@ export function parseSettings(raw: unknown): Settings {
       : DEFAULT_SETTINGS[key];
 
   return {
+    appearance: oneOf('appearance', APPEARANCES),
     resumePlayback: bool('resumePlayback'),
     autoPlayNext: bool('autoPlayNext'),
     backgroundPlay: bool('backgroundPlay'),

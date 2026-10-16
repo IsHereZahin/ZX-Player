@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import { colors } from '../../../shared/theme';
+import { playerColors } from '../../../shared/theme';
 
 interface ScrimProps {
   edge: 'top' | 'bottom';
@@ -27,12 +27,12 @@ export function Scrim({ edge, height }: ScrimProps) {
           <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
             <Stop
               offset="0"
-              stopColor={colors.black}
+              stopColor={playerColors.black}
               stopOpacity={edge === 'top' ? dark : 0}
             />
             <Stop
               offset="1"
-              stopColor={colors.black}
+              stopColor={playerColors.black}
               stopOpacity={edge === 'top' ? 0 : dark}
             />
           </LinearGradient>
