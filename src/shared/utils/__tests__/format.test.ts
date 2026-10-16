@@ -1,0 +1,66 @@
+import {
+  formatBytes,
+  formatDuration,
+  formatPercent,
+  formatSignedDuration,
+  formatVideoCount,
+} from '../format';
+
+describe('formatDuration', () => {
+  it.each([
+    [0, '0:00'],
+    [5.9, '0:05'],
+    [65, '1:05'],
+    [3599, '59:59'],
+    [3600, '1:00:00'],
+    [3725, '1:02:05'],
+  ])('formats %p seconds as %p', (input, expected) => {
+    expect(formatDuration(input)).toBe(expected);
+  });
+
+  it('falls back to 0:00 for invalid input', () => {
+    expect(formatDuration(-3)).toBe('0:00');
+    expect(formatDuration(Number.NaN)).toBe('0:00');
+    expect(formatDuration(Number.POSITIVE_INFINITY)).toBe('0:00');
+  });
+});
+
+describe('formatSignedDuration', () => {
+  it('prefixes the direction of a seek', () => {
+    expect(formatSignedDuration(15)).toBe('+0:15');
+    expect(formatSignedDuration(-62)).toBe('-1:02');
+    expect(formatSignedDuration(0)).toBe('+0:00');
+  });
+});
+
+describe('formatBytes', () => {
+  it.each([
+    [512, '512 B'],
+    [1536, '1.5 KB'],
+    [5 * 1024 * 1024, '5.0 MB'],
+    [150 * 1024 * 1024, '150 MB'],
+    [3.2 * 1024 ** 3, '3.2 GB'],
+  ])('formats %p bytes as %p', (input, expected) => {
+    expect(formatBytes(input)).toBe(expected);
+  });
+
+  it('returns null when the size is unknown', () => {
+    expect(formatBytes(null)).toBeNull();
+    expect(formatBytes(undefined)).toBeNull();
+    expect(formatBytes(-1)).toBeNull();
+  });
+});
+
+describe('formatPercent / formatVideoCount', () => {
+  it('rounds and clamps percentages', () => {
+    expect(formatPercent(0.444)).toBe('44%');
+    expect(formatPercent(1.4)).toBe('100%');
+    expect(formatPercent(-0.2)).toBe('0%');
+  });
+
+  it('pluralises video counts', () => {
+    expect(formatVideoCount(1)).toBe('1 video');
+    expect(formatVideoCount(0)).toBe('0 videos');
+    expect(formatVideoCount(12)).toBe('12 videos');
+  });
+});
