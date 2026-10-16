@@ -7,32 +7,64 @@ Offline local video player for Android and iOS, built with React Native (New Arc
 
 ## Features
 
-- **Library scanner.** Lists folders from the device media library (Android MediaStore buckets, iOS Photos albums), plus an "All videos" entry. Folders open into a paginated video list with thumbnails, duration, size and resolution.
-- **Permissions.** Android 13+ granular video access, Android 14+ partial ("selected videos") access, and the legacy storage permission on Android 12 and below. iOS uses Photos read access. Denied and blocked states link to Settings.
-- **Player.** Play/pause, ±10 s skip, a scrub bar (tap to jump, drag to preview, release to seek), aspect modes, landscape lock, auto-hiding controls, buffering and error states with retry. Playback pauses when the app goes to the background.
-- **Gestures**
+The UI is a dark design built on one brand colour (blue). Tokens live in `src/shared/theme.ts`, icons come from Lucide, and screens share the components in `src/shared/components`.
 
-  | Gesture                        | Action                                                              |
-  | ------------------------------ | ------------------------------------------------------------------- |
-  | Vertical drag, left half       | Screen brightness                                                   |
-  | Vertical drag, right half      | Media volume (system HUD suppressed)                                |
-  | Horizontal drag                | Seek with a live `+0:45 · 2:25 / 10:00` overlay; applied on release |
-  | Double tap, left / right third | Skip −10 s / +10 s                                                  |
-  | Double tap, centre             | Play / pause                                                        |
-  | Single tap                     | Show / hide controls                                                |
+### Library
 
-- **Aspect modes** (cycle with the top-bar button)
+Bottom tabs: Library · Recent · Settings.
 
-  | Mode    | Behaviour                                      |
-  | ------- | ---------------------------------------------- |
-  | Fit     | Whole frame visible, letter/pillar-boxed       |
-  | Fill    | Fills the screen, aspect kept, edges trimmed   |
-  | Crop    | Native pixel size (100 %), centred and cropped |
-  | Stretch | Fills the screen exactly, aspect ignored       |
+- Folders from the device media library (Android MediaStore buckets, iOS Photos albums) plus "All videos", with a **Continue watching** rail for unfinished videos.
+- Folder view in **list or grid**, **sorting** by date, name (natural order, so "Episode 2" comes before "Episode 10"), duration or size, and **Play all**.
+- Per-video menu: resume or play from the beginning, mark as watched or unwatched, video details, remove from history.
+- **Search** across the whole library by file name, including non-Latin titles.
+- **Recent** tab: unfinished and recently played videos, with progress bars and "12 min left".
+- Thumbnails show a watch-progress bar. The most recently played video is highlighted.
+- Permission flow: Android 13+ granular video access, Android 14+ "selected videos", legacy storage on Android 12 and below, and Photos access on iOS. Denied and blocked states link to Settings.
 
-  "Fill" and "Crop" mean the same thing in most players, so Crop shows the video at its native size to keep the four modes distinct.
+### Player
 
-- **Subtitles.** Load `.srt`, `.ass` or `.ssa` files through the system file picker. ZX Player parses them itself and renders them identically on both platforms. ASS styling and positioning are dropped and vector drawings are skipped. Files must be UTF-8.
+- **Resume where you left off**, with a "Start over" option. Progress is saved every few seconds, on pause and when closing.
+- **Queue**: previous/next, auto-play next, repeat (off / all / one). "Previous" restarts the current video after 5 s.
+- **Playback speed** 0.5×–3×, **press and hold for 2×**.
+- **Audio track** and **embedded subtitle track** selection. **External subtitles** (`.srt`, `.ass`, `.ssa`) with delay adjustment.
+- **Lock screen** controls, **sleep timer** (timed or end of video), **picture-in-picture**, **background play** with notification controls (optional).
+- Opens in landscape for wide videos and portrait for tall ones; the rotate button switches.
+- Aspect modes, auto-hiding controls, buffering and error states (retry, or skip to the next video).
+
+### Gestures
+
+Each gesture can be turned off in Settings.
+
+| Gesture                        | Action                                                               |
+| ------------------------------ | -------------------------------------------------------------------- |
+| Vertical drag, left half       | Screen brightness                                                    |
+| Vertical drag, right half      | Media volume (system HUD suppressed)                                 |
+| Horizontal drag                | Seek with a live `+0:45 · 2:25 / 10:00` overlay; applied on release  |
+| Double tap, left / right third | Skip back / forward (interval set in Settings); repeated taps add up |
+| Double tap, centre             | Play / pause                                                         |
+| Press and hold                 | 2× speed while held                                                  |
+| Single tap                     | Show / hide controls                                                 |
+
+### Settings
+
+Saved on the device: resume playback, auto-play next, background play, skip interval, default aspect ratio, each gesture, subtitle size and background, clear watch history.
+
+### Aspect modes
+
+Change with the aspect button or More → Aspect ratio.
+
+| Mode    | Behaviour                                      |
+| ------- | ---------------------------------------------- |
+| Fit     | Whole frame visible, letter/pillar-boxed       |
+| Fill    | Fills the screen, aspect kept, edges trimmed   |
+| Crop    | Native pixel size (100 %), centred and cropped |
+| Stretch | Fills the screen exactly, aspect ignored       |
+
+"Fill" and "Crop" mean the same thing in most players, so Crop shows the video at its native size to keep the four modes distinct.
+
+### External subtitles
+
+Picked through the system file picker and parsed by ZX Player itself, so they render identically on both platforms. ASS styling and positioning are dropped and vector drawings are skipped. Files must be UTF-8.
 
 ## Requirements
 
@@ -91,20 +123,27 @@ On Windows without long-path support, native code paths can exceed 260 character
 
 ```text
 src/
-  app/                      App root, navigation (native stack) and route types
+  app/                        App root, tabs + native stack navigation, store hydration
   features/
-    library/                Media scanning, permissions, thumbnails, folder and video lists
-      services/             camera-roll adapter, permission flow, thumbnail queue
+    library/                  Media scanning, permissions, thumbnails, folders, videos, search
+      services/               camera-roll adapter, permission flow, thumbnail queue, search index
+      utils/                  Sorting and filtering (pure TS)
       hooks/  components/  screens/
+    history/                  Watch history store (resume, progress) and the Recent tab
+    settings/                 Persisted settings and the Settings tab
     player/
-      subtitles/            SRT / ASS parsers and time-indexed cue lookup (pure TS)
-      utils/                Aspect-ratio frames and gesture maths (pure TS)
-      hooks/                Playback state, gestures, brightness, volume, subtitles
-      components/  screens/
-  shared/                   Theme, logger, reusable components, hooks, utilities
-  test/                     Fixtures (mock media library, sample subtitles), test helpers
-modules/zxplayer-brightness/   In-repo TurboModule for screen brightness (Kotlin + Obj-C++)
-__mocks__/                  Jest mocks for every native module
+      subtitles/              SRT / ASS parsers and time-indexed cue lookup (pure TS)
+      utils/                  Aspect-ratio layout, gesture maths, track labels (pure TS)
+      hooks/                  Playback, progress saving, gestures, brightness, volume, sleep timer
+      components/             Controls, seek bar, gesture indicators, sheets, overlays
+      screens/                PlayerScreen (queue, cross-video state) + PlayerSession (one video)
+  shared/
+    storage/                  Observable stores persisted to AsyncStorage (validated on load)
+    components/  hooks/  utils/
+    theme.ts  icons.ts        Design tokens; per-icon Lucide imports
+  test/                       Fixtures, navigation doubles, store reset
+modules/zxplayer-brightness/  In-repo TurboModule for screen brightness (Kotlin + Obj-C++)
+__mocks__/                    Jest mocks for every native module
 ```
 
 ### Native dependencies
@@ -117,17 +156,32 @@ __mocks__/                  Jest mocks for every native module
 | `react-native-create-thumbnail`               | Android video thumbnails (disk-cached)                |
 | `react-native-volume-manager`                 | Media volume without the system HUD                   |
 | `@react-native-documents/picker`              | Picking subtitle files                                |
-| `zxplayer-brightness` (local)                    | Window brightness (Android) / screen brightness (iOS) |
+| `@react-native-async-storage/async-storage`   | Saved settings, watch history, library preferences    |
+| `react-native-svg` + `lucide-react-native`    | Icons and gradient scrims                             |
+| `@react-navigation/bottom-tabs`               | Library / Recent / Settings tabs                      |
+| `zxplayer-brightness` (local)                 | Window brightness (Android) / screen brightness (iOS) |
+
+Icons are imported one module at a time from `src/shared/icons.ts`, because Metro would otherwise bundle every Lucide icon. Some Lucide names (e.g. `history`) exist only as type aliases, so `src/shared/__tests__/icons.test.ts` checks that each import has a runtime module.
+
+Background play uses react-native-video's media-session service. It is declared in `AndroidManifest.xml` together with the foreground-service and notification permissions; iOS uses the `audio` background mode.
 
 Brightness on Android uses a window override, so it only affects ZX Player and needs no `WRITE_SETTINGS` permission. On iOS brightness is device-wide, so the original level is restored when the player closes or the app is backgrounded.
 
 ## Testing
 
-`npm test` runs the pure logic tests (subtitle parsers, cue lookup, aspect frames, gesture maths, formatting, task queue), the service tests (permission flows per Android API level and iOS, media mapping, thumbnail caching, subtitle file loading) and the screen integration tests. Gestures are driven through gesture-handler's `createGestureController`; native modules are replaced by the mocks in `__mocks__/`.
+`npm test` covers four layers:
+
+- **Pure logic:** subtitle parsers, cue lookup, aspect layout, gesture maths, sorting/search, track labels, formatting, the task queue.
+- **Stores:** persistence, validation of stored data, watch-history rules.
+- **Services:** permission flows per Android API level and iOS, media mapping, thumbnails, subtitle import.
+- **Screen integration:** every screen, including the player's queue, resume, gestures, tracks, lock, sleep timer and picture-in-picture.
+
+Gestures are driven through gesture-handler's `createGestureController`. Native modules, including an in-memory AsyncStorage, are replaced by the mocks in `__mocks__/`. Stores are reset before every test (`jest.afterEnv.ts`).
 
 ## Known limitations
 
 - Subtitle files are read as UTF-8; other encodings (e.g. Windows-1252) show garbled characters.
 - Only videos indexed by the system media library are listed. On iOS that means the Photos library, not files stored in the Files app.
 - Android groups folders by bucket name, so two folders that share a name appear as one.
-- There is no resume-position memory between sessions.
+- Image-based embedded subtitles (PGS, VobSub) depend on the platform player's support.
+- Background play, picture-in-picture and track switching depend on native player behaviour. They have not been exercised on a physical device as part of this test suite.

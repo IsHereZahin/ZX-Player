@@ -1,17 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import type {
+  OnAudioTracksData,
   OnBufferData,
   OnLoadData,
+  OnPictureInPictureStatusChangedData,
   OnProgressData,
+  OnTextTrackDataChangedData,
+  OnTextTracksData,
   OnVideoErrorData,
   VideoRef,
 } from 'react-native-video';
 
+import { useLatestRef } from '../../../shared/hooks/useLatestRef';
 import { useStateWithRef } from '../../../shared/hooks/useStateWithRef';
 import { reportError } from '../../../shared/logger';
 import { clamp } from '../../../shared/utils/math';
 import { normalizeNaturalSize, type Size } from '../utils/aspectRatio';
+import type { MediaTrack } from '../utils/tracks';
 
 export interface PlaybackError {
   message: string;
@@ -27,19 +33,42 @@ function describePlaybackError({ error }: OnVideoErrorData): PlaybackError {
   };
 }
 
+interface PlaybackOptions {
+  initialDurationSec: number;
+  /** Position to jump to once the video has loaded (resume). */
+  startAtSec?: number | null;
+  /** Keep playing when the app moves to the background. */
+  backgroundPlay: boolean;
+  onEnded?: () => void;
+}
+
 /** Playback state for one video plus the event handlers to wire into `<Video>`. */
-export function usePlayback(initialDurationSec: number) {
+export function usePlayback({
+  initialDurationSec,
+  startAtSec,
+  backgroundPlay,
+  onEnded,
+}: PlaybackOptions) {
   const videoRef = useRef<VideoRef>(null);
-  const resumeAtRef = useRef(0);
+  const seekOnLoadRef = useRef(startAtSec ?? 0);
+  const latest = useLatestRef({ backgroundPlay, onEnded });
 
   const [paused, setPaused, pausedRef] = useStateWithRef(false);
   const [ended, setEnded, endedRef] = useStateWithRef(false);
   const [duration, setDuration, durationRef] =
     useStateWithRef(initialDurationSec);
-  const [currentTime, setCurrentTime, currentTimeRef] = useStateWithRef(0);
+  const [currentTime, setCurrentTime, currentTimeRef] = useStateWithRef(
+    startAtSec ?? 0,
+  );
   const [bufferedTime, setBufferedTime] = useState(0);
   const [buffering, setBuffering] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [naturalSize, setNaturalSize] = useState<Size | null>(null);
+  const [audioTracks, setAudioTracks] = useState<MediaTrack[]>([]);
+  const [textTracks, setTextTracks] = useState<MediaTrack[]>([]);
+  // iOS reports the active embedded cue as text instead of drawing it.
+  const [embeddedCueText, setEmbeddedCueText] = useState('');
+  const [pictureInPicture, setPictureInPicture] = useState(false);
   const [error, setError] = useState<PlaybackError | null>(null);
   // Changing the key remounts <Video>, which is how a failed source is retried.
   const [sourceKey, setSourceKey] = useState(0);
@@ -79,23 +108,31 @@ export function usePlayback(initialDurationSec: number) {
     () => currentTimeRef.current,
     [currentTimeRef],
   );
+  const getDuration = useCallback(() => durationRef.current, [durationRef]);
 
   const retry = useCallback(() => {
-    resumeAtRef.current = currentTimeRef.current;
+    seekOnLoadRef.current = currentTimeRef.current;
     setError(null);
     setBuffering(true);
     setPaused(false);
     setSourceKey(key => key + 1);
   }, [currentTimeRef, setPaused]);
 
+  const enterPictureInPicture = useCallback(() => {
+    videoRef.current?.enterPictureInPicture();
+  }, []);
+
   const onLoad = useCallback(
     (data: OnLoadData) => {
       setDuration(data.duration);
       setNaturalSize(normalizeNaturalSize(data.naturalSize));
+      setAudioTracks(data.audioTracks ?? []);
+      setTextTracks(data.textTracks ?? []);
       setBuffering(false);
-      if (resumeAtRef.current > 0) {
-        videoRef.current?.seek(resumeAtRef.current);
-        resumeAtRef.current = 0;
+      setLoaded(true);
+      if (seekOnLoadRef.current > 0) {
+        videoRef.current?.seek(seekOnLoadRef.current);
+        seekOnLoadRef.current = 0;
       }
     },
     [setDuration],
@@ -118,7 +155,8 @@ export function usePlayback(initialDurationSec: number) {
     setEnded(true);
     setPaused(true);
     setCurrentTime(durationRef.current);
-  }, [durationRef, setCurrentTime, setEnded, setPaused]);
+    latest.current.onEnded?.();
+  }, [durationRef, latest, setCurrentTime, setEnded, setPaused]);
 
   const onError = useCallback(
     (event: OnVideoErrorData) => {
@@ -130,20 +168,60 @@ export function usePlayback(initialDurationSec: number) {
     [setPaused],
   );
 
-  // Stay paused when the app is backgrounded instead of resuming unexpectedly on return.
+  const onAudioTracks = useCallback(
+    (data: OnAudioTracksData) => setAudioTracks([...data.audioTracks]),
+    [],
+  );
+  const onTextTracks = useCallback(
+    (data: OnTextTracksData) => setTextTracks([...data.textTracks]),
+    [],
+  );
+  const onTextTrackDataChanged = useCallback(
+    (data: OnTextTrackDataChangedData) =>
+      setEmbeddedCueText(data.subtitleTracks ?? ''),
+    [],
+  );
+  const onPictureInPictureStatusChanged = useCallback(
+    (data: OnPictureInPictureStatusChangedData) =>
+      setPictureInPicture(data.isActive),
+    [],
+  );
+
+  // Without background play, stay paused when the app is backgrounded instead of
+  // resuming unexpectedly on return.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', state => {
-      if (state === 'background') {
+      if (state === 'background' && !latest.current.backgroundPlay) {
         setPaused(true);
       }
     });
     return () => subscription.remove();
-  }, [setPaused]);
+  }, [latest, setPaused]);
 
   // Stable identity so the memoised video surface skips re-rendering on progress ticks.
   const videoEvents = useMemo(
-    () => ({ onLoad, onProgress, onBuffer, onEnd, onError }),
-    [onLoad, onProgress, onBuffer, onEnd, onError],
+    () => ({
+      onLoad,
+      onProgress,
+      onBuffer,
+      onEnd,
+      onError,
+      onAudioTracks,
+      onTextTracks,
+      onTextTrackDataChanged,
+      onPictureInPictureStatusChanged,
+    }),
+    [
+      onLoad,
+      onProgress,
+      onBuffer,
+      onEnd,
+      onError,
+      onAudioTracks,
+      onTextTracks,
+      onTextTrackDataChanged,
+      onPictureInPictureStatusChanged,
+    ],
   );
 
   return {
@@ -151,18 +229,25 @@ export function usePlayback(initialDurationSec: number) {
     sourceKey,
     paused,
     ended,
+    loaded,
     duration,
     currentTime,
     bufferedTime,
     buffering,
     naturalSize,
+    audioTracks,
+    textTracks,
+    embeddedCueText,
+    pictureInPicture,
     error,
     play,
     pause,
     togglePlayback,
     seekTo,
     getCurrentTime,
+    getDuration,
     retry,
+    enterPictureInPicture,
     videoEvents,
   };
 }

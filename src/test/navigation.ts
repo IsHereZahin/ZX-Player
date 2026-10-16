@@ -1,21 +1,22 @@
-import type {
-  RootStackParamList,
-  RootStackScreenProps,
-} from '../app/navigation/types';
+/**
+ * Navigation double shared by screen props and `useNavigation()`. Screen tests mock
+ * `@react-navigation/native` so `useNavigation` returns this same object:
+ *
+ *   jest.mock('@react-navigation/native', () => ({
+ *     ...jest.requireActual('@react-navigation/native'),
+ *     useNavigation: () => require('<path>/test/navigation').mockNavigation,
+ *   }));
+ */
+export const mockNavigation = {
+  navigate: jest.fn(),
+  goBack: jest.fn(),
+  setOptions: jest.fn(),
+};
 
-/** Minimal navigation/route doubles for rendering a screen outside a navigator. */
-export function createScreenProps<T extends keyof RootStackParamList>(
-  name: T,
-  params: RootStackParamList[T],
-) {
-  const navigation = {
-    navigate: jest.fn(),
-    goBack: jest.fn(),
-    setOptions: jest.fn(),
-  };
-  const props = {
-    navigation,
+/** Props for rendering a screen component outside a navigator. */
+export function screenProps<Props>(name: string, params?: object): Props {
+  return {
+    navigation: mockNavigation,
     route: { key: `${name}-test`, name, params },
-  } as unknown as RootStackScreenProps<T>;
-  return { props, navigation };
+  } as unknown as Props;
 }

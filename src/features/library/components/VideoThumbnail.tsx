@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fontSize, radius, spacing } from '../../../shared/theme';
+import { ProgressBar } from '../../../shared/components/ProgressBar';
+import { FilmIcon } from '../../../shared/icons';
+import { colors, radius, spacing, typography } from '../../../shared/theme';
 import { formatDuration } from '../../../shared/utils/format';
 import { useThumbnail } from '../hooks/useThumbnail';
 import type { VideoItem } from '../types';
@@ -9,9 +11,15 @@ import type { VideoItem } from '../types';
 interface VideoThumbnailProps {
   video: VideoItem;
   width: number;
+  /** Watched fraction (0–1); a bar is drawn along the bottom when above zero. */
+  progress?: number;
 }
 
-export function VideoThumbnail({ video, width }: VideoThumbnailProps) {
+export function VideoThumbnail({
+  video,
+  width,
+  progress = 0,
+}: VideoThumbnailProps) {
   const uri = useThumbnail(video);
   const [failed, setFailed] = useState(false);
   const height = Math.round((width * 9) / 16);
@@ -30,7 +38,11 @@ export function VideoThumbnail({ video, width }: VideoThumbnailProps) {
         />
       ) : (
         <View style={styles.placeholder} testID="thumbnail-placeholder">
-          <View style={styles.playGlyph} />
+          <FilmIcon
+            size={Math.min(28, width / 5)}
+            color={colors.textMuted}
+            strokeWidth={1.5}
+          />
         </View>
       )}
       {video.durationSec > 0 ? (
@@ -40,14 +52,22 @@ export function VideoThumbnail({ video, width }: VideoThumbnailProps) {
           </Text>
         </View>
       ) : null}
+      {progress > 0 ? (
+        <ProgressBar
+          progress={progress}
+          trackColor="rgba(0, 0, 0, 0.55)"
+          style={styles.progress}
+          testID="thumbnail-progress"
+        />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   frame: {
-    borderRadius: radius.md,
     overflow: 'hidden',
+    borderRadius: radius.md,
     backgroundColor: colors.surfaceRaised,
   },
   placeholder: {
@@ -55,31 +75,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // CSS-triangle play glyph; avoids pulling in an icon font for one shape.
-  playGlyph: {
-    width: 0,
-    height: 0,
-    marginLeft: 4,
-    borderTopWidth: 10,
-    borderBottomWidth: 10,
-    borderLeftWidth: 16,
-    borderTopColor: 'transparent',
-    borderBottomColor: 'transparent',
-    borderLeftColor: colors.textSecondary,
-  },
   badge: {
     position: 'absolute',
-    right: spacing.xs,
-    bottom: spacing.xs,
+    right: spacing.xs + 2,
+    bottom: spacing.xs + 4,
     paddingHorizontal: spacing.xs + 2,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    paddingVertical: 1,
+    borderRadius: radius.xs,
+    backgroundColor: 'rgba(0, 0, 0, 0.78)',
   },
   badgeText: {
-    color: colors.textPrimary,
-    fontSize: fontSize.caption - 1,
-    fontWeight: '600',
+    ...typography.label,
+    fontSize: 11,
+    color: colors.white,
     fontVariant: ['tabular-nums'],
+  },
+  progress: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 });

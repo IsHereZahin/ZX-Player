@@ -1,47 +1,56 @@
 import React, { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fontSize, spacing } from '../../../shared/theme';
-import { formatBytes, formatDuration } from '../../../shared/utils/format';
-import { describeFileName } from '../services/mediaLibrary';
+import { IconButton } from '../../../shared/components/IconButton';
+import { EllipsisVerticalIcon } from '../../../shared/icons';
+import { colors, spacing, typography } from '../../../shared/theme';
+import { formatDuration } from '../../../shared/utils/format';
+import { useWatchEntry, watchProgress } from '../../history/watchHistory';
 import type { VideoItem } from '../types';
+import { describeVideo } from './videoMeta';
 import { VideoThumbnail } from './VideoThumbnail';
 
-const THUMBNAIL_WIDTH = 128;
-const ROW_VERTICAL_PADDING = spacing.sm;
-export const VIDEO_ROW_HEIGHT =
-  Math.round((THUMBNAIL_WIDTH * 9) / 16) + ROW_VERTICAL_PADDING * 2;
+const THUMBNAIL_WIDTH = 136;
+export const VIDEO_ROW_HEIGHT = 100;
 
 interface VideoRowProps {
   video: VideoItem;
   onPress: (video: VideoItem) => void;
+  onMore: (video: VideoItem) => void;
+  /** Marks the most recently played video. */
+  highlighted?: boolean;
 }
 
 export const VideoRow = memo(function VideoRowView({
   video,
   onPress,
+  onMore,
+  highlighted = false,
 }: VideoRowProps) {
-  const { title, extension } = describeFileName(video.fileName);
-  const resolution =
-    video.width > 0 && video.height > 0
-      ? `${video.width}×${video.height}`
-      : null;
-  const details = [extension, formatBytes(video.sizeBytes), resolution]
-    .filter(Boolean)
-    .join(' · ');
+  const entry = useWatchEntry(video.id);
+  const { title, details, status } = describeVideo(video, entry);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${formatDuration(video.durationSec)}`}
+      accessibilityLabel={`${title}, ${formatDuration(video.durationSec)}${
+        status ? `, ${status}` : ''
+      }`}
       onPress={() => onPress(video)}
-      android_ripple={{ color: colors.surfaceRaised }}
+      android_ripple={{ color: colors.pressed }}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       testID={`video-${video.id}`}
     >
-      <VideoThumbnail video={video} width={THUMBNAIL_WIDTH} />
+      <VideoThumbnail
+        video={video}
+        width={THUMBNAIL_WIDTH}
+        progress={watchProgress(entry)}
+      />
       <View style={styles.text}>
-        <Text style={styles.title} numberOfLines={2}>
+        <Text
+          style={[styles.title, highlighted && styles.titleHighlighted]}
+          numberOfLines={2}
+        >
           {title}
         </Text>
         {details ? (
@@ -49,7 +58,19 @@ export const VideoRow = memo(function VideoRowView({
             {details}
           </Text>
         ) : null}
+        {status ? (
+          <Text style={styles.status} numberOfLines={1}>
+            {status}
+          </Text>
+        ) : null}
       </View>
+      <IconButton
+        icon={EllipsisVerticalIcon}
+        size="sm"
+        accessibilityLabel={`More options for ${title}`}
+        onPress={() => onMore(video)}
+        testID={`video-more-${video.id}`}
+      />
     </Pressable>
   );
 });
@@ -59,25 +80,30 @@ const styles = StyleSheet.create({
     height: VIDEO_ROW_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: ROW_VERTICAL_PADDING,
     gap: spacing.md,
-    backgroundColor: colors.background,
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.xs,
   },
   pressed: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.pressed,
   },
   text: {
     flex: 1,
-    gap: spacing.xs,
+    gap: spacing.xxs,
   },
   title: {
+    ...typography.bodyStrong,
     color: colors.textPrimary,
-    fontSize: fontSize.body,
-    fontWeight: '600',
+  },
+  titleHighlighted: {
+    color: colors.primaryText,
   },
   details: {
+    ...typography.caption,
     color: colors.textSecondary,
-    fontSize: fontSize.caption,
+  },
+  status: {
+    ...typography.label,
+    color: colors.primaryText,
   },
 });

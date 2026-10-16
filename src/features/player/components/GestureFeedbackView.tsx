@@ -1,7 +1,17 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, fontSize, radius, spacing } from '../../../shared/theme';
+import { ProgressBar } from '../../../shared/components/ProgressBar';
+import {
+  FastForwardIcon,
+  RotateCcwIcon,
+  RotateCwIcon,
+  SunIcon,
+  Volume2Icon,
+  VolumeXIcon,
+} from '../../../shared/icons';
+import { colors, radius, spacing, typography } from '../../../shared/theme';
 import {
   formatDuration,
   formatPercent,
@@ -9,119 +19,227 @@ import {
 } from '../../../shared/utils/format';
 import type { GestureFeedback } from '../hooks/usePlayerGestures';
 
-const LEVEL_BAR_WIDTH = 120;
+const LEVEL_BAR_HEIGHT = 132;
 
-/** Transient indicator shown while a gesture adjusts brightness, volume or position. */
+/** Transient indicator shown while a gesture adjusts brightness, volume, position or speed. */
 export function GestureFeedbackView({
   feedback,
 }: {
   feedback: GestureFeedback | null;
 }) {
+  const insets = useSafeAreaInsets();
   if (!feedback) {
     return null;
   }
 
-  if (feedback.kind === 'skip') {
-    const forward = feedback.seconds > 0;
-    return (
-      <View
-        style={[styles.layer, forward ? styles.alignRight : styles.alignLeft]}
-        pointerEvents="none"
-      >
-        <View style={styles.pill} testID="gesture-feedback-skip">
-          <Text style={styles.headline}>
-            {forward ? '»' : '«'} {Math.abs(feedback.seconds)}s
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={[styles.layer, styles.alignCenter]} pointerEvents="none">
-      <View style={styles.card} testID={`gesture-feedback-${feedback.kind}`}>
-        {feedback.kind === 'seek' ? (
-          <>
-            <Text style={styles.headline}>
-              {formatSignedDuration(feedback.delta)}
-            </Text>
-            <Text style={styles.caption}>
-              {formatDuration(feedback.target)} /{' '}
-              {formatDuration(feedback.duration)}
-            </Text>
-          </>
-        ) : (
-          <>
-            <Text style={styles.caption}>
-              {feedback.kind === 'brightness' ? 'Brightness' : 'Volume'}
-            </Text>
-            <Text style={styles.headline}>{formatPercent(feedback.level)}</Text>
+  switch (feedback.kind) {
+    case 'brightness':
+    case 'volume': {
+      const isBrightness = feedback.kind === 'brightness';
+      const Icon = isBrightness
+        ? SunIcon
+        : feedback.level === 0
+        ? VolumeXIcon
+        : Volume2Icon;
+      return (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.sideLayer,
+            isBrightness
+              ? { left: Math.max(insets.left, spacing.xl) + spacing.lg }
+              : { right: Math.max(insets.right, spacing.xl) + spacing.lg },
+          ]}
+        >
+          <View
+            style={styles.levelPill}
+            testID={`gesture-feedback-${feedback.kind}`}
+          >
+            <Icon size={20} color={colors.white} />
             <View style={styles.levelTrack}>
               <View
                 style={[
                   styles.levelFill,
-                  { width: LEVEL_BAR_WIDTH * feedback.level },
+                  { height: `${feedback.level * 100}%` },
                 ]}
               />
             </View>
-          </>
-        )}
-      </View>
-    </View>
-  );
+            <Text style={styles.levelText}>
+              {formatPercent(feedback.level)}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+    case 'seek':
+      return (
+        <View pointerEvents="none" style={styles.centerLayer}>
+          <View style={styles.seekCard} testID="gesture-feedback-seek">
+            <Text style={styles.seekDelta}>
+              {formatSignedDuration(feedback.delta)}
+            </Text>
+            <Text style={styles.seekPosition}>
+              {formatDuration(feedback.target)} /{' '}
+              {formatDuration(feedback.duration)}
+            </Text>
+            <ProgressBar
+              progress={
+                feedback.duration > 0 ? feedback.target / feedback.duration : 0
+              }
+              style={styles.seekBar}
+            />
+          </View>
+        </View>
+      );
+    case 'skip': {
+      const forward = feedback.seconds > 0;
+      const Icon = forward ? RotateCwIcon : RotateCcwIcon;
+      return (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.skipLayer,
+            forward ? styles.skipRight : styles.skipLeft,
+          ]}
+          testID="gesture-feedback-skip"
+        >
+          <View style={styles.skipBubble}>
+            <Icon size={26} color={colors.white} />
+          </View>
+          <Text style={styles.skipText}>
+            {forward ? '+' : '−'}
+            {Math.abs(feedback.seconds)} sec
+          </Text>
+        </View>
+      );
+    }
+    case 'boost':
+      return (
+        <View
+          pointerEvents="none"
+          style={[styles.topLayer, { top: insets.top + spacing.xl }]}
+        >
+          <View style={styles.boostChip} testID="gesture-feedback-boost">
+            <FastForwardIcon
+              size={16}
+              color={colors.onPrimary}
+              fill={colors.onPrimary}
+            />
+            <Text style={styles.boostText}>2× speed</Text>
+          </View>
+        </View>
+      );
+  }
 }
 
 const styles = StyleSheet.create({
-  layer: {
-    ...StyleSheet.absoluteFill,
+  sideLayer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
     justifyContent: 'center',
-    paddingHorizontal: spacing.xxl * 2,
   },
-  alignCenter: {
+  levelPill: {
+    width: 56,
     alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.lg,
+    borderRadius: radius.pill,
+    backgroundColor: colors.playerPanel,
   },
-  alignLeft: {
-    alignItems: 'flex-start',
+  levelTrack: {
+    width: 6,
+    height: LEVEL_BAR_HEIGHT,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+    borderRadius: radius.pill,
+    backgroundColor: colors.trackInactive,
   },
-  alignRight: {
-    alignItems: 'flex-end',
+  levelFill: {
+    width: '100%',
+    backgroundColor: colors.primaryBright,
   },
-  card: {
-    minWidth: 160,
+  levelText: {
+    ...typography.label,
+    color: colors.white,
+    fontVariant: ['tabular-nums'],
+  },
+  centerLayer: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  seekCard: {
+    minWidth: 200,
     alignItems: 'center',
     gap: spacing.xs,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.xxl,
     paddingVertical: spacing.lg,
     borderRadius: radius.lg,
     backgroundColor: colors.playerPanel,
   },
-  pill: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: radius.pill,
-    backgroundColor: colors.playerPanel,
-  },
-  headline: {
-    color: colors.textPrimary,
-    fontSize: 28,
-    fontWeight: '700',
+  seekDelta: {
+    ...typography.display,
+    color: colors.white,
     fontVariant: ['tabular-nums'],
   },
-  caption: {
+  seekPosition: {
+    ...typography.caption,
     color: colors.textSecondary,
-    fontSize: fontSize.body,
     fontVariant: ['tabular-nums'],
   },
-  levelTrack: {
-    width: LEVEL_BAR_WIDTH,
-    height: 4,
-    marginTop: spacing.xs,
+  seekBar: {
+    width: 168,
+    marginTop: spacing.sm,
     borderRadius: radius.pill,
-    backgroundColor: colors.trackInactive,
-    overflow: 'hidden',
   },
-  levelFill: {
-    height: '100%',
-    backgroundColor: colors.accent,
+  skipLayer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: '34%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  skipLeft: {
+    left: 0,
+  },
+  skipRight: {
+    right: 0,
+  },
+  skipBubble: {
+    width: 64,
+    height: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+  },
+  skipText: {
+    ...typography.bodyStrong,
+    color: colors.white,
+    textShadowColor: colors.black,
+    textShadowRadius: 4,
+  },
+  topLayer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  boostChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+  boostText: {
+    ...typography.label,
+    fontSize: 13,
+    color: colors.onPrimary,
   },
 });

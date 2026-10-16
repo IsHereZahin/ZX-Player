@@ -1,31 +1,58 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, fontSize, spacing } from '../../../shared/theme';
-import { ASPECT_MODE_LABELS, type AspectMode } from '../utils/aspectRatio';
-import { DOUBLE_TAP_SKIP_SECONDS } from '../utils/gestureMath';
-import { ControlButton } from './ControlButton';
-import { PlayPauseIcon } from './PlayPauseIcon';
+import { IconButton } from '../../../shared/components/IconButton';
+import {
+  ArrowLeftIcon,
+  AudioLinesIcon,
+  CaptionsIcon,
+  EllipsisVerticalIcon,
+  LockIcon,
+  PauseIcon,
+  PictureInPictureIcon,
+  PlayIcon,
+  RatioIcon,
+  RotateCcwIcon,
+  RotateCwIcon,
+  ScreenRotationIcon,
+  SkipBackIcon,
+  SkipForwardIcon,
+} from '../../../shared/icons';
+import { colors, radius, spacing, typography } from '../../../shared/theme';
+import { formatSpeed } from '../../../shared/utils/format';
+import { Scrim } from './Scrim';
 import { SeekBar } from './SeekBar';
 
 export interface PlayerControlsProps {
   title: string;
+  /** e.g. "3 of 12" when playing through a list. */
+  queueLabel: string | null;
   paused: boolean;
   currentTime: number;
   duration: number;
   bufferedTime: number;
-  aspectMode: AspectMode;
-  landscapeLocked: boolean;
-  subtitlesLoaded: boolean;
+  skipSeconds: number;
+  speed: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  subtitlesActive: boolean;
+  showAudioTracks: boolean;
   onBack: () => void;
   onTogglePlayback: () => void;
   onSkip: (seconds: number) => void;
   onSeek: (time: number) => void;
   onScrubbingChange: (scrubbing: boolean) => void;
+  onPrevious: () => void;
+  onNext: () => void;
+  onOpenSpeed: () => void;
+  onOpenSubtitles: () => void;
+  onOpenAudio: () => void;
+  onOpenMore: () => void;
   onCycleAspect: () => void;
-  onSubtitles: () => void;
-  onToggleOrientation: () => void;
+  onRotate: () => void;
+  onLock: () => void;
+  onPictureInPicture: () => void;
 }
 
 /**
@@ -34,9 +61,9 @@ export interface PlayerControlsProps {
  */
 export function PlayerControls(props: PlayerControlsProps) {
   const insets = useSafeAreaInsets();
-  const horizontalPadding = {
-    paddingLeft: Math.max(insets.left, spacing.lg),
-    paddingRight: Math.max(insets.right, spacing.lg),
+  const sidePadding = {
+    paddingLeft: Math.max(insets.left, spacing.md),
+    paddingRight: Math.max(insets.right, spacing.md),
   };
 
   return (
@@ -45,77 +72,122 @@ export function PlayerControls(props: PlayerControlsProps) {
       pointerEvents="box-none"
       testID="player-controls"
     >
+      <Scrim edge="top" height={insets.top + 120} />
+      <Scrim edge="bottom" height={insets.bottom + 180} />
+
       <View
         style={[
-          styles.bar,
-          horizontalPadding,
+          styles.topBar,
+          sidePadding,
           { paddingTop: Math.max(insets.top, spacing.sm) },
         ]}
       >
-        <ControlButton
+        <IconButton
+          icon={ArrowLeftIcon}
+          variant="overlay"
           accessibilityLabel="Back"
-          label="‹  Back"
           onPress={props.onBack}
+          testID="player-back"
         />
-        <Text style={styles.title} numberOfLines={1}>
-          {props.title}
-        </Text>
-        <ControlButton
-          accessibilityLabel={
-            props.subtitlesLoaded ? 'Subtitle options' : 'Load subtitles'
-          }
-          label="CC"
-          active={props.subtitlesLoaded}
-          onPress={props.onSubtitles}
+        <View style={styles.titleBlock}>
+          <Text style={styles.title} numberOfLines={1}>
+            {props.title}
+          </Text>
+          {props.queueLabel ? (
+            <Text style={styles.queue}>{props.queueLabel}</Text>
+          ) : null}
+        </View>
+        <IconButton
+          icon={CaptionsIcon}
+          variant="overlay"
+          active={props.subtitlesActive}
+          accessibilityLabel="Subtitles"
+          onPress={props.onOpenSubtitles}
           testID="subtitles-button"
         />
-        <ControlButton
-          accessibilityLabel={`Aspect ratio: ${
-            ASPECT_MODE_LABELS[props.aspectMode]
-          }`}
-          label={ASPECT_MODE_LABELS[props.aspectMode]}
-          onPress={props.onCycleAspect}
-          testID="aspect-button"
-        />
-        <ControlButton
-          accessibilityLabel={
-            props.landscapeLocked ? 'Unlock rotation' : 'Lock to landscape'
-          }
-          label="⟳"
-          active={props.landscapeLocked}
-          onPress={props.onToggleOrientation}
-          testID="orientation-button"
+        {props.showAudioTracks ? (
+          <IconButton
+            icon={AudioLinesIcon}
+            variant="overlay"
+            accessibilityLabel="Audio track"
+            onPress={props.onOpenAudio}
+            testID="audio-button"
+          />
+        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Playback speed ${formatSpeed(props.speed)}`}
+          onPress={props.onOpenSpeed}
+          style={({ pressed }) => [
+            styles.speedPill,
+            props.speed !== 1 && styles.speedPillActive,
+            pressed && styles.speedPillPressed,
+          ]}
+          testID="speed-button"
+        >
+          <Text
+            style={[
+              styles.speedText,
+              props.speed !== 1 && styles.speedTextActive,
+            ]}
+          >
+            {formatSpeed(props.speed)}
+          </Text>
+        </Pressable>
+        <IconButton
+          icon={EllipsisVerticalIcon}
+          variant="overlay"
+          accessibilityLabel="More options"
+          onPress={props.onOpenMore}
+          testID="more-button"
         />
       </View>
 
       <View style={styles.center} pointerEvents="box-none">
-        <ControlButton
-          accessibilityLabel={`Back ${DOUBLE_TAP_SKIP_SECONDS} seconds`}
-          label={`« ${DOUBLE_TAP_SKIP_SECONDS}`}
-          onPress={() => props.onSkip(-DOUBLE_TAP_SKIP_SECONDS)}
+        <IconButton
+          icon={SkipBackIcon}
+          variant="overlay"
+          accessibilityLabel="Previous video"
+          onPress={props.onPrevious}
+          disabled={!props.hasPrevious}
+          testID="previous-button"
+        />
+        <IconButton
+          icon={RotateCcwIcon}
+          variant="overlay"
+          accessibilityLabel={`Back ${props.skipSeconds} seconds`}
+          onPress={() => props.onSkip(-props.skipSeconds)}
           testID="skip-back-button"
         />
-        <ControlButton
+        <IconButton
+          icon={props.paused ? PlayIcon : PauseIcon}
+          variant="filled"
+          size="lg"
           accessibilityLabel={props.paused ? 'Play' : 'Pause'}
-          size="large"
           onPress={props.onTogglePlayback}
           testID="play-pause-button"
-        >
-          <PlayPauseIcon playing={!props.paused} />
-        </ControlButton>
-        <ControlButton
-          accessibilityLabel={`Forward ${DOUBLE_TAP_SKIP_SECONDS} seconds`}
-          label={`${DOUBLE_TAP_SKIP_SECONDS} »`}
-          onPress={() => props.onSkip(DOUBLE_TAP_SKIP_SECONDS)}
+        />
+        <IconButton
+          icon={RotateCwIcon}
+          variant="overlay"
+          accessibilityLabel={`Forward ${props.skipSeconds} seconds`}
+          onPress={() => props.onSkip(props.skipSeconds)}
           testID="skip-forward-button"
+        />
+        <IconButton
+          icon={SkipForwardIcon}
+          variant="overlay"
+          accessibilityLabel="Next video"
+          onPress={props.onNext}
+          disabled={!props.hasNext}
+          testID="next-button"
         />
       </View>
 
       <View
         style={[
-          styles.bar,
           styles.bottomBar,
-          horizontalPadding,
+          sidePadding,
           { paddingBottom: Math.max(insets.bottom, spacing.md) },
         ]}
       >
@@ -123,38 +195,104 @@ export function PlayerControls(props: PlayerControlsProps) {
           currentTime={props.currentTime}
           duration={props.duration}
           bufferedTime={props.bufferedTime}
+          skipSeconds={props.skipSeconds}
           onSeek={props.onSeek}
           onScrubbingChange={props.onScrubbingChange}
         />
+        <View style={styles.actions}>
+          <IconButton
+            icon={LockIcon}
+            variant="ghost"
+            accessibilityLabel="Lock controls"
+            onPress={props.onLock}
+            testID="lock-button"
+          />
+          <View style={styles.actionsRight}>
+            <IconButton
+              icon={RatioIcon}
+              accessibilityLabel="Change aspect ratio"
+              onPress={props.onCycleAspect}
+              testID="aspect-button"
+            />
+            <IconButton
+              icon={ScreenRotationIcon}
+              accessibilityLabel="Rotate screen"
+              onPress={props.onRotate}
+              testID="rotate-button"
+            />
+            <IconButton
+              icon={PictureInPictureIcon}
+              accessibilityLabel="Picture in picture"
+              onPress={props.onPictureInPicture}
+              testID="pip-button"
+            />
+          </View>
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bar: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.playerScrim,
+    paddingBottom: spacing.sm,
   },
-  bottomBar: {
-    flexDirection: 'column',
-    alignItems: 'stretch',
-  },
-  title: {
+  titleBlock: {
     flex: 1,
     marginHorizontal: spacing.sm,
-    color: colors.textPrimary,
-    fontSize: fontSize.subtitle,
-    fontWeight: '600',
+  },
+  title: {
+    ...typography.headline,
+    color: colors.white,
+  },
+  queue: {
+    ...typography.label,
+    color: colors.textSecondary,
+  },
+  speedPill: {
+    minWidth: 52,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.playerButton,
+  },
+  speedPillActive: {
+    backgroundColor: colors.primarySoft,
+  },
+  speedPillPressed: {
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+  },
+  speedText: {
+    ...typography.label,
+    fontSize: 13,
+    color: colors.white,
+  },
+  speedTextActive: {
+    color: colors.primaryText,
   },
   center: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xxl,
+    gap: spacing.xl,
+  },
+  bottomBar: {
+    gap: spacing.xs,
+  },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  actionsRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

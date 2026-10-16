@@ -7,39 +7,77 @@ import {
   iosRequestReadWriteGalleryPermission,
 } from '@react-native-camera-roll/camera-roll';
 
-import { sampleAlbums } from '../../../../test/fixtures';
-import { createScreenProps } from '../../../../test/navigation';
-import { FoldersScreen } from '../FoldersScreen';
+import type { MainTabScreenProps } from '../../../../app/navigation/types';
+import { makeVideo, sampleAlbums } from '../../../../test/fixtures';
+import { mockNavigation, screenProps } from '../../../../test/navigation';
+import { recordProgress } from '../../../history/watchHistory';
+import { LibraryScreen } from '../LibraryScreen';
+
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => require('../../../../test/navigation').mockNavigation,
+}));
 
 const getAlbums = CameraRoll.getAlbums as jest.Mock;
 const readPermission = iosReadGalleryPermission as jest.Mock;
 const requestPermission = iosRequestReadWriteGalleryPermission as jest.Mock;
 
 async function renderScreen() {
-  const { props, navigation } = createScreenProps('Folders', undefined);
-  await render(<FoldersScreen {...props} />);
-  return navigation;
+  await render(
+    <LibraryScreen
+      {...screenProps<MainTabScreenProps<'Library'>>('Library')}
+    />,
+  );
 }
 
 afterEach(() => {
-  jest.clearAllMocks();
   jest.restoreAllMocks();
 });
 
-describe('FoldersScreen', () => {
+describe('LibraryScreen', () => {
   it('lists video folders and opens one', async () => {
     getAlbums.mockResolvedValueOnce(sampleAlbums);
-    const navigation = await renderScreen();
+    await renderScreen();
 
     expect(await screen.findByText('All videos')).toBeOnTheScreen();
     expect(screen.getByText('Camera')).toBeOnTheScreen();
     expect(screen.getByText('3 videos')).toBeOnTheScreen();
     expect(screen.queryByText('Empty')).toBeNull();
+    expect(screen.queryByTestId('continue-watching')).toBeNull();
 
     await fireEvent.press(screen.getByText('Downloads'));
-    expect(navigation.navigate).toHaveBeenCalledWith('VideoList', {
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('FolderVideos', {
       folder: expect.objectContaining({ title: 'Downloads', count: 2 }),
     });
+  });
+
+  it('offers unfinished videos in a Continue watching rail', async () => {
+    const lecture = makeVideo('7', {
+      fileName: 'Lecture.mp4',
+      durationSec: 1200,
+    });
+    recordProgress(lecture, 300, 1200);
+    recordProgress(makeVideo('8'), 600, 600); // finished: not offered
+    getAlbums.mockResolvedValueOnce(sampleAlbums);
+    await renderScreen();
+
+    expect(await screen.findByText('Continue watching')).toBeOnTheScreen();
+    expect(screen.getByText('15 min left')).toBeOnTheScreen();
+    expect(screen.queryByTestId('continue-8')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('continue-7'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Player', {
+      queue: [lecture],
+      startIndex: 0,
+      startFromBeginning: false,
+    });
+  });
+
+  it('opens search from the header', async () => {
+    getAlbums.mockResolvedValueOnce(sampleAlbums);
+    await renderScreen();
+    await fireEvent.press(screen.getByTestId('open-search'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Search');
   });
 
   it('asks for access first and loads the library once granted', async () => {

@@ -1,11 +1,38 @@
 import React, { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fontSize, radius, spacing } from '../../../shared/theme';
+import {
+  CameraIcon,
+  ChevronRightIcon,
+  DownloadIcon,
+  FilmIcon,
+  FolderIcon,
+  MusicIcon,
+  VideoIcon,
+  type IconComponent,
+} from '../../../shared/icons';
+import { colors, radius, spacing, typography } from '../../../shared/theme';
 import { formatVideoCount } from '../../../shared/utils/format';
 import type { VideoFolder } from '../types';
 
 export const FOLDER_ROW_HEIGHT = 72;
+
+const FOLDER_ICON_RULES: ReadonlyArray<[RegExp, IconComponent]> = [
+  [/camera|dcim/i, CameraIcon],
+  [/download/i, DownloadIcon],
+  [/screen ?(record|cast)/i, VideoIcon],
+  [/song|music/i, MusicIcon],
+];
+
+function folderIcon(folder: VideoFolder): IconComponent {
+  if (folder.album === null) {
+    return FilmIcon;
+  }
+  return (
+    FOLDER_ICON_RULES.find(([pattern]) => pattern.test(folder.title))?.[1] ??
+    FolderIcon
+  );
+}
 
 interface FolderRowProps {
   folder: VideoFolder;
@@ -16,6 +43,7 @@ export const FolderRow = memo(function FolderRowView({
   folder,
   onPress,
 }: FolderRowProps) {
+  const Icon = folderIcon(folder);
   const subtitle =
     folder.count === null ? 'Entire library' : formatVideoCount(folder.count);
 
@@ -24,13 +52,12 @@ export const FolderRow = memo(function FolderRowView({
       accessibilityRole="button"
       accessibilityLabel={`${folder.title}, ${subtitle}`}
       onPress={() => onPress(folder)}
-      android_ripple={{ color: colors.surfaceRaised }}
+      android_ripple={{ color: colors.pressed }}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       testID={`folder-${folder.id}`}
     >
-      <View style={styles.icon}>
-        <View style={styles.iconTab} />
-        <View style={styles.iconBody} />
+      <View style={styles.tile}>
+        <Icon size={24} color={colors.primaryText} strokeWidth={1.75} />
       </View>
       <View style={styles.text}>
         <Text style={styles.title} numberOfLines={1}>
@@ -38,9 +65,7 @@ export const FolderRow = memo(function FolderRowView({
         </Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
-      <Text style={styles.chevron} importantForAccessibility="no">
-        ›
-      </Text>
+      <ChevronRightIcon size={20} color={colors.textMuted} />
     </Pressable>
   );
 });
@@ -50,47 +75,30 @@ const styles = StyleSheet.create({
     height: FOLDER_ROW_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
     gap: spacing.lg,
-    backgroundColor: colors.background,
+    paddingHorizontal: spacing.xl,
   },
   pressed: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.pressed,
   },
-  icon: {
-    width: 44,
-    height: 36,
-    justifyContent: 'flex-end',
-  },
-  iconTab: {
-    width: 18,
-    height: 6,
-    borderTopLeftRadius: radius.sm,
-    borderTopRightRadius: radius.sm,
-    backgroundColor: colors.accent,
-    opacity: 0.7,
-  },
-  iconBody: {
-    height: 30,
-    borderRadius: radius.sm,
-    borderTopLeftRadius: 0,
-    backgroundColor: colors.accent,
+  tile: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
   },
   text: {
     flex: 1,
     gap: 2,
   },
   title: {
+    ...typography.headline,
     color: colors.textPrimary,
-    fontSize: fontSize.subtitle,
-    fontWeight: '600',
   },
   subtitle: {
+    ...typography.caption,
     color: colors.textSecondary,
-    fontSize: fontSize.caption,
-  },
-  chevron: {
-    color: colors.textSecondary,
-    fontSize: 28,
   },
 });

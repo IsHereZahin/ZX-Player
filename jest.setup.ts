@@ -2,8 +2,10 @@
 jest.mock('react-native-video');
 jest.mock('react-native-volume-manager');
 jest.mock('react-native-create-thumbnail');
+jest.mock('react-native-svg');
 jest.mock('@react-native-camera-roll/camera-roll');
 jest.mock('@react-native-documents/picker');
+jest.mock('@react-native-async-storage/async-storage');
 jest.mock('zxplayer-brightness');
 jest.mock(
   'react-native-safe-area-context',

@@ -60,6 +60,19 @@ export const sampleVideo: VideoItem = {
   modifiedAtSec: 1_700_000_500,
 };
 
+export function makeVideo(
+  id: string,
+  overrides: Partial<VideoItem> = {},
+): VideoItem {
+  return {
+    ...sampleVideo,
+    id,
+    uri: `content://media/external/video/media/${id}`,
+    fileName: `Video ${id}.mp4`,
+    ...overrides,
+  };
+}
+
 export const SAMPLE_SRT = `1
 00:00:01,000 --> 00:00:04,000
 Hello <i>there</i>!

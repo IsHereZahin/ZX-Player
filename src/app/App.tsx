@@ -1,5 +1,5 @@
 import React from 'react';
-import { StatusBar, StyleSheet } from 'react-native';
+import { StatusBar, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -11,28 +11,37 @@ import {
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import { colors } from '../shared/theme';
 import { RootNavigator } from './navigation/RootNavigator';
+import { usePersistedStores } from './usePersistedStores';
 
 const navigationTheme: Theme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    primary: colors.accent,
+    primary: colors.primaryText,
     background: colors.background,
     card: colors.surface,
     text: colors.textPrimary,
     border: colors.border,
+    notification: colors.primary,
   },
 };
 
 export default function App() {
+  const storesReady = usePersistedStores();
+
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <StatusBar barStyle="light-content" />
         <ErrorBoundary>
-          <NavigationContainer theme={navigationTheme}>
-            <RootNavigator />
-          </NavigationContainer>
+          {storesReady ? (
+            <NavigationContainer theme={navigationTheme}>
+              <RootNavigator />
+            </NavigationContainer>
+          ) : (
+            // Saved settings and history load in milliseconds; avoid flashing defaults.
+            <View style={styles.root} testID="app-loading" />
+          )}
         </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>

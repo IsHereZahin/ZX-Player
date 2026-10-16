@@ -1,7 +1,12 @@
 import React, { type ReactNode } from 'react';
 import { Linking } from 'react-native';
 
-import { ScreenState } from '../../../shared/components/ScreenState';
+import { EmptyState } from '../../../shared/components/EmptyState';
+import {
+  CircleAlertIcon,
+  FolderSearchIcon,
+  LockIcon,
+} from '../../../shared/icons';
 import { reportError } from '../../../shared/logger';
 import { useMediaPermission } from '../hooks/useMediaPermission';
 import { hasMediaAccess } from '../services/mediaPermissions';
@@ -17,7 +22,7 @@ export function PermissionGate({ children }: { children: ReactNode }) {
   const { status, request } = useMediaPermission();
 
   if (status === null) {
-    return <ScreenState loading testID="permission-checking" />;
+    return <EmptyState loading testID="permission-checking" />;
   }
 
   if (hasMediaAccess(status)) {
@@ -26,7 +31,8 @@ export function PermissionGate({ children }: { children: ReactNode }) {
 
   if (status === 'unavailable') {
     return (
-      <ScreenState
+      <EmptyState
+        icon={CircleAlertIcon}
         title="Video library unavailable"
         message="This device doesn't allow apps to read its video library."
         testID="permission-unavailable"
@@ -36,7 +42,8 @@ export function PermissionGate({ children }: { children: ReactNode }) {
 
   if (status === 'blocked') {
     return (
-      <ScreenState
+      <EmptyState
+        icon={LockIcon}
         title="Access to videos is off"
         message="Turn on video access for ZX Player in Settings to browse your library."
         actionLabel="Open Settings"
@@ -47,7 +54,8 @@ export function PermissionGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ScreenState
+    <EmptyState
+      icon={FolderSearchIcon}
       title="See your videos"
       message="ZX Player reads your device's video library to show your folders. Your videos never leave your device."
       actionLabel="Allow access"

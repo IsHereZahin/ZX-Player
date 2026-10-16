@@ -16,20 +16,22 @@ import {
 } from 'react-native-gesture-handler';
 
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
-import { colors, fontSize, radius, spacing } from '../../../shared/theme';
+import { colors, radius, spacing, typography } from '../../../shared/theme';
 import { formatDuration } from '../../../shared/utils/format';
 import { clamp } from '../../../shared/utils/math';
-import { DOUBLE_TAP_SKIP_SECONDS } from '../utils/gestureMath';
 
 const TOUCH_AREA_HEIGHT = 36;
 const TRACK_HEIGHT = 4;
 const THUMB_SIZE = 14;
-const THUMB_SIZE_ACTIVE = 20;
+const THUMB_SIZE_ACTIVE = 22;
+const BUBBLE_WIDTH = 64;
 
 interface SeekBarProps {
   currentTime: number;
   duration: number;
   bufferedTime: number;
+  /** Step used by screen-reader increment / decrement actions. */
+  skipSeconds: number;
   onSeek: (time: number) => void;
   onScrubbingChange: (scrubbing: boolean) => void;
 }
@@ -39,6 +41,7 @@ export function SeekBar({
   currentTime,
   duration,
   bufferedTime,
+  skipSeconds,
   onSeek,
   onScrubbingChange,
 }: SeekBarProps) {
@@ -117,17 +120,19 @@ export function SeekBar({
     (event: AccessibilityActionEvent) => {
       const step =
         event.nativeEvent.actionName === 'increment'
-          ? DOUBLE_TAP_SKIP_SECONDS
-          : -DOUBLE_TAP_SKIP_SECONDS;
+          ? skipSeconds
+          : -skipSeconds;
       onSeek(currentTime + step);
     },
-    [currentTime, onSeek],
+    [currentTime, onSeek, skipSeconds],
   );
 
+  const scrubbing = scrubTime !== null;
   const displayTime = scrubTime ?? currentTime;
   const progress = duration > 0 ? clamp(displayTime / duration, 0, 1) : 0;
   const buffered = duration > 0 ? clamp(bufferedTime / duration, 0, 1) : 0;
-  const thumbSize = scrubTime === null ? THUMB_SIZE : THUMB_SIZE_ACTIVE;
+  const thumbSize = scrubbing ? THUMB_SIZE_ACTIVE : THUMB_SIZE;
+  const thumbX = progress * trackWidth;
 
   return (
     <View style={styles.row}>
@@ -173,11 +178,30 @@ export function SeekBar({
               {
                 width: thumbSize,
                 height: thumbSize,
-                left: progress * trackWidth - thumbSize / 2,
+                left: thumbX - thumbSize / 2,
                 top: (TOUCH_AREA_HEIGHT - thumbSize) / 2,
               },
             ]}
           />
+          {scrubbing ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.bubble,
+                {
+                  left: clamp(
+                    thumbX - BUBBLE_WIDTH / 2,
+                    0,
+                    trackWidth - BUBBLE_WIDTH,
+                  ),
+                },
+              ]}
+            >
+              <Text style={styles.bubbleText}>
+                {formatDuration(displayTime)}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </GestureDetector>
       <Text style={styles.time}>{formatDuration(duration)}</Text>
@@ -192,9 +216,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   time: {
-    minWidth: 44,
-    color: colors.textPrimary,
-    fontSize: fontSize.caption,
+    ...typography.label,
+    minWidth: 48,
+    color: colors.white,
     fontVariant: ['tabular-nums'],
     textAlign: 'center',
   },
@@ -205,9 +229,9 @@ const styles = StyleSheet.create({
   },
   track: {
     height: TRACK_HEIGHT,
+    overflow: 'hidden',
     borderRadius: radius.pill,
     backgroundColor: colors.trackInactive,
-    overflow: 'hidden',
   },
   fill: {
     position: 'absolute',
@@ -219,11 +243,27 @@ const styles = StyleSheet.create({
     backgroundColor: colors.trackBuffered,
   },
   played: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primaryBright,
   },
   thumb: {
     position: 'absolute',
     borderRadius: radius.pill,
-    backgroundColor: colors.accent,
+    borderWidth: 2,
+    borderColor: colors.white,
+    backgroundColor: colors.primaryBright,
+  },
+  bubble: {
+    position: 'absolute',
+    bottom: TOUCH_AREA_HEIGHT,
+    width: BUBBLE_WIDTH,
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primary,
+  },
+  bubbleText: {
+    ...typography.label,
+    color: colors.onPrimary,
+    fontVariant: ['tabular-nums'],
   },
 });

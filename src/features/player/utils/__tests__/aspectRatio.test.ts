@@ -3,6 +3,7 @@ import {
   computeVideoFrame,
   nextAspectMode,
   normalizeNaturalSize,
+  resolveVideoLayout,
 } from '../aspectRatio';
 
 // A 20:9 phone in landscape playing 1080p 16:9 video.
@@ -76,5 +77,33 @@ describe('normalizeNaturalSize', () => {
 
   it('returns null for unknown sizes', () => {
     expect(normalizeNaturalSize({ width: 0, height: 0 })).toBeNull();
+  });
+});
+
+describe('resolveVideoLayout', () => {
+  it('uses native resize modes on a full-screen view for fit, fill and stretch', () => {
+    expect(resolveVideoLayout('fit', screen, video, 3)).toEqual({
+      resizeMode: 'contain',
+      size: null,
+    });
+    expect(resolveVideoLayout('fill', screen, video, 3)).toEqual({
+      resizeMode: 'cover',
+      size: null,
+    });
+    expect(resolveVideoLayout('stretch', screen, video, 3)).toEqual({
+      resizeMode: 'stretch',
+      size: null,
+    });
+  });
+
+  it('sizes the view to native pixels for crop once the size is known', () => {
+    expect(resolveVideoLayout('crop', screen, video, 3)).toEqual({
+      resizeMode: 'stretch',
+      size: { width: 640, height: 360 },
+    });
+    expect(resolveVideoLayout('crop', screen, null, 3)).toEqual({
+      resizeMode: 'contain',
+      size: null,
+    });
   });
 });

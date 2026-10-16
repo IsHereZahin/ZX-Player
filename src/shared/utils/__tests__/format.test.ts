@@ -1,7 +1,11 @@
 import {
   formatBytes,
   formatDuration,
+  formatDate,
   formatPercent,
+  formatResolution,
+  formatSpeed,
+  formatTimeLeft,
   formatSignedDuration,
   formatVideoCount,
 } from '../format';
@@ -62,5 +66,39 @@ describe('formatPercent / formatVideoCount', () => {
     expect(formatVideoCount(1)).toBe('1 video');
     expect(formatVideoCount(0)).toBe('0 videos');
     expect(formatVideoCount(12)).toBe('12 videos');
+  });
+});
+
+describe('formatResolution', () => {
+  it.each([
+    [3840, 2160, '4K'],
+    [1920, 1080, '1080p'],
+    [1080, 1920, '1080p'],
+    [1280, 720, '720p'],
+    [854, 480, '480p'],
+    [320, 180, '180p'],
+    [0, 0, null],
+  ])('labels %p×%p as %p', (width, height, expected) => {
+    expect(formatResolution(width, height)).toBe(expected);
+  });
+});
+
+describe('formatTimeLeft / formatSpeed / formatDate', () => {
+  it('describes remaining time in the largest sensible unit', () => {
+    expect(formatTimeLeft(42)).toBe('42 sec left');
+    expect(formatTimeLeft(12 * 60 + 10)).toBe('12 min left');
+    expect(formatTimeLeft(65 * 60)).toBe('1 hr 5 min left');
+    expect(formatTimeLeft(120 * 60)).toBe('2 hr left');
+  });
+
+  it('formats speeds without trailing zeros', () => {
+    expect(formatSpeed(1)).toBe('1×');
+    expect(formatSpeed(1.25)).toBe('1.25×');
+    expect(formatSpeed(0.5)).toBe('0.5×');
+  });
+
+  it('formats dates and rejects unknown ones', () => {
+    expect(formatDate(1_700_000_000)).toMatch(/2023/);
+    expect(formatDate(0)).toBeNull();
   });
 });

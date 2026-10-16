@@ -1,7 +1,8 @@
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 
+import { CircleAlertIcon } from '../icons';
 import { reportError } from '../logger';
-import { ScreenState } from './ScreenState';
+import { EmptyState } from './EmptyState';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -36,7 +37,8 @@ export class ErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <ScreenState
+        <EmptyState
+          icon={CircleAlertIcon}
           title="Something went wrong"
           message="ZX Player hit an unexpected problem."
           actionLabel="Try again"

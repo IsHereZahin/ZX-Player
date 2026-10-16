@@ -1,24 +1,29 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { PrimaryButton } from '../../../shared/components/PrimaryButton';
-import { colors, fontSize, spacing } from '../../../shared/theme';
+import { Button } from '../../../shared/components/Button';
+import { CircleAlertIcon } from '../../../shared/icons';
+import { colors, spacing, typography } from '../../../shared/theme';
 import type { PlaybackError } from '../hooks/usePlayback';
-import { ControlButton } from './ControlButton';
 
 interface PlaybackErrorOverlayProps {
   error: PlaybackError;
+  hasNext: boolean;
   onRetry: () => void;
+  onNext: () => void;
   onBack: () => void;
 }
 
 export function PlaybackErrorOverlay({
   error,
+  hasNext,
   onRetry,
+  onNext,
   onBack,
 }: PlaybackErrorOverlayProps) {
   return (
     <View style={styles.overlay} testID="playback-error">
+      <CircleAlertIcon size={40} color={colors.danger} strokeWidth={1.75} />
       <Text style={styles.message} accessibilityRole="alert">
         {error.message}
       </Text>
@@ -28,16 +33,11 @@ export function PlaybackErrorOverlay({
         </Text>
       ) : null}
       <View style={styles.actions}>
-        <ControlButton
-          accessibilityLabel="Back to library"
-          label="Back"
-          onPress={onBack}
-        />
-        <PrimaryButton
-          label="Try again"
-          onPress={onRetry}
-          testID="playback-retry"
-        />
+        <Button label="Back" variant="secondary" onPress={onBack} />
+        {hasNext ? (
+          <Button label="Next video" variant="secondary" onPress={onNext} />
+        ) : null}
+        <Button label="Try again" onPress={onRetry} testID="playback-retry" />
       </View>
     </View>
   );
@@ -49,24 +49,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.md,
-    padding: spacing.xxl,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    padding: spacing.xxxl,
+    backgroundColor: 'rgba(0, 0, 0, 0.88)',
   },
   message: {
-    color: colors.textPrimary,
-    fontSize: fontSize.subtitle,
-    fontWeight: '700',
+    ...typography.headline,
+    color: colors.white,
     textAlign: 'center',
   },
   detail: {
+    ...typography.caption,
+    maxWidth: 480,
     color: colors.textSecondary,
-    fontSize: fontSize.caption,
     textAlign: 'center',
   },
   actions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
-    marginTop: spacing.sm,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.md,
+    marginTop: spacing.md,
   },
 });

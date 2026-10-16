@@ -1,74 +1,82 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Dimensions,
   StatusBar,
   StyleSheet,
-  Text,
   View,
   type LayoutChangeEvent,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { RootStackScreenProps } from '../../../app/navigation/types';
-import { useTransientMessage } from '../../../shared/hooks/useTransientMessage';
-import { colors, fontSize, radius, spacing } from '../../../shared/theme';
-import { describeFileName } from '../../library/services/mediaLibrary';
-import { OptionSheet, type SheetOption } from '../components/OptionSheet';
-import { PlaybackErrorOverlay } from '../components/PlaybackErrorOverlay';
-import { PlayerControls } from '../components/PlayerControls';
-import { PlayerGestureLayer } from '../components/PlayerGestureLayer';
-import { SubtitleOverlay } from '../components/SubtitleOverlay';
-import { VideoSurface } from '../components/VideoSurface';
-import { useAutoHideControls } from '../hooks/useAutoHideControls';
+import { useLatestRef } from '../../../shared/hooks/useLatestRef';
+import { colors } from '../../../shared/theme';
+import { clamp } from '../../../shared/utils/math';
+import { useSettings } from '../../settings/settingsStore';
+import type { RepeatMode } from '../components/PlayerSheets';
 import { useBrightnessControl } from '../hooks/useBrightnessControl';
-import { usePlayback } from '../hooks/usePlayback';
-import { useSubtitles } from '../hooks/useSubtitles';
+import { useSleepTimer } from '../hooks/useSleepTimer';
 import { useVolumeControl } from '../hooks/useVolumeControl';
-import { getSubtitleText } from '../subtitles';
-import {
-  ASPECT_MODE_DESCRIPTIONS,
-  nextAspectMode,
-  type AspectMode,
-  type Size,
-} from '../utils/aspectRatio';
+import type { AspectMode, Size } from '../utils/aspectRatio';
+import { PlayerSession } from './PlayerSession';
 
 type Props = RootStackScreenProps<'Player'>;
-
-/** Approximate height of the bottom control bar; subtitles move above it. */
-const BOTTOM_BAR_CLEARANCE = 72;
+type Orientation = 'landscape' | 'portrait';
 
 function initialLayout(): Size {
   const { width, height } = Dimensions.get('window');
   return { width, height };
 }
 
+/**
+ * Owns what carries over from one video to the next (queue position, speed, repeat,
+ * aspect ratio, lock, sleep timer, orientation, brightness and volume). Per-video state
+ * lives in `PlayerSession`, which is remounted for every video.
+ */
 export function PlayerScreen({ navigation, route }: Props) {
-  const { video } = route.params;
-  const insets = useSafeAreaInsets();
-  const playback = usePlayback(video.durationSec);
-  const subtitles = useSubtitles();
+  const { queue, startIndex, startFromBeginning = false } = route.params;
+  const settings = useSettings();
   const brightness = useBrightnessControl();
   const volume = useVolumeControl();
-  const [toast, showToast] = useTransientMessage();
 
-  const [layout, setLayout] = useState<Size>(initialLayout);
-  const [aspectMode, setAspectMode] = useState<AspectMode>('fit');
-  const [scrubbing, setScrubbing] = useState(false);
-  const [subtitleMenuOpen, setSubtitleMenuOpen] = useState(false);
-  const [landscapeLocked, setLandscapeLocked] = useState(false);
-
-  const controls = useAutoHideControls(
-    playback.paused || scrubbing || subtitleMenuOpen || playback.error !== null,
+  const [index, setIndex] = useState(() =>
+    clamp(startIndex, 0, queue.length - 1),
   );
-  const { keepAlive } = controls;
-  const { seekTo, getCurrentTime, togglePlayback, pause } = playback;
+  // "Play from beginning" applies to the first video only.
+  const [ignoreSavedPosition, setIgnoreSavedPosition] =
+    useState(startFromBeginning);
+  const [layout, setLayout] = useState<Size>(initialLayout);
+  const [speed, setSpeed] = useState(1);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
+  const [aspectMode, setAspectMode] = useState<AspectMode>(
+    settings.defaultAspectMode,
+  );
+  const [locked, setLocked] = useState(false);
+  const [orientation, setOrientation] = useState<Orientation | null>(null);
+  const [pauseSignal, setPauseSignal] = useState(0);
+  const sleep = useSleepTimer(() => setPauseSignal(count => count + 1));
+
+  const video = queue[index];
+  const hasNext = index < queue.length - 1;
+  const hasPrevious = index > 0;
+  const latest = useLatestRef({
+    index,
+    hasNext,
+    queue,
+    repeatMode,
+    settings,
+    sleep,
+  });
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      orientation: landscapeLocked ? 'landscape' : 'default',
+      orientation:
+        orientation === 'landscape'
+          ? 'landscape'
+          : orientation === 'portrait'
+          ? 'portrait_up'
+          : 'default',
     });
-  }, [navigation, landscapeLocked]);
+  }, [navigation, orientation]);
 
   const onLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -79,173 +87,91 @@ export function PlayerScreen({ navigation, route }: Props) {
     );
   }, []);
 
-  const goBack = useCallback(() => navigation.goBack(), [navigation]);
+  const goTo = useCallback((next: number) => {
+    setIgnoreSavedPosition(false);
+    setIndex(next);
+  }, []);
 
-  const handleTogglePlayback = useCallback(() => {
-    keepAlive();
-    togglePlayback();
-  }, [keepAlive, togglePlayback]);
-
-  const handleSkip = useCallback(
-    (seconds: number) => {
-      keepAlive();
-      seekTo(getCurrentTime() + seconds);
-    },
-    [keepAlive, seekTo, getCurrentTime],
-  );
-
-  const handleSeek = useCallback(
-    (time: number) => {
-      keepAlive();
-      seekTo(time);
-    },
-    [keepAlive, seekTo],
-  );
-
-  const cycleAspectMode = useCallback(() => {
-    keepAlive();
-    const next = nextAspectMode(aspectMode);
-    setAspectMode(next);
-    showToast(ASPECT_MODE_DESCRIPTIONS[next]);
-  }, [aspectMode, keepAlive, showToast]);
-
-  const toggleOrientationLock = useCallback(() => {
-    keepAlive();
-    setLandscapeLocked(!landscapeLocked);
-    showToast(landscapeLocked ? 'Auto-rotate' : 'Locked to landscape');
-  }, [keepAlive, landscapeLocked, showToast]);
-
-  const { loadFromFile, toggleVisible, clear: clearSubtitles } = subtitles;
-
-  const loadSubtitles = useCallback(async () => {
-    pause();
-    const result = await loadFromFile();
-    if (result.status === 'loaded') {
-      showToast(`Subtitles: ${result.fileName}`);
-    } else if (result.status === 'error') {
-      showToast(result.message);
+  const goNext = useCallback(() => {
+    if (latest.current.hasNext) {
+      goTo(latest.current.index + 1);
     }
-  }, [loadFromFile, pause, showToast]);
+  }, [goTo, latest]);
 
-  const openSubtitles = useCallback(() => {
-    keepAlive();
-    if (subtitles.track) {
-      setSubtitleMenuOpen(true);
-    } else {
-      loadSubtitles();
+  const goPrevious = useCallback(() => {
+    if (latest.current.index > 0) {
+      goTo(latest.current.index - 1);
     }
-  }, [keepAlive, loadSubtitles, subtitles.track]);
+  }, [goTo, latest]);
 
-  const subtitleOptions = useMemo<SheetOption[]>(
-    () => [
-      { key: 'load', label: 'Load another file…', onSelect: loadSubtitles },
-      {
-        key: 'toggle',
-        label: subtitles.visible ? 'Hide subtitles' : 'Show subtitles',
-        onSelect: toggleVisible,
-      },
-      {
-        key: 'remove',
-        label: 'Remove subtitles',
-        onSelect: clearSubtitles,
-        destructive: true,
-      },
-    ],
-    [clearSubtitles, loadSubtitles, subtitles.visible, toggleVisible],
-  );
+  /** Decides what happens when a video finishes; true if another video starts. */
+  const handleEnded = useCallback(() => {
+    const current = latest.current;
+    if (current.sleep.timer?.kind === 'end-of-video') {
+      current.sleep.setTimer(null);
+      return false;
+    }
+    if (current.repeatMode === 'all' && current.queue.length > 1) {
+      goTo(current.hasNext ? current.index + 1 : 0);
+      return true;
+    }
+    if (current.settings.autoPlayNext && current.hasNext) {
+      goTo(current.index + 1);
+      return true;
+    }
+    return false;
+  }, [goTo, latest]);
 
-  const subtitleText =
-    subtitles.track && subtitles.visible
-      ? getSubtitleText(subtitles.track, playback.currentTime)
-      : '';
-  const { title } = describeFileName(video.fileName);
-  const showSpinner = playback.buffering && !playback.paused && !playback.error;
+  // Match the screen to the first video's shape; the rotate button overrides it.
+  const onNaturalSize = useCallback((size: Size) => {
+    setOrientation(
+      current =>
+        current ?? (size.width >= size.height ? 'landscape' : 'portrait'),
+    );
+  }, []);
+
+  const rotate = useCallback(() => {
+    setOrientation(current => {
+      const effective =
+        current ?? (layout.width >= layout.height ? 'landscape' : 'portrait');
+      return effective === 'landscape' ? 'portrait' : 'landscape';
+    });
+  }, [layout.height, layout.width]);
+
+  if (!video) {
+    return null;
+  }
 
   return (
     <View style={styles.root} onLayout={onLayout} testID="player-screen">
       <StatusBar hidden animated />
-
-      <VideoSurface
-        videoRef={playback.videoRef}
-        sourceKey={playback.sourceKey}
-        uri={video.uri}
-        paused={playback.paused}
-        aspectMode={aspectMode}
-        container={layout}
-        naturalSize={playback.naturalSize}
-        events={playback.videoEvents}
-      />
-
-      <SubtitleOverlay
-        text={subtitleText}
-        shortSide={Math.min(layout.width, layout.height)}
-        bottomOffset={
-          (controls.visible ? BOTTOM_BAR_CLEARANCE : spacing.xl) + insets.bottom
-        }
-      />
-
-      <PlayerGestureLayer
+      <PlayerSession
+        key={`${index}-${video.id}`}
+        video={video}
+        queueLabel={queue.length > 1 ? `${index + 1} of ${queue.length}` : null}
+        hasNext={hasNext}
+        hasPrevious={hasPrevious}
         layout={layout}
-        duration={playback.duration}
-        getCurrentTime={getCurrentTime}
-        seekTo={seekTo}
-        togglePlayback={togglePlayback}
-        toggleControls={controls.toggle}
+        ignoreSavedPosition={ignoreSavedPosition}
+        speed={speed}
+        repeatMode={repeatMode}
+        aspectMode={aspectMode}
+        locked={locked}
+        sleepTimer={sleep.timer}
+        pauseSignal={pauseSignal}
         brightness={brightness}
         volume={volume}
-      />
-
-      {showSpinner ? (
-        <View style={styles.centerLayer} pointerEvents="none">
-          <ActivityIndicator size="large" color={colors.textPrimary} />
-        </View>
-      ) : null}
-
-      {controls.visible ? (
-        <PlayerControls
-          title={title}
-          paused={playback.paused}
-          currentTime={playback.currentTime}
-          duration={playback.duration}
-          bufferedTime={playback.bufferedTime}
-          aspectMode={aspectMode}
-          landscapeLocked={landscapeLocked}
-          subtitlesLoaded={subtitles.track !== null}
-          onBack={goBack}
-          onTogglePlayback={handleTogglePlayback}
-          onSkip={handleSkip}
-          onSeek={handleSeek}
-          onScrubbingChange={setScrubbing}
-          onCycleAspect={cycleAspectMode}
-          onSubtitles={openSubtitles}
-          onToggleOrientation={toggleOrientationLock}
-        />
-      ) : null}
-
-      {toast ? (
-        <View
-          style={[styles.toastLayer, { top: insets.top + 72 }]}
-          pointerEvents="none"
-        >
-          <Text style={styles.toast} testID="player-toast">
-            {toast}
-          </Text>
-        </View>
-      ) : null}
-
-      {playback.error ? (
-        <PlaybackErrorOverlay
-          error={playback.error}
-          onRetry={playback.retry}
-          onBack={goBack}
-        />
-      ) : null}
-
-      <OptionSheet
-        visible={subtitleMenuOpen}
-        title={subtitles.fileName ?? 'Subtitles'}
-        options={subtitleOptions}
-        onClose={() => setSubtitleMenuOpen(false)}
+        onNext={goNext}
+        onPrevious={goPrevious}
+        onEnded={handleEnded}
+        onSpeedChange={setSpeed}
+        onRepeatModeChange={setRepeatMode}
+        onAspectModeChange={setAspectMode}
+        onLockChange={setLocked}
+        onSleepTimerChange={sleep.setTimer}
+        onRotate={rotate}
+        onNaturalSize={onNaturalSize}
+        onClose={navigation.goBack}
       />
     </View>
   );
@@ -255,25 +181,5 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.black,
-  },
-  centerLayer: {
-    ...StyleSheet.absoluteFill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  toastLayer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  toast: {
-    overflow: 'hidden',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.playerPanel,
-    color: colors.textPrimary,
-    fontSize: fontSize.body,
   },
 });

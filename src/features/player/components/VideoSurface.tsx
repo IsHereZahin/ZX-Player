@@ -1,16 +1,22 @@
 import React, { memo, useMemo, type RefObject } from 'react';
 import { PixelRatio, StyleSheet, View } from 'react-native';
 import Video, {
+  SelectedTrackType,
+  type OnAudioTracksData,
   type OnBufferData,
   type OnLoadData,
+  type OnPictureInPictureStatusChangedData,
   type OnProgressData,
+  type OnTextTrackDataChangedData,
+  type OnTextTracksData,
   type OnVideoErrorData,
+  type SelectedTrack,
   type VideoRef,
 } from 'react-native-video';
 
 import { colors } from '../../../shared/theme';
 import {
-  computeVideoFrame,
+  resolveVideoLayout,
   type AspectMode,
   type Size,
 } from '../utils/aspectRatio';
@@ -23,39 +29,91 @@ export interface VideoEvents {
   onBuffer: (data: OnBufferData) => void;
   onEnd: () => void;
   onError: (event: OnVideoErrorData) => void;
+  onAudioTracks: (data: OnAudioTracksData) => void;
+  onTextTracks: (data: OnTextTracksData) => void;
+  onTextTrackDataChanged: (data: OnTextTrackDataChangedData) => void;
+  onPictureInPictureStatusChanged: (
+    data: OnPictureInPictureStatusChangedData,
+  ) => void;
 }
+
+/** Which subtitle the player itself should render (external files are drawn by the app). */
+export type NativeTextTrack =
+  | { kind: 'off' }
+  | { kind: 'embedded'; index: number };
 
 interface VideoSurfaceProps {
   videoRef: RefObject<VideoRef | null>;
   sourceKey: number;
   uri: string;
+  title: string;
   paused: boolean;
+  rate: number;
+  repeat: boolean;
   aspectMode: AspectMode;
   container: Size;
   naturalSize: Size | null;
+  audioTrackIndex: number | null;
+  textTrack: NativeTextTrack;
+  subtitleFontSize: number;
+  backgroundPlay: boolean;
   events: VideoEvents;
 }
 
 /**
- * The native video view, sized per aspect mode and centred; the container clips overflow.
- * Memoised so progress ticks elsewhere in the player don't re-render the native view.
+ * The native video view. Memoised so progress ticks elsewhere in the player don't
+ * re-render it.
  */
 export const VideoSurface = memo(function VideoSurfaceView({
   videoRef,
   sourceKey,
   uri,
+  title,
   paused,
+  rate,
+  repeat,
   aspectMode,
   container,
   naturalSize,
+  audioTrackIndex,
+  textTrack,
+  subtitleFontSize,
+  backgroundPlay,
   events,
 }: VideoSurfaceProps) {
-  const source = useMemo(() => ({ uri }), [uri]);
-  const frame = computeVideoFrame(
+  // Metadata labels the media notification shown during background play.
+  const source = useMemo(
+    () => ({ uri, metadata: { title, artist: 'ZX Player' } }),
+    [title, uri],
+  );
+  const layout = resolveVideoLayout(
     aspectMode,
     container,
     naturalSize,
     PixelRatio.get(),
+  );
+
+  const selectedAudioTrack = useMemo<SelectedTrack | undefined>(
+    () =>
+      audioTrackIndex === null
+        ? undefined
+        : { type: SelectedTrackType.INDEX, value: audioTrackIndex },
+    [audioTrackIndex],
+  );
+  const selectedTextTrack = useMemo<SelectedTrack>(
+    () =>
+      textTrack.kind === 'embedded'
+        ? { type: SelectedTrackType.INDEX, value: textTrack.index }
+        : { type: SelectedTrackType.DISABLED },
+    [textTrack],
+  );
+  const subtitleStyle = useMemo(
+    () => ({
+      fontSize: subtitleFontSize,
+      paddingBottom: 24,
+      subtitlesFollowVideo: false,
+    }),
+    [subtitleFontSize],
   );
 
   return (
@@ -65,22 +123,27 @@ export const VideoSurface = memo(function VideoSurfaceView({
         ref={videoRef}
         source={source}
         paused={paused}
-        // Once the frame is computed the view itself has the right shape, so the native
-        // layer just fills it. Before the size is known, letterbox as a safe default.
-        resizeMode={naturalSize ? 'stretch' : 'contain'}
-        style={
-          naturalSize
-            ? { width: frame.width, height: frame.height }
-            : StyleSheet.absoluteFill
-        }
+        rate={rate}
+        repeat={repeat}
+        resizeMode={layout.resizeMode}
+        style={layout.size ?? StyleSheet.absoluteFill}
+        selectedAudioTrack={selectedAudioTrack}
+        selectedTextTrack={selectedTextTrack}
+        subtitleStyle={subtitleStyle}
         progressUpdateInterval={PROGRESS_INTERVAL_MS}
         ignoreSilentSwitch="ignore"
-        playInBackground={false}
+        playInBackground={backgroundPlay}
+        playWhenInactive={backgroundPlay}
+        showNotificationControls={backgroundPlay}
         onLoad={events.onLoad}
         onProgress={events.onProgress}
         onBuffer={events.onBuffer}
         onEnd={events.onEnd}
         onError={events.onError}
+        onAudioTracks={events.onAudioTracks}
+        onTextTracks={events.onTextTracks}
+        onTextTrackDataChanged={events.onTextTrackDataChanged}
+        onPictureInPictureStatusChanged={events.onPictureInPictureStatusChanged}
         testID="video-surface"
       />
     </View>

@@ -20,14 +20,48 @@ export const ASPECT_MODE_LABELS: Record<AspectMode, string> = {
 };
 
 export const ASPECT_MODE_DESCRIPTIONS: Record<AspectMode, string> = {
-  fit: 'Fit · whole picture',
-  fill: 'Fill · fills screen, edges trimmed',
-  crop: 'Crop · original size (100%)',
-  stretch: 'Stretch · fills screen, distorted',
+  fit: 'Whole picture, may show black bars',
+  fill: 'Fills the screen, trims the edges',
+  crop: 'Original size (100%), centred',
+  stretch: 'Fills the screen, may distort',
 };
 
 export function nextAspectMode(mode: AspectMode): AspectMode {
   return ASPECT_MODES[(ASPECT_MODES.indexOf(mode) + 1) % ASPECT_MODES.length];
+}
+
+export interface VideoLayout {
+  resizeMode: 'contain' | 'cover' | 'stretch';
+  /** Explicit view size, or null to fill the container. */
+  size: Size | null;
+}
+
+/**
+ * Fit / Fill / Stretch use the player's native resize modes on a full-screen view, which
+ * keeps natively rendered (embedded) subtitles inside the screen. Crop needs the view
+ * sized to the video's native pixels.
+ */
+export function resolveVideoLayout(
+  mode: AspectMode,
+  container: Size,
+  video: Size | null,
+  pixelRatio: number,
+): VideoLayout {
+  switch (mode) {
+    case 'fill':
+      return { resizeMode: 'cover', size: null };
+    case 'stretch':
+      return { resizeMode: 'stretch', size: null };
+    case 'crop':
+      return video
+        ? {
+            resizeMode: 'stretch',
+            size: computeVideoFrame('crop', container, video, pixelRatio),
+          }
+        : { resizeMode: 'contain', size: null };
+    case 'fit':
+      return { resizeMode: 'contain', size: null };
+  }
 }
 
 /**

@@ -11,6 +11,14 @@ import type { AlbumKind, VideoFolder, VideoItem, VideoPage } from '../types';
 export const ALL_VIDEOS_FOLDER_ID = 'all-videos';
 export const VIDEO_PAGE_SIZE = 40;
 
+/** The whole video library, presented as a folder. */
+export const ALL_VIDEOS_FOLDER: VideoFolder = {
+  id: ALL_VIDEOS_FOLDER_ID,
+  title: 'All videos',
+  count: null,
+  album: null,
+};
+
 const VIDEO_FIELDS: GetPhotosParams['include'] = [
   'filename',
   'fileSize',
@@ -44,15 +52,7 @@ export function buildFolderList(
     ? folders.reduce((sum, folder) => sum + (folder.count ?? 0), 0)
     : null;
 
-  return [
-    {
-      id: ALL_VIDEOS_FOLDER_ID,
-      title: 'All videos',
-      count: total,
-      album: null,
-    },
-    ...folders,
-  ];
+  return [{ ...ALL_VIDEOS_FOLDER, count: total }, ...folders];
 }
 
 function toVideoFolder(album: Album): VideoFolder {
@@ -93,6 +93,33 @@ export async function fetchFolderVideos(
       ? page.page_info.end_cursor ?? null
       : null,
   };
+}
+
+/**
+ * Loads every page of a folder, reporting the list after each page so the UI can render
+ * progressively. Stops early (and resolves with what it has) once `isCancelled` is true.
+ */
+export async function fetchAllFolderVideos(
+  folder: VideoFolder,
+  onPage?: (videosSoFar: VideoItem[]) => void,
+  isCancelled: () => boolean = () => false,
+): Promise<VideoItem[]> {
+  const seen = new Set<string>();
+  let videos: VideoItem[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: VideoPage = await fetchFolderVideos(folder, cursor);
+    if (isCancelled()) {
+      return videos;
+    }
+    // Pages can overlap if the library changes between requests.
+    const fresh = page.videos.filter(video => !seen.has(video.id));
+    fresh.forEach(video => seen.add(video.id));
+    videos = [...videos, ...fresh];
+    onPage?.(videos);
+    cursor = page.nextCursor;
+  } while (cursor);
+  return videos;
 }
 
 export function toVideoItem({ node }: PhotoIdentifier): VideoItem {
