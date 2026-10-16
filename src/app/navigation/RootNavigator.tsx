@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import {
   BottomTabBar,
   createBottomTabNavigator,
@@ -114,13 +114,16 @@ function MainTabs() {
       tabBar={renderTabBar}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primaryText,
-        tabBarInactiveTintColor: colors.textMuted,
+        // iOS tab bar: bar material, hairline top edge, small labels, grey when idle.
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.gray,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          backgroundColor: colors.chrome,
+          borderTopColor: colors.divider,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          elevation: 0,
         },
-        tabBarLabelStyle: typography.captionStrong,
+        tabBarLabelStyle: typography.caption2,
       }}
     >
       <Tab.Screen

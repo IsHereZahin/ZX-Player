@@ -165,10 +165,11 @@ describe('controls', () => {
     );
   });
 
-  it('updates the elapsed time from progress events', async () => {
+  it('shows elapsed and remaining time from progress events', async () => {
     await renderPlayer();
     await progressTo(75);
     expect(screen.getByText('1:15')).toBeOnTheScreen();
+    expect(screen.getByText('−8:45')).toBeOnTheScreen();
   });
 
   it('skips by the interval chosen in settings', async () => {

@@ -1,18 +1,13 @@
 import React, { useCallback, useState } from 'react';
-import { FlatList, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { LibraryStackScreenProps } from '../../../app/navigation/types';
 import { EmptyState } from '../../../shared/components/EmptyState';
-import { IconButton } from '../../../shared/components/IconButton';
-import {
-  ArrowLeftIcon,
-  CircleAlertIcon,
-  SearchIcon,
-  XIcon,
-} from '../../../shared/icons';
-import { radius, spacing, typography } from '../../../shared/theme';
-import { makeStyles, useColors } from '../../../shared/theming';
+import { SearchField } from '../../../shared/components/SearchField';
+import { CircleAlertIcon, SearchIcon } from '../../../shared/icons';
+import { spacing, typography } from '../../../shared/theme';
+import { makeStyles } from '../../../shared/theming';
 import { MEDIA_LIST_TUNING } from '../../../shared/utils/listTuning';
 import { useLastPlayedId } from '../../history/watchHistory';
 import { VIDEO_ROW_HEIGHT, VideoRow } from '../components/VideoRow';
@@ -25,7 +20,6 @@ type Props = LibraryStackScreenProps<'Search'>;
 
 export function SearchScreen({ navigation, route }: Props) {
   const styles = useStyles();
-  const colors = useColors();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const { scope } = route.params;
@@ -35,16 +29,18 @@ export function SearchScreen({ navigation, route }: Props) {
   const lastPlayedId = useLastPlayedId();
   const trimmed = query.trim();
 
+  const lastIndex = results.length - 1;
   const renderItem = useCallback(
-    ({ item }: { item: VideoItem }) => (
+    ({ item, index }: { item: VideoItem; index: number }) => (
       <VideoRow
         video={item}
         onPress={play}
         onMore={openMenu}
         highlighted={item.id === lastPlayedId}
+        separator={index < lastIndex}
       />
     ),
-    [lastPlayedId, openMenu, play],
+    [lastIndex, lastPlayedId, openMenu, play],
   );
 
   const renderBody = () => {
@@ -116,43 +112,30 @@ export function SearchScreen({ navigation, route }: Props) {
         style={[
           styles.header,
           {
-            paddingTop: insets.top + spacing.xs,
-            paddingLeft: Math.max(insets.left, spacing.xs),
+            paddingTop: insets.top + spacing.sm,
+            paddingLeft: Math.max(insets.left, spacing.lg),
             paddingRight: Math.max(insets.right, spacing.lg),
           },
         ]}
       >
-        <IconButton
-          icon={ArrowLeftIcon}
-          accessibilityLabel="Back"
-          onPress={navigation.goBack}
-        />
         <View style={styles.field}>
-          <SearchIcon size={18} color={colors.textMuted} />
-          <TextInput
+          <SearchField
+            placeholder={copy.searchLabel}
             value={query}
             onChangeText={setQuery}
-            placeholder={copy.searchLabel}
-            placeholderTextColor={colors.textMuted}
-            selectionColor={colors.primaryBright}
-            cursorColor={colors.primaryBright}
-            style={styles.input}
             autoFocus
-            autoCorrect={false}
-            autoCapitalize="none"
-            returnKeyType="search"
-            accessibilityLabel={copy.searchLabel}
             testID="search-input"
           />
-          {query ? (
-            <IconButton
-              icon={XIcon}
-              size="sm"
-              accessibilityLabel="Clear search"
-              onPress={() => setQuery('')}
-            />
-          ) : null}
         </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={navigation.goBack}
+          hitSlop={8}
+          style={({ pressed }) => pressed && styles.dimmed}
+          testID="search-cancel"
+        >
+          <Text style={styles.cancel}>Cancel</Text>
+        </Pressable>
       </View>
       {renderBody()}
       {sheets}
@@ -163,34 +146,29 @@ export function SearchScreen({ navigation, route }: Props) {
 const useStyles = makeStyles(colors => ({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.canvas,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.md,
     paddingBottom: spacing.sm,
   },
   field: {
     flex: 1,
-    height: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingLeft: spacing.md,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceRaised,
   },
-  input: {
+  cancel: {
     ...typography.body,
-    flex: 1,
-    paddingVertical: 0,
-    color: colors.textPrimary,
+    color: colors.primaryText,
+  },
+  dimmed: {
+    opacity: 0.4,
   },
   count: {
-    ...typography.captionStrong,
+    ...typography.overline,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
     color: colors.textSecondary,
   },
 }));

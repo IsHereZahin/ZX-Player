@@ -8,7 +8,7 @@ import { watchProgress, type WatchEntry } from '../../history/watchHistory';
 import { mediaTitle } from '../services/mediaLibrary';
 import { VideoThumbnail } from './VideoThumbnail';
 
-const CARD_WIDTH = 208;
+const CARD_WIDTH = 224;
 
 interface ContinueWatchingRailProps {
   /** e.g. "Continue watching" or "Continue listening". */
@@ -70,36 +70,35 @@ export function ContinueWatchingRail({
   );
 }
 
+// A shelf, as in the TV and Music apps: bold heading, large rounded cards.
 const useStyles = makeStyles(colors => ({
   container: {
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxl,
   },
   heading: {
-    ...typography.headline,
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.md,
+    ...typography.title3,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm + 2,
     color: colors.textPrimary,
   },
   list: {
     gap: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
   },
   card: {
     width: CARD_WIDTH,
   },
   pressed: {
-    opacity: 0.8,
+    opacity: 0.7,
   },
   title: {
-    ...typography.footnote,
-    fontWeight: '600',
+    ...typography.subheadlineStrong,
     marginTop: spacing.sm,
     color: colors.textPrimary,
   },
   caption: {
-    ...typography.captionStrong,
-    marginTop: 2,
-    color: colors.primaryText,
+    ...typography.footnote,
+    color: colors.textSecondary,
   },
 }));

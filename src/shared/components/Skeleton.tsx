@@ -69,9 +69,9 @@ export function ListSkeleton({
       {Array.from({ length: rows }, (_, index) => (
         <View key={index} style={styles.row}>
           {thumbnail ? (
-            <SkeletonBlock width={128} height={72} rounded={radius.md} />
+            <SkeletonBlock width={120} height={68} rounded={radius.sm} />
           ) : (
-            <SkeletonBlock width={48} height={48} rounded={radius.md} />
+            <SkeletonBlock width={29} height={29} rounded={7} />
           )}
           <View style={styles.lines}>
             <SkeletonBlock width="80%" height={14} />
@@ -87,7 +87,7 @@ const useStyles = makeStyles(colors => ({
   container: {
     flex: 1,
     paddingTop: spacing.sm,
-    backgroundColor: colors.background,
+    backgroundColor: colors.canvas,
   },
   row: {
     flexDirection: 'row',

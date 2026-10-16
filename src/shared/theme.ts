@@ -31,6 +31,9 @@ export const darkColors = {
   /** Search fields, segmented-control tracks, switch tracks. */
   fill: 'rgba(118, 118, 128, 0.24)',
   fillStrong: 'rgba(118, 118, 128, 0.36)',
+  /** Sheets, and the grouped cards inside them. */
+  sheet: '#1C1C1E',
+  sheetCell: '#2C2C2E',
 
   textPrimary: '#FFFFFF',
   textSecondary: 'rgba(235, 235, 245, 0.6)',
@@ -84,6 +87,8 @@ export const lightColors: ColorTokens = {
   chrome: 'rgba(249, 249, 249, 0.94)',
   fill: 'rgba(118, 118, 128, 0.12)',
   fillStrong: 'rgba(118, 118, 128, 0.2)',
+  sheet: '#F2F2F7',
+  sheetCell: '#FFFFFF',
 
   textPrimary: '#000000',
   textSecondary: 'rgba(60, 60, 67, 0.6)',

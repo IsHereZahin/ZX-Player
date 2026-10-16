@@ -33,7 +33,13 @@ export function VideoThumbnail({
   useEffect(() => setFailed(false), [uri]);
 
   return (
-    <View style={[styles.frame, { width, height }]}>
+    <View
+      style={[
+        styles.frame,
+        // Large artwork gets Apple's larger corner radius.
+        { width, height, borderRadius: width >= 200 ? radius.lg : radius.sm },
+      ]}
+    >
       {uri && !failed ? (
         <Image
           source={{ uri }}

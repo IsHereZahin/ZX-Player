@@ -44,8 +44,8 @@ export function EmptyState({
         <View style={styles.illustration}>{illustration}</View>
       ) : null}
       {Icon && !illustration && !loading ? (
-        <View style={styles.iconCircle}>
-          <Icon size={32} color={colors.primaryText} strokeWidth={1.75} />
+        <View style={styles.icon}>
+          <Icon size={52} color={colors.textMuted} strokeWidth={1.5} />
         </View>
       ) : null}
       {title ? (
@@ -55,7 +55,13 @@ export function EmptyState({
       ) : null}
       {message ? <Text style={styles.message}>{message}</Text> : null}
       {actionLabel && onAction ? (
-        <Button label={actionLabel} onPress={onAction} style={styles.action} />
+        <Button
+          label={actionLabel}
+          onPress={onAction}
+          variant="tinted"
+          size="small"
+          style={styles.action}
+        />
       ) : null}
     </View>
   );
@@ -66,7 +72,7 @@ const useStyles = makeStyles(colors => ({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
     paddingHorizontal: spacing.xxxl,
     paddingVertical: spacing.xxxl,
     backgroundColor: colors.background,
@@ -74,14 +80,8 @@ const useStyles = makeStyles(colors => ({
   illustration: {
     marginBottom: spacing.sm,
   },
-  iconCircle: {
-    width: 72,
-    height: 72,
-    marginBottom: spacing.xs,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 36,
-    backgroundColor: colors.primarySoft,
+  icon: {
+    marginBottom: spacing.sm,
   },
   title: {
     ...typography.title2,
@@ -89,13 +89,12 @@ const useStyles = makeStyles(colors => ({
     textAlign: 'center',
   },
   message: {
-    ...typography.body,
-    maxWidth: 340,
+    ...typography.subheadline,
+    maxWidth: 320,
     color: colors.textSecondary,
     textAlign: 'center',
   },
   action: {
-    marginTop: spacing.sm,
-    minWidth: 180,
+    marginTop: spacing.md,
   },
 }));

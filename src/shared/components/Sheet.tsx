@@ -1,6 +1,16 @@
-import React, { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import React, {
+  Children,
+  Fragment,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useRef,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import {
   Animated,
+  Easing,
   Modal,
   Platform,
   Pressable,
@@ -28,10 +38,12 @@ interface SheetProps {
 }
 
 const SIDE_PANEL_WIDTH = 380;
+const ICON_INSET = spacing.lg + 26 + spacing.md;
 
 /**
- * Action sheet that slides up from the bottom in portrait and docks to the right edge in
- * landscape, so menus never cover the whole video.
+ * iOS-style sheet that slides up from the bottom in portrait and docks to the right edge
+ * in landscape, so menus never cover the whole video. Consecutive option rows are
+ * grouped into rounded cards; section titles and other content separate the groups.
  */
 export function Sheet({
   visible,
@@ -53,7 +65,8 @@ export function Sheet({
       entrance.setValue(0);
       Animated.timing(entrance, {
         toValue: 1,
-        duration: 200,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
     }
@@ -61,7 +74,7 @@ export function Sheet({
 
   const offset = entrance.interpolate({
     inputRange: [0, 1],
-    outputRange: [32, 0],
+    outputRange: [landscape ? 48 : 120, 0],
   });
   const panelStyle = landscape
     ? [
@@ -77,8 +90,8 @@ export function Sheet({
     : [
         styles.bottomPanel,
         {
-          maxHeight: height * 0.82,
-          paddingBottom: insets.bottom + spacing.md,
+          maxHeight: height * 0.85,
+          paddingBottom: insets.bottom + spacing.lg,
           transform: [{ translateY: offset }],
         },
       ];
@@ -104,11 +117,8 @@ export function Sheet({
           accessibilityRole="button"
           accessibilityLabel="Close"
         />
-        <Animated.View
-          style={[panelStyle, { opacity: entrance }]}
-          testID={testID}
-        >
-          {landscape ? null : <View style={styles.handle} />}
+        <Animated.View style={panelStyle} testID={testID}>
+          {landscape ? null : <View style={styles.grabber} />}
           {title ? (
             <View style={styles.header}>
               <Text
@@ -126,12 +136,55 @@ export function Sheet({
             </View>
           ) : null}
           <ScrollView bounces={false} contentContainerStyle={styles.content}>
-            {children}
+            <GroupedOptions>{children}</GroupedOptions>
           </ScrollView>
         </Animated.View>
       </View>
     </Modal>
   );
+}
+
+/** Wraps each run of consecutive OptionRows in a card with hairline separators. */
+function GroupedOptions({ children }: { children: ReactNode }) {
+  const styles = useStyles();
+  const blocks: ReactNode[] = [];
+  let group: ReactElement<OptionRowProps>[] = [];
+
+  const flush = () => {
+    if (group.length === 0) {
+      return;
+    }
+    const rows = group;
+    blocks.push(
+      <View key={`group-${blocks.length}`} style={styles.card}>
+        {rows.map((row, index) => (
+          <Fragment key={row.key ?? index}>
+            {index > 0 ? (
+              <View
+                style={[
+                  styles.separator,
+                  { marginLeft: row.props.icon ? ICON_INSET : spacing.lg },
+                ]}
+              />
+            ) : null}
+            {row}
+          </Fragment>
+        ))}
+      </View>,
+    );
+    group = [];
+  };
+
+  Children.toArray(children).forEach(child => {
+    if (isValidElement(child) && child.type === OptionRow) {
+      group.push(child as ReactElement<OptionRowProps>);
+    } else {
+      flush();
+      blocks.push(child);
+    }
+  });
+  flush();
+  return <>{blocks}</>;
 }
 
 /**
@@ -183,11 +236,7 @@ export function OptionRow({
 }: OptionRowProps) {
   const styles = useStyles();
   const colors = useColors();
-  const tint = destructive
-    ? colors.danger
-    : selected
-    ? colors.primaryText
-    : colors.textPrimary;
+  const tint = destructive ? colors.danger : colors.primaryText;
 
   return (
     <Pressable
@@ -198,19 +247,15 @@ export function OptionRow({
       testID={testID}
     >
       {Icon ? (
-        <Icon
-          size={20}
-          color={
-            destructive
-              ? colors.danger
-              : selected
-              ? colors.primaryText
-              : colors.textSecondary
-          }
-        />
+        <View style={styles.optionIcon}>
+          <Icon size={22} color={tint} strokeWidth={1.75} />
+        </View>
       ) : null}
       <View style={styles.optionText}>
-        <Text style={[styles.optionLabel, { color: tint }]} numberOfLines={1}>
+        <Text
+          style={[styles.optionLabel, destructive && { color: colors.danger }]}
+          numberOfLines={1}
+        >
           {label}
         </Text>
         {description ? (
@@ -248,58 +293,77 @@ const useStyles = makeStyles(colors => ({
   bottomPanel: {
     width: '100%',
     maxWidth: 600,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xs + 1,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: colors.sheet,
   },
   sidePanel: {
     height: '100%',
     borderTopLeftRadius: radius.xl,
     borderBottomLeftRadius: radius.xl,
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: colors.sheet,
   },
-  handle: {
+  grabber: {
     alignSelf: 'center',
-    width: 40,
-    height: 4,
-    marginBottom: spacing.sm,
-    borderRadius: 2,
-    backgroundColor: colors.border,
+    width: 36,
+    height: 5,
+    marginBottom: spacing.xs,
+    borderRadius: 2.5,
+    backgroundColor: colors.fillStrong,
   },
   header: {
-    paddingHorizontal: spacing.xl,
+    alignItems: 'center',
+    paddingHorizontal: spacing.xxl,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.lg,
   },
   title: {
     ...typography.headline,
     color: colors.textPrimary,
+    textAlign: 'center',
   },
   subtitle: {
     ...typography.footnote,
     marginTop: spacing.xxs,
     color: colors.textSecondary,
+    textAlign: 'center',
   },
   content: {
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
+  card: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    overflow: 'hidden',
+    borderRadius: radius.md,
+    backgroundColor: colors.sheetCell,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.divider,
   },
   option: {
-    minHeight: 52,
+    minHeight: 50,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
-    paddingHorizontal: spacing.xl,
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
   },
   optionPressed: {
     backgroundColor: colors.pressed,
+  },
+  optionIcon: {
+    width: 26,
+    alignItems: 'center',
   },
   optionText: {
     flex: 1,
   },
   optionLabel: {
     ...typography.body,
+    color: colors.textPrimary,
   },
   optionDescription: {
     ...typography.footnote,
@@ -307,9 +371,8 @@ const useStyles = makeStyles(colors => ({
   },
   sectionTitle: {
     ...typography.overline,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.sm,
-    color: colors.textMuted,
+    paddingHorizontal: spacing.xxl + spacing.sm,
+    paddingBottom: spacing.xs + 2,
+    color: colors.textSecondary,
   },
 }));

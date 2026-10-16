@@ -184,7 +184,7 @@ export function PlayerControls(props: PlayerControlsProps) {
       >
         <IconButton
           icon={SkipBackIcon}
-          variant="overlay"
+          variant="glyph"
           accessibilityLabel={`Previous ${itemNoun}`}
           onPress={props.onPrevious}
           disabled={!props.hasPrevious}
@@ -192,14 +192,14 @@ export function PlayerControls(props: PlayerControlsProps) {
         />
         <IconButton
           icon={RotateCcwIcon}
-          variant="overlay"
+          variant="glyph"
           accessibilityLabel={`Back ${props.skipSeconds} seconds`}
           onPress={() => props.onSkip(-props.skipSeconds)}
           testID="skip-back-button"
         />
         <IconButton
           icon={props.paused ? PlayIcon : PauseIcon}
-          variant="filled"
+          variant="glyph"
           size="lg"
           accessibilityLabel={props.paused ? 'Play' : 'Pause'}
           onPress={props.onTogglePlayback}
@@ -207,14 +207,14 @@ export function PlayerControls(props: PlayerControlsProps) {
         />
         <IconButton
           icon={RotateCwIcon}
-          variant="overlay"
+          variant="glyph"
           accessibilityLabel={`Forward ${props.skipSeconds} seconds`}
           onPress={() => props.onSkip(props.skipSeconds)}
           testID="skip-forward-button"
         />
         <IconButton
           icon={SkipForwardIcon}
-          variant="overlay"
+          variant="glyph"
           accessibilityLabel={`Next ${itemNoun}`}
           onPress={props.onNext}
           disabled={!props.hasNext}
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xl,
+    gap: spacing.xxxl,
   },
   centerAudio: {
     alignItems: 'flex-end',

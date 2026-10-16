@@ -1,61 +1,33 @@
 import React, { type ReactNode } from 'react';
-import { Pressable, Switch, Text, View } from 'react-native';
 
-import { ChevronRightIcon, type IconComponent } from '../../shared/icons';
-import { radius, spacing, typography } from '../../shared/theme';
-import { makeStyles, useColors } from '../../shared/theming';
+import { ListRow, ListSection } from '../../shared/components/GroupedList';
+import { Switch } from '../../shared/components/Switch';
+import type { IconComponent } from '../../shared/icons';
+import { useColors } from '../../shared/theming';
 
 export function SettingsSection({
   title,
+  footer,
   children,
 }: {
   title: string;
+  footer?: string;
   children: ReactNode;
 }) {
-  const styles = useStyles();
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle} accessibilityRole="header">
-        {title}
-      </Text>
-      <View style={styles.card}>{children}</View>
-    </View>
+    <ListSection header={title} footer={footer}>
+      {children}
+    </ListSection>
   );
 }
 
 interface RowBaseProps {
   icon: IconComponent;
+  /** Colour of the icon tile, as in iOS Settings (defaults to blue). */
+  tint?: string;
   title: string;
   description?: string;
   destructive?: boolean;
-}
-
-function RowContent({
-  icon: Icon,
-  title,
-  description,
-  destructive,
-}: RowBaseProps) {
-  const styles = useStyles();
-  const colors = useColors();
-  return (
-    <>
-      <View style={[styles.iconTile, destructive && styles.iconTileDanger]}>
-        <Icon
-          size={18}
-          color={destructive ? colors.danger : colors.primaryText}
-        />
-      </View>
-      <View style={styles.text}>
-        <Text style={[styles.title, destructive && styles.titleDanger]}>
-          {title}
-        </Text>
-        {description ? (
-          <Text style={styles.description}>{description}</Text>
-        ) : null}
-      </View>
-    </>
-  );
 }
 
 interface SwitchRowProps extends RowBaseProps {
@@ -65,33 +37,30 @@ interface SwitchRowProps extends RowBaseProps {
 }
 
 export function SettingSwitchRow({
+  icon,
+  tint,
+  title,
+  description,
   value,
   onValueChange,
   testID,
-  ...content
 }: SwitchRowProps) {
-  const styles = useStyles();
   const colors = useColors();
   return (
-    <Pressable
+    <ListRow
+      icon={icon}
+      iconBackground={tint ?? colors.blue}
+      title={title}
+      subtitle={description}
+      accessory={
+        <Switch value={value} onValueChange={onValueChange} decorative />
+      }
+      onPress={() => onValueChange(!value)}
       accessibilityRole="switch"
       accessibilityState={{ checked: value }}
-      accessibilityLabel={content.title}
-      onPress={() => onValueChange(!value)}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      accessibilityLabel={title}
       testID={testID}
-    >
-      <RowContent {...content} />
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: colors.surfaceHigh, true: colors.primary }}
-        thumbColor={colors.white}
-        ios_backgroundColor={colors.surfaceHigh}
-        importantForAccessibility="no-hide-descendants"
-        accessibilityElementsHidden
-      />
-    </Pressable>
+    />
   );
 }
 
@@ -103,85 +72,27 @@ interface ActionRowProps extends RowBaseProps {
 
 /** Row that opens a picker (shows the current value) or performs an action. */
 export function SettingActionRow({
+  icon,
+  tint,
+  title,
+  description,
+  destructive,
   value,
   onPress,
   testID,
-  ...content
 }: ActionRowProps) {
-  const styles = useStyles();
   const colors = useColors();
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={value ? `${content.title}, ${value}` : content.title}
+    <ListRow
+      icon={icon}
+      iconBackground={tint ?? (destructive ? colors.red : colors.blue)}
+      title={title}
+      subtitle={description}
+      value={value}
+      destructive={destructive}
+      accessory={destructive ? 'none' : 'chevron'}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       testID={testID}
-    >
-      <RowContent {...content} />
-      {value ? <Text style={styles.value}>{value}</Text> : null}
-      {content.destructive ? null : (
-        <ChevronRightIcon size={18} color={colors.textMuted} />
-      )}
-    </Pressable>
+    />
   );
 }
-
-const useStyles = makeStyles(colors => ({
-  section: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-  sectionTitle: {
-    ...typography.overline,
-    paddingHorizontal: spacing.xs,
-    paddingBottom: spacing.sm,
-    color: colors.textMuted,
-  },
-  card: {
-    overflow: 'hidden',
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-  },
-  row: {
-    minHeight: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  pressed: {
-    backgroundColor: colors.pressed,
-  },
-  iconTile: {
-    width: 34,
-    height: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.sm,
-    backgroundColor: colors.primarySoft,
-  },
-  iconTileDanger: {
-    backgroundColor: colors.dangerSoft,
-  },
-  text: {
-    flex: 1,
-    gap: 2,
-  },
-  title: {
-    ...typography.body,
-    color: colors.textPrimary,
-  },
-  titleDanger: {
-    color: colors.danger,
-  },
-  description: {
-    ...typography.footnote,
-    color: colors.textSecondary,
-  },
-  value: {
-    ...typography.footnote,
-    color: colors.primaryText,
-  },
-}));

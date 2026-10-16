@@ -1,10 +1,14 @@
 import React, { useCallback, useMemo } from 'react';
-import { Alert, SectionList, Text, View } from 'react-native';
+import { Alert, Animated, Text, View } from 'react-native';
 
 import type { MainTabScreenProps } from '../../app/navigation/types';
 import { EmptyState } from '../../shared/components/EmptyState';
 import { IconButton } from '../../shared/components/IconButton';
-import { ScreenHeader } from '../../shared/components/ScreenHeader';
+import {
+  LargeTitle,
+  NavigationBar,
+  useCollapsingTitle,
+} from '../../shared/components/NavigationBar';
 import { HistoryIcon, Trash2Icon } from '../../shared/icons';
 import { spacing, typography } from '../../shared/theme';
 import { makeStyles } from '../../shared/theming';
@@ -36,6 +40,7 @@ export function confirmClearHistory(): void {
 export function RecentScreen(_props: Props) {
   const styles = useStyles();
   const history = useHistoryList();
+  const { scrollY, onScroll } = useCollapsingTitle();
   const { sections, queue } = useMemo(() => {
     const inProgress = history.filter(isInProgress).map(entry => entry.video);
     const played = history
@@ -53,42 +58,64 @@ export function RecentScreen(_props: Props) {
   const { play, openMenu, sheets } = useVideoActions(queue);
 
   const renderItem = useCallback(
-    ({ item }: { item: VideoItem }) => (
-      <VideoRow video={item} onPress={play} onMore={openMenu} />
+    ({
+      item,
+      index,
+      section,
+    }: {
+      item: VideoItem;
+      index: number;
+      section: Section;
+    }) => (
+      <VideoRow
+        video={item}
+        onPress={play}
+        onMore={openMenu}
+        separator={index < section.data.length - 1}
+      />
     ),
     [openMenu, play],
   );
+  const clearButton =
+    history.length > 0 ? (
+      <IconButton
+        icon={Trash2Icon}
+        variant="plain"
+        accessibilityLabel="Clear watch history"
+        onPress={confirmClearHistory}
+        testID="clear-history"
+      />
+    ) : null;
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader
+      <NavigationBar
         title="Recent"
-        actions={
-          history.length > 0 ? (
-            <IconButton
-              icon={Trash2Icon}
-              accessibilityLabel="Clear watch history"
-              onPress={confirmClearHistory}
-              testID="clear-history"
-            />
-          ) : null
-        }
+        scrollY={scrollY}
+        tone="plain"
+        right={clearButton}
       />
       {sections.length === 0 ? (
-        <EmptyState
-          icon={HistoryIcon}
-          title="Nothing watched yet"
-          message={
-            isAudioLibrarySupported()
-              ? 'Videos and audio you play appear here, so you can pick up right where you left off.'
-              : 'Videos you play appear here, so you can pick up right where you left off.'
-          }
-          testID="recent-empty"
-        />
+        <View style={styles.fill}>
+          <LargeTitle title="Recent" />
+          <EmptyState
+            icon={HistoryIcon}
+            title="Nothing watched yet"
+            message={
+              isAudioLibrarySupported()
+                ? 'Videos and audio you play appear here, so you can pick up right where you left off.'
+                : 'Videos you play appear here, so you can pick up right where you left off.'
+            }
+            testID="recent-empty"
+          />
+        </View>
       ) : (
-        <SectionList
+        <Animated.SectionList
           {...MEDIA_LIST_TUNING}
           sections={sections}
+          ListHeaderComponent={<LargeTitle title="Recent" />}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           keyExtractor={video => video.id}
           renderItem={renderItem}
           renderSectionHeader={({ section }) => (
@@ -109,16 +136,20 @@ export function RecentScreen(_props: Props) {
 const useStyles = makeStyles(colors => ({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.canvas,
+  },
+  fill: {
+    flex: 1,
   },
   listContent: {
     paddingBottom: spacing.xxl,
   },
   sectionTitle: {
-    ...typography.headline,
-    paddingHorizontal: spacing.xl,
+    ...typography.title3,
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     paddingBottom: spacing.xs,
     color: colors.textPrimary,
+    backgroundColor: colors.canvas,
   },
 }));

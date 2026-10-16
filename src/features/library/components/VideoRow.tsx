@@ -1,8 +1,8 @@
 import React, { memo } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { IconButton } from '../../../shared/components/IconButton';
-import { EllipsisVerticalIcon } from '../../../shared/icons';
+import { EllipsisIcon } from '../../../shared/icons';
 import { spacing, typography } from '../../../shared/theme';
 import { makeStyles, useColors } from '../../../shared/theming';
 import { formatDuration } from '../../../shared/utils/format';
@@ -11,8 +11,10 @@ import type { VideoItem } from '../types';
 import { describeVideo } from './videoMeta';
 import { VideoThumbnail } from './VideoThumbnail';
 
-const THUMBNAIL_WIDTH = 136;
-export const VIDEO_ROW_HEIGHT = 100;
+const THUMBNAIL_WIDTH = 120;
+export const VIDEO_ROW_HEIGHT = 92;
+/** Separators start under the text, as in iOS lists. */
+const SEPARATOR_INSET = spacing.lg + THUMBNAIL_WIDTH + spacing.md;
 
 interface VideoRowProps {
   video: VideoItem;
@@ -20,6 +22,8 @@ interface VideoRowProps {
   onMore: (video: VideoItem) => void;
   /** Marks the most recently played video. */
   highlighted?: boolean;
+  /** Draws the hairline under the row (all but the last of a list). */
+  separator?: boolean;
 }
 
 export const VideoRow = memo(function VideoRowView({
@@ -27,6 +31,7 @@ export const VideoRow = memo(function VideoRowView({
   onPress,
   onMore,
   highlighted = false,
+  separator = false,
 }: VideoRowProps) {
   const styles = useStyles();
   const colors = useColors();
@@ -68,12 +73,14 @@ export const VideoRow = memo(function VideoRowView({
         ) : null}
       </View>
       <IconButton
-        icon={EllipsisVerticalIcon}
+        icon={EllipsisIcon}
         size="sm"
+        variant="plain"
         accessibilityLabel={`More options for ${title}`}
         onPress={() => onMore(video)}
         testID={`video-more-${video.id}`}
       />
+      {separator ? <View style={styles.separator} /> : null}
     </Pressable>
   );
 });
@@ -87,6 +94,14 @@ const useStyles = makeStyles(colors => ({
     paddingLeft: spacing.lg,
     paddingRight: spacing.xs,
   },
+  separator: {
+    position: 'absolute',
+    left: SEPARATOR_INSET,
+    right: 0,
+    bottom: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.divider,
+  },
   pressed: {
     backgroundColor: colors.pressed,
   },
@@ -95,7 +110,7 @@ const useStyles = makeStyles(colors => ({
     gap: spacing.xxs,
   },
   title: {
-    ...typography.bodyStrong,
+    ...typography.subheadlineStrong,
     color: colors.textPrimary,
   },
   titleHighlighted: {

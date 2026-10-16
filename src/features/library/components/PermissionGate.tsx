@@ -1,5 +1,5 @@
 import React, { type ReactNode } from 'react';
-import { Linking } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 
 import { AppLogo } from '../../../shared/components/AppLogo';
 import { EmptyState } from '../../../shared/components/EmptyState';
@@ -18,20 +18,38 @@ function openSettings() {
 
 interface PermissionGateProps {
   scope: MediaScope;
+  /** Kept above the permission prompts, e.g. the screen's large title. */
+  header?: ReactNode;
   children: ReactNode;
 }
 
 /** Renders its children only once the scope's part of the media library is readable. */
-export function PermissionGate({ scope, children }: PermissionGateProps) {
+export function PermissionGate({
+  scope,
+  header,
+  children,
+}: PermissionGateProps) {
   const { status, request } = useMediaPermission(scope);
+  if (status !== null && hasMediaAccess(status)) {
+    return <>{children}</>;
+  }
+  return (
+    <View style={styles.fill}>
+      {header}
+      <PermissionPrompt scope={scope} status={status} request={request} />
+    </View>
+  );
+}
+
+function PermissionPrompt({
+  scope,
+  status,
+  request,
+}: ReturnType<typeof useMediaPermission> & { scope: MediaScope }) {
   const copy = SCOPE_COPY[scope];
 
   if (status === null) {
     return <EmptyState loading testID="permission-checking" />;
-  }
-
-  if (hasMediaAccess(status)) {
-    return <>{children}</>;
   }
 
   if (status === 'unavailable') {
@@ -69,3 +87,9 @@ export function PermissionGate({ scope, children }: PermissionGateProps) {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+  },
+});

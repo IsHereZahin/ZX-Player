@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Animated, Text, View } from 'react-native';
 
 import type { MainTabScreenProps } from '../../app/navigation/types';
 import { AppLogo } from '../../shared/components/AppLogo';
-import { ScreenHeader } from '../../shared/components/ScreenHeader';
+import {
+  LargeTitle,
+  NavigationBar,
+  useCollapsingTitle,
+} from '../../shared/components/NavigationBar';
 import { OptionRow, Sheet } from '../../shared/components/Sheet';
 import {
   CaptionsIcon,
@@ -24,7 +28,7 @@ import {
   ZoomInIcon,
 } from '../../shared/icons';
 import { spacing, typography } from '../../shared/theme';
-import { makeStyles } from '../../shared/theming';
+import { makeStyles, useColors } from '../../shared/theming';
 import { confirmClearHistory } from '../history/RecentScreen';
 import { useHistoryList } from '../history/watchHistory';
 import { isAudioLibrarySupported } from '../library/services/mediaLibrary';
@@ -87,15 +91,23 @@ const SUBTITLE_SIZE_LABELS: Record<SubtitleSize, string> = {
 
 export function SettingsScreen(_props: Props) {
   const styles = useStyles();
+  const colors = useColors();
   const settings = useSettings();
+  const { scrollY, onScroll } = useCollapsingTitle();
   const historyCount = useHistoryList().length;
   const [picker, setPicker] = useState<Picker>(null);
   const closePicker = () => setPicker(null);
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Settings" />
-      <ScrollView contentContainerStyle={styles.content} testID="settings-list">
+      <NavigationBar title="Settings" scrollY={scrollY} />
+      <Animated.ScrollView
+        contentContainerStyle={styles.content}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        testID="settings-list"
+      >
+        <LargeTitle title="Settings" />
         <SettingsSection title="Appearance">
           <SettingActionRow
             icon={SunMoonIcon}
@@ -103,6 +115,7 @@ export function SettingsScreen(_props: Props) {
             description="The player always stays dark"
             value={APPEARANCE_LABELS[settings.appearance]}
             onPress={() => setPicker('appearance')}
+            tint={colors.blue}
             testID="setting-appearance"
           />
         </SettingsSection>
@@ -115,6 +128,7 @@ export function SettingsScreen(_props: Props) {
               description="Show audio in its own tab or together with videos"
               value={LAYOUT_LABELS[settings.libraryLayout]}
               onPress={() => setPicker('layout')}
+              tint={colors.orange}
               testID="setting-library-layout"
             />
           </SettingsSection>
@@ -127,6 +141,7 @@ export function SettingsScreen(_props: Props) {
             description="Continue videos from where you stopped"
             value={settings.resumePlayback}
             onValueChange={value => updateSettings({ resumePlayback: value })}
+            tint={colors.indigo}
             testID="setting-resume"
           />
           <SettingSwitchRow
@@ -135,6 +150,7 @@ export function SettingsScreen(_props: Props) {
             description="Play the next video in the list when one ends"
             value={settings.autoPlayNext}
             onValueChange={value => updateSettings({ autoPlayNext: value })}
+            tint={colors.green}
             testID="setting-autoplay"
           />
           <SettingSwitchRow
@@ -143,6 +159,7 @@ export function SettingsScreen(_props: Props) {
             description="Keep audio playing when you leave the app or lock the screen"
             value={settings.backgroundPlay}
             onValueChange={setBackgroundPlay}
+            tint={colors.pink}
             testID="setting-background"
           />
           <SettingActionRow
@@ -151,6 +168,7 @@ export function SettingsScreen(_props: Props) {
             description="Double-tap and skip buttons"
             value={`${settings.skipSeconds} sec`}
             onPress={() => setPicker('skip')}
+            tint={colors.teal}
             testID="setting-skip"
           />
           <SettingActionRow
@@ -158,6 +176,7 @@ export function SettingsScreen(_props: Props) {
             title="Default aspect ratio"
             value={ASPECT_MODE_LABELS[settings.defaultAspectMode]}
             onPress={() => setPicker('aspect')}
+            tint={colors.purple}
             testID="setting-aspect"
           />
         </SettingsSection>
@@ -171,6 +190,7 @@ export function SettingsScreen(_props: Props) {
             onValueChange={value =>
               updateSettings({ gestureBrightness: value })
             }
+            tint={colors.yellow}
             testID="setting-gesture-brightness"
           />
           <SettingSwitchRow
@@ -179,6 +199,7 @@ export function SettingsScreen(_props: Props) {
             description="Swipe up or down on the right side"
             value={settings.gestureVolume}
             onValueChange={value => updateSettings({ gestureVolume: value })}
+            tint={colors.red}
             testID="setting-gesture-volume"
           />
           <SettingSwitchRow
@@ -187,6 +208,7 @@ export function SettingsScreen(_props: Props) {
             description="Swipe left or right to move through the video"
             value={settings.gestureSeek}
             onValueChange={value => updateSettings({ gestureSeek: value })}
+            tint={colors.blue}
             testID="setting-gesture-seek"
           />
           <SettingSwitchRow
@@ -195,6 +217,7 @@ export function SettingsScreen(_props: Props) {
             description="Double-tap the sides to skip, the middle to pause"
             value={settings.gestureDoubleTap}
             onValueChange={value => updateSettings({ gestureDoubleTap: value })}
+            tint={colors.orange}
             testID="setting-gesture-double-tap"
           />
           <SettingSwitchRow
@@ -205,6 +228,7 @@ export function SettingsScreen(_props: Props) {
             onValueChange={value =>
               updateSettings({ gestureHoldForSpeed: value })
             }
+            tint={colors.green}
             testID="setting-gesture-hold"
           />
           <SettingSwitchRow
@@ -213,6 +237,7 @@ export function SettingsScreen(_props: Props) {
             description="Zoom in up to 4× and drag to look around"
             value={settings.gestureZoom}
             onValueChange={value => updateSettings({ gestureZoom: value })}
+            tint={colors.indigo}
             testID="setting-gesture-zoom"
           />
         </SettingsSection>
@@ -223,6 +248,7 @@ export function SettingsScreen(_props: Props) {
             title="Text size"
             value={SUBTITLE_SIZE_LABELS[settings.subtitleSize]}
             onPress={() => setPicker('subtitleSize')}
+            tint={colors.gray}
             testID="setting-subtitle-size"
           />
           <SettingSwitchRow
@@ -233,6 +259,7 @@ export function SettingsScreen(_props: Props) {
             onValueChange={value =>
               updateSettings({ subtitleBackground: value })
             }
+            tint={colors.teal}
             testID="setting-subtitle-background"
           />
         </SettingsSection>
@@ -248,6 +275,7 @@ export function SettingsScreen(_props: Props) {
             }
             destructive
             onPress={confirmClearHistory}
+            tint={colors.red}
             testID="setting-clear-history"
           />
         </SettingsSection>
@@ -259,7 +287,7 @@ export function SettingsScreen(_props: Props) {
             Your videos stay on this device. ZX Player never uploads anything.
           </Text>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       <Sheet
         visible={picker === 'appearance'}
@@ -368,16 +396,16 @@ const useStyles = makeStyles(colors => ({
     alignItems: 'center',
     gap: spacing.xs,
     paddingHorizontal: spacing.xxxl,
-    paddingTop: spacing.xxxl,
+    paddingTop: spacing.sm,
   },
   aboutTitle: {
-    ...typography.bodyStrong,
-    marginTop: spacing.xs,
-    color: colors.textSecondary,
+    ...typography.headline,
+    marginTop: spacing.sm,
+    color: colors.textPrimary,
   },
   aboutText: {
     ...typography.footnote,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
 }));

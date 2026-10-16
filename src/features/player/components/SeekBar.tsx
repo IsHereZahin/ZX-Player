@@ -26,11 +26,9 @@ import { formatDuration } from '../../../shared/utils/format';
 import { clamp } from '../../../shared/utils/math';
 import { usePlaybackClock, type PlaybackClock } from '../playbackClock';
 
-const TOUCH_AREA_HEIGHT = 36;
-const TRACK_HEIGHT = 4;
-const THUMB_SIZE = 14;
-const THUMB_SIZE_ACTIVE = 22;
-const BUBBLE_WIDTH = 64;
+const TOUCH_AREA_HEIGHT = 32;
+const TRACK_HEIGHT = 5;
+const TRACK_HEIGHT_ACTIVE = 11;
 
 interface SeekBarProps {
   clock: PlaybackClock;
@@ -136,12 +134,10 @@ export function SeekBar({
   const displayTime = scrubTime ?? currentTime;
   const progress = duration > 0 ? clamp(displayTime / duration, 0, 1) : 0;
   const buffered = duration > 0 ? clamp(bufferedTime / duration, 0, 1) : 0;
-  const thumbSize = scrubbing ? THUMB_SIZE_ACTIVE : THUMB_SIZE;
-  const thumbX = progress * trackWidth;
+  const remaining = Math.max(0, duration - displayTime);
 
   return (
-    <View style={styles.row}>
-      <Text style={styles.time}>{formatDuration(displayTime)}</Text>
+    <View style={styles.column}>
       <GestureDetector gesture={gesture}>
         <View
           style={styles.touchArea}
@@ -161,7 +157,7 @@ export function SeekBar({
           onAccessibilityAction={onAccessibilityAction}
           testID="seek-bar"
         >
-          <View style={styles.track}>
+          <View style={[styles.track, scrubbing && styles.trackActive]}>
             <View
               style={[
                 styles.fill,
@@ -177,58 +173,25 @@ export function SeekBar({
               ]}
             />
           </View>
-          <View
-            style={[
-              styles.thumb,
-              {
-                width: thumbSize,
-                height: thumbSize,
-                left: thumbX - thumbSize / 2,
-                top: (TOUCH_AREA_HEIGHT - thumbSize) / 2,
-              },
-            ]}
-          />
-          {scrubbing ? (
-            <View
-              pointerEvents="none"
-              style={[
-                styles.bubble,
-                {
-                  left: clamp(
-                    thumbX - BUBBLE_WIDTH / 2,
-                    0,
-                    trackWidth - BUBBLE_WIDTH,
-                  ),
-                },
-              ]}
-            >
-              <Text style={styles.bubbleText}>
-                {formatDuration(displayTime)}
-              </Text>
-            </View>
-          ) : null}
         </View>
       </GestureDetector>
-      <Text style={styles.time}>{formatDuration(duration)}</Text>
+      <View style={styles.times}>
+        <Text style={[styles.time, scrubbing && styles.timeActive]}>
+          {formatDuration(displayTime)}
+        </Text>
+        <Text style={[styles.time, scrubbing && styles.timeActive]}>
+          −{formatDuration(remaining)}
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  time: {
-    ...typography.captionStrong,
-    minWidth: 48,
-    color: playerColors.white,
-    fontVariant: ['tabular-nums'],
-    textAlign: 'center',
+  column: {
+    gap: spacing.xxs,
   },
   touchArea: {
-    flex: 1,
     height: TOUCH_AREA_HEIGHT,
     justifyContent: 'center',
   },
@@ -237,6 +200,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: radius.pill,
     backgroundColor: playerColors.trackInactive,
+  },
+  trackActive: {
+    height: TRACK_HEIGHT_ACTIVE,
   },
   fill: {
     position: 'absolute',
@@ -248,27 +214,18 @@ const styles = StyleSheet.create({
     backgroundColor: playerColors.trackBuffered,
   },
   played: {
-    backgroundColor: playerColors.primaryBright,
+    backgroundColor: playerColors.white,
   },
-  thumb: {
-    position: 'absolute',
-    borderRadius: radius.pill,
-    borderWidth: 2,
-    borderColor: playerColors.white,
-    backgroundColor: playerColors.primaryBright,
+  times: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  bubble: {
-    position: 'absolute',
-    bottom: TOUCH_AREA_HEIGHT,
-    width: BUBBLE_WIDTH,
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-    borderRadius: radius.sm,
-    backgroundColor: playerColors.primary,
-  },
-  bubbleText: {
-    ...typography.captionStrong,
-    color: playerColors.onPrimary,
+  time: {
+    ...typography.caption2,
+    color: playerColors.textSecondary,
     fontVariant: ['tabular-nums'],
+  },
+  timeActive: {
+    color: playerColors.white,
   },
 });

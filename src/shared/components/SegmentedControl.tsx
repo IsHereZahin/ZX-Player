@@ -1,8 +1,14 @@
-import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Pressable,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 
-import { radius, spacing, typography } from '../theme';
-import { makeStyles } from '../theming';
+import { font, radius, spacing, typography } from '../theme';
+import { makeStyles, useTheme } from '../theming';
 
 interface SegmentedControlProps<T extends string | number> {
   options: ReadonlyArray<{ value: T; label: string }>;
@@ -12,7 +18,9 @@ interface SegmentedControlProps<T extends string | number> {
   testID?: string;
 }
 
-/** Single-choice chips; wraps onto further lines when space runs out. */
+const PADDING = 2;
+
+/** iOS-style segmented control: equal segments on a grey track, a sliding white thumb. */
 export function SegmentedControl<T extends string | number>({
   options,
   value,
@@ -21,28 +29,76 @@ export function SegmentedControl<T extends string | number>({
   testID,
 }: SegmentedControlProps<T>) {
   const styles = useStyles();
+  const { scheme } = useTheme();
+  const [width, setWidth] = useState(0);
+  const selectedIndex = Math.max(
+    0,
+    options.findIndex(option => option.value === value),
+  );
+  const segmentWidth =
+    width > 0 ? (width - PADDING * 2) / Math.max(options.length, 1) : 0;
+  const offset = useRef(new Animated.Value(0)).current;
+  const placed = useRef(false);
+
+  useEffect(() => {
+    if (segmentWidth === 0) {
+      return;
+    }
+    const target = selectedIndex * segmentWidth;
+    // Jump into place on first layout, slide afterwards.
+    if (!placed.current) {
+      placed.current = true;
+      offset.setValue(target);
+      return;
+    }
+    Animated.spring(offset, {
+      toValue: target,
+      useNativeDriver: true,
+      speed: 24,
+      bounciness: 0,
+    }).start();
+  }, [offset, segmentWidth, selectedIndex]);
+
+  const onLayout = (event: LayoutChangeEvent) =>
+    setWidth(event.nativeEvent.layout.width);
+  const compact = options.length > 5;
+
   return (
     <View
-      style={styles.row}
+      style={styles.track}
+      onLayout={onLayout}
       accessibilityRole="radiogroup"
       accessibilityLabel={accessibilityLabel}
       testID={testID}
     >
-      {options.map(option => {
-        const selected = option.value === value;
+      {segmentWidth > 0 ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.thumb,
+            scheme === 'dark' && styles.thumbDark,
+            { width: segmentWidth, transform: [{ translateX: offset }] },
+          ]}
+        />
+      ) : null}
+      {options.map((option, index) => {
+        const selected = index === selectedIndex;
         return (
           <Pressable
             key={String(option.value)}
             accessibilityRole="radio"
             accessibilityState={{ selected }}
             onPress={() => onChange(option.value)}
-            style={({ pressed }) => [
-              styles.chip,
-              selected ? styles.chipSelected : pressed && styles.chipPressed,
-            ]}
+            style={styles.segment}
             testID={testID ? `${testID}-${option.value}` : undefined}
           >
-            <Text style={[styles.label, selected && styles.labelSelected]}>
+            <Text
+              style={[
+                compact ? styles.labelCompact : styles.label,
+                selected && styles.labelSelected,
+              ]}
+              numberOfLines={1}
+            >
               {option.label}
             </Text>
           </Pressable>
@@ -53,32 +109,43 @@ export function SegmentedControl<T extends string | number>({
 }
 
 const useStyles = makeStyles(colors => ({
-  row: {
+  track: {
+    minHeight: 32,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+    padding: PADDING,
+    borderRadius: radius.sm + 1,
+    backgroundColor: colors.fill,
   },
-  chip: {
-    minWidth: 56,
-    minHeight: 40,
+  thumb: {
+    position: 'absolute',
+    top: PADDING,
+    bottom: PADDING,
+    left: PADDING,
+    borderRadius: radius.sm - 1,
+    backgroundColor: colors.white,
+    shadowColor: colors.black,
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  thumbDark: {
+    backgroundColor: '#636366',
+  },
+  segment: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceHigh,
-  },
-  chipPressed: {
-    backgroundColor: colors.border,
-  },
-  chipSelected: {
-    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xxs,
   },
   label: {
-    ...typography.captionStrong,
-    fontSize: 13,
+    ...typography.footnote,
     color: colors.textPrimary,
   },
-  labelSelected: {
-    color: colors.onPrimary,
+  labelCompact: {
+    ...typography.caption,
+    color: colors.textPrimary,
   },
+  // Weight only: the size stays that of the (regular or compact) label.
+  labelSelected: font('semibold', 13),
 }));

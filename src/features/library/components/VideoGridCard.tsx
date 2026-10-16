@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { IconButton } from '../../../shared/components/IconButton';
-import { EllipsisVerticalIcon } from '../../../shared/icons';
+import { EllipsisIcon } from '../../../shared/icons';
 import { radius, spacing, typography } from '../../../shared/theme';
 import { makeStyles } from '../../../shared/theming';
 import { useWatchEntry, watchProgress } from '../../history/watchHistory';
@@ -59,8 +59,9 @@ export const VideoGridCard = memo(function VideoGridCardView({
           </Text>
         </View>
         <IconButton
-          icon={EllipsisVerticalIcon}
+          icon={EllipsisIcon}
           size="sm"
+          variant="plain"
           accessibilityLabel={`More options for ${title}`}
           onPress={() => onMore(video)}
           testID={`video-more-${video.id}`}
@@ -75,7 +76,7 @@ const useStyles = makeStyles(colors => ({
     borderRadius: radius.md,
   },
   pressed: {
-    opacity: 0.8,
+    opacity: 0.7,
   },
   info: {
     flexDirection: 'row',
@@ -87,16 +88,14 @@ const useStyles = makeStyles(colors => ({
     gap: spacing.xxs,
   },
   title: {
-    ...typography.footnote,
-    fontWeight: '600',
+    ...typography.footnoteStrong,
     color: colors.textPrimary,
   },
   titleHighlighted: {
     color: colors.primaryText,
   },
   details: {
-    ...typography.captionStrong,
-    fontWeight: '400',
+    ...typography.caption,
     color: colors.textSecondary,
   },
 }));
