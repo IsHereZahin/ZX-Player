@@ -15,7 +15,8 @@ import { formatDuration } from '../../../shared/utils/format';
 import { clamp } from '../../../shared/utils/math';
 import { historyStore, resumePosition } from '../../history/watchHistory';
 import { VideoInfoSheet } from '../../library/components/VideoSheets';
-import { describeFileName } from '../../library/services/mediaLibrary';
+import { mediaTitle } from '../../library/services/mediaLibrary';
+import { getCachedThumbnail } from '../../library/services/thumbnails';
 import type { VideoItem } from '../../library/types';
 import { setBackgroundPlay } from '../../settings/backgroundPlay';
 import {
@@ -23,6 +24,7 @@ import {
   updateSettings,
   useSettings,
 } from '../../settings/settingsStore';
+import { AudioArtwork } from '../components/AudioArtwork';
 import { LockOverlay } from '../components/LockOverlay';
 import { PlaybackErrorOverlay } from '../components/PlaybackErrorOverlay';
 import { PlayerControls } from '../components/PlayerControls';
@@ -119,6 +121,11 @@ export function PlayerSession(props: PlayerSessionProps) {
   const { video, locked, layout } = props;
   const insets = useSafeAreaInsets();
   const settings = useSettings();
+  const isAudio = video.kind === 'audio';
+  // Music should not stop when the screen turns off, so audio always plays on.
+  const backgroundPlay = settings.backgroundPlay || isAudio;
+  // Read once: changing the source's metadata mid-playback could make the player reload.
+  const [artworkUri] = useState(() => getCachedThumbnail(video) ?? undefined);
   const latest = useLatestRef(props);
   const { toast, show: showToast, dismiss: dismissToast } = useToast();
   const { schedule, onDismissed } = useAfterSheetClose();
@@ -137,7 +144,7 @@ export function PlayerSession(props: PlayerSessionProps) {
   const playback = usePlayback({
     initialDurationSec: video.durationSec,
     startAtSec: resumeAt,
-    backgroundPlay: settings.backgroundPlay,
+    backgroundPlay,
     onEnded: handleEnded,
   });
   usePlaybackProgress(video, playback);
@@ -154,11 +161,15 @@ export function PlayerSession(props: PlayerSessionProps) {
   const [lockHint, setLockHint] = useState(false);
 
   const controls = useAutoHideControls(
-    playback.paused || scrubbing || sheet !== null || playback.error !== null,
+    isAudio ||
+      playback.paused ||
+      scrubbing ||
+      sheet !== null ||
+      playback.error !== null,
   );
   const { keepAlive } = controls;
   const { seekTo, getCurrentTime, togglePlayback, pause } = playback;
-  const { title } = describeFileName(video.fileName);
+  const title = mediaTitle(video);
 
   // Once the file is open: adopt its default tracks, report its shape, offer "start over".
   const { loaded, naturalSize, audioTracks, textTracks } = playback;
@@ -217,10 +228,11 @@ export function PlayerSession(props: PlayerSessionProps) {
   const toggleControls = useCallback(() => {
     if (latest.current.locked) {
       setLockHint(visible => !visible);
-    } else {
+    } else if (!isAudio) {
+      // Audio has nothing to reveal behind the controls, so they stay put.
       controls.toggle();
     }
-  }, [controls, latest]);
+  }, [controls, isAudio, latest]);
 
   const handleSkip = useCallback(
     (seconds: number) => {
@@ -310,13 +322,15 @@ export function PlayerSession(props: PlayerSessionProps) {
 
   const gestureToggles = useMemo(
     () => ({
-      brightness: settings.gestureBrightness,
+      // Screen brightness means nothing on an audio screen.
+      brightness: settings.gestureBrightness && !isAudio,
       volume: settings.gestureVolume,
       seek: settings.gestureSeek,
       doubleTap: settings.gestureDoubleTap,
       holdForSpeed: settings.gestureHoldForSpeed,
     }),
     [
+      isAudio,
       settings.gestureBrightness,
       settings.gestureDoubleTap,
       settings.gestureHoldForSpeed,
@@ -362,6 +376,8 @@ export function PlayerSession(props: PlayerSessionProps) {
         sourceKey={playback.sourceKey}
         uri={video.uri}
         title={title}
+        artist={(isAudio && video.artist) || 'ZX Player'}
+        artworkUri={artworkUri}
         paused={playback.paused}
         rate={boosted ? 2 : props.speed}
         repeat={props.repeatMode === 'one'}
@@ -371,11 +387,13 @@ export function PlayerSession(props: PlayerSessionProps) {
         audioTrackIndex={audioTrackIndex}
         textTrack={nativeTextTrack}
         subtitleFontSize={subtitleFontSize}
-        backgroundPlay={settings.backgroundPlay}
+        backgroundPlay={backgroundPlay}
         events={playback.videoEvents}
       />
       {pictureInPicture ? null : (
         <>
+          {isAudio ? <AudioArtwork item={video} layout={layout} /> : null}
+
           {externalTrack ? (
             <TimedSubtitleOverlay
               clock={playback.clock}
@@ -413,7 +431,8 @@ export function PlayerSession(props: PlayerSessionProps) {
 
           {showControls ? (
             <PlayerControls
-              title={title}
+              mode={isAudio ? 'audio' : 'video'}
+              title={isAudio ? 'Now playing' : title}
               queueLabel={props.queueLabel}
               paused={playback.paused}
               clock={playback.clock}
@@ -467,6 +486,7 @@ export function PlayerSession(props: PlayerSessionProps) {
           ) : null}
 
           <MoreSheet
+            isAudio={isAudio}
             visible={sheet === 'more'}
             onClose={closeSheet}
             onDismissed={onDismissed}

@@ -15,7 +15,13 @@ import { setVolume } from 'react-native-volume-manager';
 
 import type { RootStackScreenProps } from '../../../../app/navigation/types';
 import { reportError } from '../../../../shared/logger';
-import { makeVideo, SAMPLE_SRT, sampleVideo } from '../../../../test/fixtures';
+import {
+  makeSong,
+  makeVideo,
+  SAMPLE_SRT,
+  sampleSong,
+  sampleVideo,
+} from '../../../../test/fixtures';
 import { mockNavigation, screenProps } from '../../../../test/navigation';
 import { historyStore, recordProgress } from '../../../history/watchHistory';
 import type { VideoItem } from '../../../library/types';
@@ -635,5 +641,56 @@ describe('tracks and subtitles', () => {
       'Loading subtitles failed',
       expect.any(Error),
     );
+  });
+});
+
+describe('audio', () => {
+  const loadAudio = {
+    naturalSize: { width: 0, height: 0, orientation: 'landscape' },
+  };
+
+  it('shows the track instead of a picture and keeps the controls up', async () => {
+    await renderPlayer({ queue: [sampleSong] }, loadAudio);
+
+    const artwork = screen.getByTestId('audio-artwork');
+    expect(within(artwork).getByText('Night Drive')).toBeOnTheScreen();
+    expect(
+      within(artwork).getByText('The Blue Hours · Neon'),
+    ).toBeOnTheScreen();
+    expect(screen.getByText('Now playing')).toBeOnTheScreen();
+
+    // Picture-only controls are gone.
+    expect(screen.queryByTestId('subtitles-button')).toBeNull();
+    expect(screen.queryByTestId('aspect-button')).toBeNull();
+    expect(screen.queryByTestId('pip-button')).toBeNull();
+
+    // A tap does not hide the controls of an audio track.
+    await runGesture('player-single-tap', tap(400));
+    expect(screen.getByTestId('player-controls')).toBeOnTheScreen();
+  });
+
+  it('always keeps playing in the background, with notification controls', async () => {
+    await renderPlayer({ queue: [sampleSong] }, loadAudio);
+    expect(video().props.playInBackground).toBe(true);
+    expect(video().props.showNotificationControls).toBe(true);
+    expect(video().props.source.metadata).toMatchObject({
+      title: 'Night Drive',
+      artist: 'The Blue Hours',
+    });
+  });
+
+  it('moves from track to track like videos', async () => {
+    await renderPlayer({ queue: [makeSong('1'), makeSong('2')] }, loadAudio);
+    await fireEvent.press(screen.getByLabelText('Next track'));
+    expect(
+      within(screen.getByTestId('audio-artwork')).getByText('Song 2'),
+    ).toBeOnTheScreen();
+  });
+
+  it('plays mixed queues, switching between audio and video', async () => {
+    await renderPlayer({ queue: [sampleSong, makeVideo('9')] }, loadAudio);
+    await fireEvent.press(screen.getByTestId('next-button'));
+    expect(screen.queryByTestId('audio-artwork')).toBeNull();
+    expect(screen.getByTestId('subtitles-button')).toBeOnTheScreen();
   });
 });

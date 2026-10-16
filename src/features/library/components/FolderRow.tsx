@@ -13,7 +13,7 @@ import {
 } from '../../../shared/icons';
 import { radius, spacing, typography } from '../../../shared/theme';
 import { makeStyles, useColors } from '../../../shared/theming';
-import { formatVideoCount } from '../../../shared/utils/format';
+import { formatMediaCount } from '../scopeCopy';
 import type { VideoFolder } from '../types';
 
 export const FOLDER_ROW_HEIGHT = 72;
@@ -27,7 +27,7 @@ const FOLDER_ICON_RULES: ReadonlyArray<[RegExp, IconComponent]> = [
 
 function folderIcon(folder: VideoFolder): IconComponent {
   if (folder.album === null) {
-    return FilmIcon;
+    return folder.scope === 'audio' ? MusicIcon : FilmIcon;
   }
   return (
     FOLDER_ICON_RULES.find(([pattern]) => pattern.test(folder.title))?.[1] ??
@@ -48,7 +48,9 @@ export const FolderRow = memo(function FolderRowView({
   const colors = useColors();
   const Icon = folderIcon(folder);
   const subtitle =
-    folder.count === null ? 'Entire library' : formatVideoCount(folder.count);
+    folder.count === null
+      ? 'Entire library'
+      : formatMediaCount(folder.count, folder.scope);
 
   return (
     <Pressable

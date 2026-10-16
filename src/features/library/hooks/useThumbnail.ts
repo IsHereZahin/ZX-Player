@@ -5,19 +5,19 @@ import { TaskCancelledError } from '../../../shared/utils/taskQueue';
 import { getCachedThumbnail, requestThumbnail } from '../services/thumbnails';
 import type { VideoItem } from '../types';
 
-/** Thumbnail URI for a video, or null while it is generated / if it cannot be. */
-export function useThumbnail(video: VideoItem): string | null {
-  const [uri, setUri] = useState(() => getCachedThumbnail(video));
+/** Thumbnail or album-art URI, or null while it loads / when the item has none. */
+export function useThumbnail(item: VideoItem): string | null {
+  const [uri, setUri] = useState(() => getCachedThumbnail(item) ?? null);
 
   useEffect(() => {
-    const cached = getCachedThumbnail(video);
-    setUri(cached);
-    if (cached) {
+    const cached = getCachedThumbnail(item);
+    setUri(cached ?? null);
+    if (cached !== undefined) {
       return;
     }
 
     let active = true;
-    const request = requestThumbnail(video);
+    const request = requestThumbnail(item);
     request.promise.then(
       path => {
         if (active) {
@@ -34,7 +34,7 @@ export function useThumbnail(video: VideoItem): string | null {
       active = false;
       request.cancel();
     };
-  }, [video]);
+  }, [item]);
 
   return uri;
 }

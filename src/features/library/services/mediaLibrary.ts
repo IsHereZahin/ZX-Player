@@ -6,9 +6,16 @@ import {
   type PhotoIdentifier,
 } from '@react-native-camera-roll/camera-roll';
 import * as nativeMedia from 'zxplayer-media';
-import type { NativeVideo, NativeVideoFolder } from 'zxplayer-media';
+import type { NativeMediaFolder, NativeMediaItem } from 'zxplayer-media';
 
-import type { AlbumKind, VideoFolder, VideoItem, VideoPage } from '../types';
+import type {
+  AlbumKind,
+  MediaKind,
+  MediaScope,
+  VideoFolder,
+  VideoItem,
+  VideoPage,
+} from '../types';
 
 export const ALL_VIDEOS_FOLDER_ID = 'all-videos';
 export const VIDEO_PAGE_SIZE = 40;
@@ -24,13 +31,33 @@ function nativeMediaEnabled(): boolean {
   return Platform.OS === 'android' && nativeMedia.isNativeMediaAvailable;
 }
 
-/** The whole video library, presented as a folder. */
-export const ALL_VIDEOS_FOLDER: VideoFolder = {
-  id: ALL_VIDEOS_FOLDER_ID,
-  title: 'All videos',
-  count: null,
-  album: null,
+/**
+ * Audio comes from Android's MediaStore. iOS apps cannot list the device's audio files
+ * (the Photos library holds only photos and videos), so audio features are Android-only.
+ */
+export function isAudioLibrarySupported(): boolean {
+  return nativeMediaEnabled();
+}
+
+export function kindsOf(scope: MediaScope): MediaKind[] {
+  return scope === 'all' ? ['video', 'audio'] : [scope];
+}
+
+const ALL_FOLDER: Record<MediaScope, { id: string; title: string }> = {
+  video: { id: ALL_VIDEOS_FOLDER_ID, title: 'All videos' },
+  audio: { id: 'all-audio', title: 'All audio' },
+  all: { id: 'all-media', title: 'All media' },
 };
+
+/** The whole library of a scope, presented as a folder. */
+export function allMediaFolder(
+  scope: MediaScope,
+  count: number | null = null,
+): VideoFolder {
+  return { ...ALL_FOLDER[scope], count, album: null, scope };
+}
+
+export const ALL_VIDEOS_FOLDER = allMediaFolder('video');
 
 const VIDEO_FIELDS: GetPhotosParams['include'] = [
   'filename',
@@ -39,16 +66,24 @@ const VIDEO_FIELDS: GetPhotosParams['include'] = [
   'imageSize',
 ];
 
-/** Lists every album/folder that contains at least one video, led by an "All videos" entry. */
-export async function fetchVideoFolders(): Promise<VideoFolder[]> {
+/** Lists every folder holding media of the scope, led by an "All …" entry. */
+export async function fetchFolders(
+  scope: MediaScope = 'video',
+): Promise<VideoFolder[]> {
   if (nativeMediaEnabled()) {
-    return buildFolderListFromBuckets(await nativeMedia.getVideoFolders());
+    const lists = await Promise.all(
+      kindsOf(scope).map(kind => nativeMedia.getFolders(kind)),
+    );
+    return buildFolderListFromBuckets(lists.flat(), scope);
+  }
+  if (scope === 'audio') {
+    return [];
   }
   const albums = await CameraRoll.getAlbums({
     assetType: 'Videos',
     albumType: 'All',
   });
-  return buildFolderList(albums, Platform.OS === 'android');
+  return buildFolderList(albums, Platform.OS === 'android', scope);
 }
 
 const byTitle = (a: VideoFolder, b: VideoFolder) =>
@@ -60,24 +95,38 @@ const sumCounts = (folders: VideoFolder[]) =>
 export function buildFolderList(
   albums: Album[],
   isAndroid: boolean,
+  scope: MediaScope = 'video',
 ): VideoFolder[] {
   const folders = albums
     .filter(album => album.count > 0)
-    .map(toVideoFolder)
+    .map(album => toVideoFolder(album, scope))
     .sort(byTitle);
 
   // Android buckets partition the library, so their counts add up to the total. iOS albums
   // overlap (an asset can sit in several), so no reliable total exists without a full scan.
   const total = isAndroid ? sumCounts(folders) : null;
 
-  return [{ ...ALL_VIDEOS_FOLDER, count: total }, ...folders];
+  return [allMediaFolder(scope, total), ...folders];
 }
 
-/** Folder list from MediaStore buckets (Android native path). */
+/**
+ * Folder list from MediaStore buckets (Android native path). Video and audio buckets of
+ * the same directory share an id, so a combined list shows each directory once.
+ */
 export function buildFolderListFromBuckets(
-  buckets: NativeVideoFolder[],
+  buckets: NativeMediaFolder[],
+  scope: MediaScope = 'video',
 ): VideoFolder[] {
-  const folders = buckets
+  const merged = new Map<string, NativeMediaFolder>();
+  for (const bucket of buckets) {
+    const previous = merged.get(bucket.id);
+    merged.set(
+      bucket.id,
+      previous ? { ...previous, count: previous.count + bucket.count } : bucket,
+    );
+  }
+
+  const folders = [...merged.values()]
     .filter(bucket => bucket.count > 0)
     .map(
       (bucket): VideoFolder => ({
@@ -86,24 +135,26 @@ export function buildFolderListFromBuckets(
         count: bucket.count,
         album: { name: bucket.name, kind: 'Album' },
         bucketId: bucket.id,
+        scope,
       }),
     )
     .sort(byTitle);
 
-  return [{ ...ALL_VIDEOS_FOLDER, count: sumCounts(folders) }, ...folders];
+  return [allMediaFolder(scope, sumCounts(folders)), ...folders];
 }
 
-function toVideoFolder(album: Album): VideoFolder {
+function toVideoFolder(album: Album, scope: MediaScope): VideoFolder {
   const kind: AlbumKind = album.type === 'SmartAlbum' ? 'SmartAlbum' : 'Album';
   return {
     id: `${kind}:${album.title}`,
     title: album.title,
     count: album.count,
     album: { name: album.title, kind },
+    scope,
   };
 }
 
-/** Loads one page of a folder's videos, newest first. */
+/** Loads one page of a folder's videos from camera-roll, newest first. */
 export async function fetchFolderVideos(
   folder: VideoFolder,
   cursor?: string | null,
@@ -134,17 +185,25 @@ export async function fetchFolderVideos(
 }
 
 /**
- * Loads every page of a folder, reporting the list after each page so the UI can render
+ * Loads every item in a folder, reporting the list after each page so the UI can render
  * progressively. Stops early (and resolves with what it has) once `isCancelled` is true.
  */
-export async function fetchAllFolderVideos(
+export async function fetchAllFolderMedia(
   folder: VideoFolder,
-  onPage?: (videosSoFar: VideoItem[]) => void,
+  onPage?: (itemsSoFar: VideoItem[]) => void,
   isCancelled: () => boolean = () => false,
 ): Promise<VideoItem[]> {
-  // A folder without a bucket id (e.g. restored from older state) uses camera-roll.
+  // A folder without a bucket id (e.g. listed by camera-roll) is read through camera-roll.
   if (nativeMediaEnabled() && (folder.album === null || folder.bucketId)) {
-    return fetchAllNativeVideos(folder.bucketId ?? null, onPage, isCancelled);
+    return fetchAllNativeMedia(
+      kindsOf(folder.scope),
+      folder.bucketId ?? null,
+      onPage,
+      isCancelled,
+    );
+  }
+  if (folder.scope === 'audio') {
+    return [];
   }
 
   const seen = new Set<string>();
@@ -165,59 +224,75 @@ export async function fetchAllFolderVideos(
   return videos;
 }
 
-async function fetchAllNativeVideos(
+async function fetchAllNativeMedia(
+  kinds: MediaKind[],
   bucketId: string | null,
-  onPage: ((videosSoFar: VideoItem[]) => void) | undefined,
+  onPage: ((itemsSoFar: VideoItem[]) => void) | undefined,
   isCancelled: () => boolean,
 ): Promise<VideoItem[]> {
+  // Keyed by URI, which identifies an item across kinds.
   const seen = new Set<string>();
-  let videos: VideoItem[] = [];
-  let offset = 0;
-  let hasMore = true;
-  while (hasMore) {
-    const page = await nativeMedia.getVideos(
-      bucketId,
-      offset,
-      NATIVE_PAGE_SIZE,
-    );
-    if (isCancelled()) {
-      return videos;
+  let items: VideoItem[] = [];
+  for (const kind of kinds) {
+    let offset = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const page = await nativeMedia.getMedia(
+        kind,
+        bucketId,
+        offset,
+        NATIVE_PAGE_SIZE,
+      );
+      if (isCancelled()) {
+        return items;
+      }
+      offset += page.items.length;
+      const fresh = page.items
+        .filter(item => !seen.has(item.uri))
+        .map(item => fromNativeItem(item, kind));
+      fresh.forEach(item => seen.add(item.uri));
+      items = [...items, ...fresh];
+      onPage?.(items);
+      hasMore = page.hasMore && page.items.length > 0;
     }
-    offset += page.videos.length;
-    const fresh = page.videos
-      .filter(video => !seen.has(video.id))
-      .map(fromNativeVideo);
-    fresh.forEach(video => seen.add(video.id));
-    videos = [...videos, ...fresh];
-    onPage?.(videos);
-    hasMore = page.hasMore && page.videos.length > 0;
   }
-  return videos;
+  return items;
 }
 
 const finiteOr = (value: number, fallback: number) =>
   Number.isFinite(value) ? value : fallback;
 
-export function fromNativeVideo(video: NativeVideo): VideoItem {
-  return {
-    id: video.id,
-    uri: video.uri,
-    fileName: video.fileName || fileNameFromUri(video.uri),
-    durationSec: Math.max(0, finiteOr(video.durationSec, 0)),
+export function fromNativeItem(
+  item: NativeMediaItem,
+  kind: MediaKind,
+): VideoItem {
+  const mapped: VideoItem = {
+    id: item.id,
+    kind,
+    uri: item.uri,
+    fileName: item.fileName || fileNameFromUri(item.uri),
+    durationSec: Math.max(0, finiteOr(item.durationSec, 0)),
     sizeBytes:
-      video.sizeBytes !== null && Number.isFinite(video.sizeBytes)
-        ? video.sizeBytes
+      item.sizeBytes !== null && Number.isFinite(item.sizeBytes)
+        ? item.sizeBytes
         : null,
-    width: finiteOr(video.width, 0),
-    height: finiteOr(video.height, 0),
-    modifiedAtSec: finiteOr(video.modifiedAtSec, 0),
+    width: finiteOr(item.width, 0),
+    height: finiteOr(item.height, 0),
+    modifiedAtSec: finiteOr(item.modifiedAtSec, 0),
   };
+  if (kind === 'audio') {
+    mapped.title = item.title;
+    mapped.artist = item.artist;
+    mapped.album = item.album;
+  }
+  return mapped;
 }
 
 export function toVideoItem({ node }: PhotoIdentifier): VideoItem {
   const { image } = node;
   return {
     id: node.id || image.uri,
+    kind: 'video',
     uri: image.uri,
     fileName: image.filename ?? fileNameFromUri(image.uri),
     // The native layer reports null when the duration cannot be read.
@@ -231,7 +306,7 @@ export function toVideoItem({ node }: PhotoIdentifier): VideoItem {
 
 function fileNameFromUri(uri: string): string {
   const lastSegment = uri.split('/').pop() ?? '';
-  return decodeURIComponent(lastSegment) || 'Untitled video';
+  return decodeURIComponent(lastSegment) || 'Untitled';
 }
 
 /** Splits `holiday.mp4` into a display title and an upper-case extension label. */
@@ -247,4 +322,9 @@ export function describeFileName(fileName: string): {
     title: fileName.slice(0, dot),
     extension: fileName.slice(dot + 1).toUpperCase(),
   };
+}
+
+/** Display title: an audio file's tag title when it has one, else the file name. */
+export function mediaTitle(item: VideoItem): string {
+  return item.title || describeFileName(item.fileName).title;
 }

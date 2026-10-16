@@ -7,7 +7,6 @@ import {
   formatSpeed,
   formatTimeLeft,
   formatSignedDuration,
-  formatVideoCount,
 } from '../format';
 
 describe('formatDuration', () => {
@@ -55,17 +54,11 @@ describe('formatBytes', () => {
   });
 });
 
-describe('formatPercent / formatVideoCount', () => {
+describe('formatPercent', () => {
   it('rounds and clamps percentages', () => {
     expect(formatPercent(0.444)).toBe('44%');
     expect(formatPercent(1.4)).toBe('100%');
     expect(formatPercent(-0.2)).toBe('0%');
-  });
-
-  it('pluralises video counts', () => {
-    expect(formatVideoCount(1)).toBe('1 video');
-    expect(formatVideoCount(0)).toBe('0 videos');
-    expect(formatVideoCount(12)).toBe('12 videos');
   });
 });
 

@@ -18,10 +18,10 @@ import {
   FilmIcon,
   LayoutGridIcon,
   ListIcon,
+  MusicIcon,
 } from '../../../shared/icons';
 import { spacing } from '../../../shared/theme';
 import { makeStyles, useColors } from '../../../shared/theming';
-import { formatVideoCount } from '../../../shared/utils/format';
 import { MEDIA_LIST_TUNING } from '../../../shared/utils/listTuning';
 import { useLastPlayedId } from '../../history/watchHistory';
 import { PlayAllButton } from '../components/PlayAllButton';
@@ -30,6 +30,7 @@ import { VIDEO_ROW_HEIGHT, VideoRow } from '../components/VideoRow';
 import { SortSheet } from '../components/VideoSheets';
 import { useFolderVideos } from '../hooks/useFolderVideos';
 import { useVideoActions } from '../hooks/useVideoActions';
+import { formatMediaCount, SCOPE_COPY } from '../scopeCopy';
 import { updateLibraryPrefs, useLibraryPrefs } from '../libraryPrefs';
 import type { VideoItem } from '../types';
 import { sortVideos } from '../utils/sortVideos';
@@ -90,7 +91,7 @@ export function FolderVideosScreen({ navigation, route }: Props) {
 
   const subtitle =
     loadState === 'ready'
-      ? `${formatVideoCount(videos.length)}${complete ? '' : '…'}`
+      ? `${formatMediaCount(videos.length, folder.scope)}${complete ? '' : '…'}`
       : undefined;
 
   const renderBody = () => {
@@ -99,7 +100,7 @@ export function FolderVideosScreen({ navigation, route }: Props) {
         <EmptyState
           icon={CircleAlertIcon}
           title="Couldn't load this folder"
-          message="Something went wrong while reading its videos."
+          message="Something went wrong while reading its contents."
           actionLabel="Try again"
           onAction={reload}
           testID="videos-error"
@@ -112,9 +113,9 @@ export function FolderVideosScreen({ navigation, route }: Props) {
     if (videos.length === 0) {
       return (
         <EmptyState
-          icon={FilmIcon}
+          icon={folder.scope === 'audio' ? MusicIcon : FilmIcon}
           title="This folder is empty"
-          message="It no longer contains any videos."
+          message={SCOPE_COPY[folder.scope].folderEmpty}
           actionLabel="Refresh"
           onAction={reload}
           testID="videos-empty"
@@ -179,7 +180,7 @@ export function FolderVideosScreen({ navigation, route }: Props) {
           <>
             <IconButton
               icon={ArrowDownUpIcon}
-              accessibilityLabel="Sort videos"
+              accessibilityLabel="Sort"
               onPress={() => setSortOpen(true)}
               testID="open-sort"
             />

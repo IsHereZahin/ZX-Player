@@ -1,4 +1,5 @@
-import { makeVideo } from '../../../test/fixtures';
+import { makeVideo, sampleSong } from '../../../test/fixtures';
+import type { VideoItem } from '../../library/types';
 import {
   clearHistory,
   clearProgress,
@@ -94,6 +95,32 @@ describe('parseHistory', () => {
       mismatched: valid,
     });
     expect(parsed).toEqual({ '1': valid });
+  });
+
+  it('reads entries saved before audio support as videos', () => {
+    const legacyVideo: Partial<VideoItem> = makeVideo('4');
+    delete legacyVideo.kind;
+    const parsed = parseHistory({
+      '4': {
+        video: legacyVideo,
+        positionSec: 1,
+        durationSec: 9,
+        lastPlayedAt: 1,
+      },
+    });
+    expect(parsed['4'].video.kind).toBe('video');
+  });
+
+  it('keeps audio tags', () => {
+    const parsed = parseHistory({
+      [sampleSong.id]: {
+        video: sampleSong,
+        positionSec: 10,
+        durationSec: 214,
+        lastPlayedAt: 1,
+      },
+    });
+    expect(parsed[sampleSong.id].video).toEqual(sampleSong);
   });
 
   it('returns an empty history for non-objects', () => {

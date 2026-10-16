@@ -44,10 +44,6 @@ export function formatPercent(level: number): string {
   return `${Math.round(clamp(level, 0, 1) * 100)}%`;
 }
 
-export function formatVideoCount(count: number): string {
-  return count === 1 ? '1 video' : `${count} videos`;
-}
-
 /** Common quality label from the shorter edge, so portrait videos read the same. */
 export function formatResolution(width: number, height: number): string | null {
   const shortEdge = Math.min(width, height);

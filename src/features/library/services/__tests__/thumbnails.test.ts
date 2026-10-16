@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as nativeMedia from 'zxplayer-media';
 
-import { sampleVideo } from '../../../../test/fixtures';
+import { sampleSong, sampleVideo } from '../../../../test/fixtures';
 import {
   clearThumbnailMemoryCache,
   getCachedThumbnail,
@@ -24,6 +24,11 @@ describe('on iOS', () => {
     );
     expect(getThumbnailMock).not.toHaveBeenCalled();
   });
+
+  it('has no artwork for audio', async () => {
+    expect(getCachedThumbnail(sampleSong)).toBeNull();
+    await expect(requestThumbnail(sampleSong).promise).resolves.toBeNull();
+  });
 });
 
 describe('on Android', () => {
@@ -32,12 +37,12 @@ describe('on Android', () => {
   });
 
   it('loads the system thumbnail once and serves later requests from memory', async () => {
-    expect(getCachedThumbnail(sampleVideo)).toBeNull();
+    expect(getCachedThumbnail(sampleVideo)).toBeUndefined();
 
     const path = await requestThumbnail(sampleVideo).promise;
 
     expect(getThumbnailMock).toHaveBeenCalledWith(
-      sampleVideo.id,
+      sampleVideo.uri,
       'zxplayer_101_1700000500',
       320,
     );
@@ -57,14 +62,14 @@ describe('on Android', () => {
 
   it('loads the most recently requested rows first', async () => {
     const order: string[] = [];
-    getThumbnailMock.mockImplementation(async (videoId: string) => {
-      order.push(videoId);
-      return `file:///thumb/${videoId}.jpg`;
+    getThumbnailMock.mockImplementation(async (uri: string) => {
+      order.push(uri);
+      return `file:///thumb/${uri}.jpg`;
     });
 
     // Six rows requested in quick succession; four start at once, then the newest wins.
     const tasks = ['1', '2', '3', '4', '5', '6'].map(
-      id => requestThumbnail({ ...sampleVideo, id }).promise,
+      id => requestThumbnail({ ...sampleVideo, id, uri: id }).promise,
     );
     await Promise.all(tasks);
 
@@ -76,13 +81,28 @@ describe('on Android', () => {
     await expect(requestThumbnail(sampleVideo).promise).rejects.toThrow(
       'decoder error',
     );
-    expect(getCachedThumbnail(sampleVideo)).toBeNull();
+    expect(getCachedThumbnail(sampleVideo)).toBeUndefined();
+  });
+
+  it('remembers album art that does not exist instead of asking again', async () => {
+    getThumbnailMock.mockResolvedValueOnce(null);
+
+    await expect(requestThumbnail(sampleSong).promise).resolves.toBeNull();
+    expect(getThumbnailMock).toHaveBeenCalledWith(
+      sampleSong.uri,
+      'zxplayer_501_1700000900',
+      320,
+    );
+    expect(getCachedThumbnail(sampleSong)).toBeNull();
+
+    await requestThumbnail(sampleSong).promise;
+    expect(getThumbnailMock).toHaveBeenCalledTimes(1);
   });
 
   it('fails cleanly when the native module is missing', async () => {
     jest.replaceProperty(nativeMedia, 'isNativeMediaAvailable', false);
     await expect(requestThumbnail(sampleVideo).promise).rejects.toThrow(
-      'Video thumbnails are unavailable',
+      'Thumbnails are unavailable',
     );
     expect(getThumbnailMock).not.toHaveBeenCalled();
   });

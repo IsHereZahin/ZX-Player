@@ -1,13 +1,11 @@
-import type { NativeVideoFolder, NativeVideoPage } from 'zxplayer-media';
+import type { NativeMediaFolder, NativeMediaPage } from 'zxplayer-media';
 
 export const isNativeMediaAvailable = true;
-export const getVideoFolders = jest.fn(
-  async (): Promise<NativeVideoFolder[]> => [],
-);
-export const getVideos = jest.fn(
-  async (): Promise<NativeVideoPage> => ({ videos: [], hasMore: false }),
+export const getFolders = jest.fn(async (): Promise<NativeMediaFolder[]> => []);
+export const getMedia = jest.fn(
+  async (): Promise<NativeMediaPage> => ({ items: [], hasMore: false }),
 );
 export const getThumbnail = jest.fn(
-  async (_videoId: string, cacheKey: string) =>
+  async (_uri: string, cacheKey: string): Promise<string | null> =>
     `file:///data/cache/thumbnails/${cacheKey}.jpg`,
 );

@@ -6,7 +6,9 @@ import { EmptyState } from '../../../shared/components/EmptyState';
 import { CircleAlertIcon, LockIcon } from '../../../shared/icons';
 import { reportError } from '../../../shared/logger';
 import { useMediaPermission } from '../hooks/useMediaPermission';
+import { SCOPE_COPY } from '../scopeCopy';
 import { hasMediaAccess } from '../services/mediaPermissions';
+import type { MediaScope } from '../types';
 
 function openSettings() {
   Linking.openSettings().catch(error =>
@@ -14,9 +16,15 @@ function openSettings() {
   );
 }
 
-/** Renders its children only once the media library is readable. */
-export function PermissionGate({ children }: { children: ReactNode }) {
-  const { status, request } = useMediaPermission();
+interface PermissionGateProps {
+  scope: MediaScope;
+  children: ReactNode;
+}
+
+/** Renders its children only once the scope's part of the media library is readable. */
+export function PermissionGate({ scope, children }: PermissionGateProps) {
+  const { status, request } = useMediaPermission(scope);
+  const copy = SCOPE_COPY[scope];
 
   if (status === null) {
     return <EmptyState loading testID="permission-checking" />;
@@ -30,8 +38,8 @@ export function PermissionGate({ children }: { children: ReactNode }) {
     return (
       <EmptyState
         icon={CircleAlertIcon}
-        title="Video library unavailable"
-        message="This device doesn't allow apps to read its video library."
+        title={copy.unavailableTitle}
+        message={copy.unavailableMessage}
         testID="permission-unavailable"
       />
     );
@@ -41,8 +49,8 @@ export function PermissionGate({ children }: { children: ReactNode }) {
     return (
       <EmptyState
         icon={LockIcon}
-        title="Access to videos is off"
-        message="Turn on video access for ZX Player in Settings to browse your library."
+        title={copy.blockedTitle}
+        message={copy.blockedMessage}
         actionLabel="Open Settings"
         onAction={openSettings}
         testID="permission-blocked"
@@ -53,8 +61,8 @@ export function PermissionGate({ children }: { children: ReactNode }) {
   return (
     <EmptyState
       illustration={<AppLogo size={88} />}
-      title="See your videos"
-      message="ZX Player reads your device's video library to show your folders. Your videos never leave your device."
+      title={copy.requestTitle}
+      message={copy.requestMessage}
       actionLabel="Allow access"
       onAction={request}
       testID="permission-request"

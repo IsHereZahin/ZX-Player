@@ -1,16 +1,18 @@
 import React from 'react';
-import { Linking } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { Linking, PermissionsAndroid, Platform } from 'react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import {
   CameraRoll,
   iosReadGalleryPermission,
   iosRequestReadWriteGalleryPermission,
 } from '@react-native-camera-roll/camera-roll';
+import { getFolders } from 'zxplayer-media';
 
 import type { MainTabScreenProps } from '../../../../app/navigation/types';
-import { makeVideo, sampleAlbums } from '../../../../test/fixtures';
+import { makeVideo, sampleAlbums, sampleSong } from '../../../../test/fixtures';
 import { mockNavigation, screenProps } from '../../../../test/navigation';
 import { recordProgress } from '../../../history/watchHistory';
+import { updateSettings } from '../../../settings/settingsStore';
 import { LibraryScreen } from '../LibraryScreen';
 
 jest.mock('@react-navigation/native', () => ({
@@ -22,12 +24,17 @@ const getAlbums = CameraRoll.getAlbums as jest.Mock;
 const readPermission = iosReadGalleryPermission as jest.Mock;
 const requestPermission = iosRequestReadWriteGalleryPermission as jest.Mock;
 
-async function renderScreen() {
+async function renderScreen(tab: 'Library' | 'Audio' = 'Library') {
   await render(
-    <LibraryScreen
-      {...screenProps<MainTabScreenProps<'Library'>>('Library')}
-    />,
+    <LibraryScreen {...screenProps<MainTabScreenProps<'Library'>>(tab)} />,
   );
+}
+
+/** Android 14 with every media permission granted and the native library mocked. */
+function useAndroidLibrary() {
+  jest.replaceProperty(Platform, 'OS', 'android');
+  jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);
+  jest.spyOn(PermissionsAndroid, 'check').mockResolvedValue(true);
 }
 
 afterEach(() => {
@@ -77,7 +84,9 @@ describe('LibraryScreen', () => {
     getAlbums.mockResolvedValueOnce(sampleAlbums);
     await renderScreen();
     await fireEvent.press(screen.getByTestId('open-search'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('Search');
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Search', {
+      scope: 'video',
+    });
   });
 
   it('asks for access first and loads the library once granted', async () => {
@@ -121,5 +130,49 @@ describe('LibraryScreen', () => {
 
     await fireEvent.press(await screen.findByText('Try again'));
     expect(await screen.findByText('Camera')).toBeOnTheScreen();
+  });
+
+  describe('audio on Android', () => {
+    it('lists audio folders in the Audio tab', async () => {
+      useAndroidLibrary();
+      (getFolders as jest.Mock).mockResolvedValueOnce([
+        { id: '7', name: 'Music', count: 12 },
+      ]);
+      recordProgress(sampleSong, 60, 214);
+
+      await renderScreen('Audio');
+
+      expect(screen.getByRole('header', { name: 'Audio' })).toBeOnTheScreen();
+      expect(await screen.findByText('Music')).toBeOnTheScreen();
+      expect(screen.getByText('All audio')).toBeOnTheScreen();
+      expect(screen.getAllByText('12 audio files')).toHaveLength(2);
+      expect(screen.getByText('Continue listening')).toBeOnTheScreen();
+      expect(getFolders).toHaveBeenCalledWith('audio');
+    });
+
+    it('shows videos and audio together when set to', async () => {
+      useAndroidLibrary();
+      updateSettings({ libraryLayout: 'together' });
+      (getFolders as jest.Mock)
+        .mockResolvedValueOnce([{ id: '1', name: 'Downloads', count: 2 }])
+        .mockResolvedValueOnce([{ id: '1', name: 'Downloads', count: 1 }]);
+
+      await renderScreen();
+
+      expect(screen.getByRole('header', { name: 'Library' })).toBeOnTheScreen();
+      expect(await screen.findByText('All media')).toBeOnTheScreen();
+      expect(screen.getAllByText('3 files')).toHaveLength(2);
+    });
+
+    it('rescans when the layout changes', async () => {
+      useAndroidLibrary();
+      await renderScreen();
+      expect(screen.getByRole('header', { name: 'Videos' })).toBeOnTheScreen();
+
+      await act(async () => updateSettings({ libraryLayout: 'together' }));
+
+      expect(screen.getByRole('header', { name: 'Library' })).toBeOnTheScreen();
+      expect(getFolders).toHaveBeenLastCalledWith('audio');
+    });
   });
 });

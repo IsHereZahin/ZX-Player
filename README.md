@@ -1,6 +1,6 @@
 # ZX Player
 
-Offline local video player for Android and iOS, built with React Native (New Architecture), TypeScript, `react-native-video` and `react-native-gesture-handler`.
+Offline local video and audio player for Android and iOS, built with React Native (New Architecture), TypeScript, `react-native-video` and `react-native-gesture-handler`.
 
 - **App name:** ZX Player
 - **Bundle / application ID:** `com.isherezahin.zxplayer`
@@ -11,15 +11,16 @@ The UI is built on one brand colour (blue), with light and dark themes. The them
 
 ### Library
 
-Bottom tabs: Library · Recent · Settings.
+Bottom tabs: Videos · Audio · Recent · Settings. With **Settings → Audio and video → Together**, the tabs become Library · Recent · Settings, and each folder lists its videos and audio side by side.
 
-- Folders from the device media library (Android MediaStore buckets, iOS Photos albums) plus "All videos", with a **Continue watching** rail for unfinished videos.
+- Folders from the device media library (Android MediaStore buckets, iOS Photos albums) plus "All videos" / "All audio", with a **Continue watching** (or **Continue listening**) rail for unfinished items.
+- **Audio** (Android): music, recordings and other audio files with album art and title / artist / album tags. iOS apps cannot list the device's audio files, so iOS shows videos only.
 - Folder view in **list or grid**, **sorting** by date, name (natural order, so "Episode 2" comes before "Episode 10"), duration or size, and **Play all**.
 - Per-video menu: resume or play from the beginning, mark as watched or unwatched, video details, remove from history.
-- **Search** across the whole library by file name, including non-Latin titles.
+- **Search** across the whole library by file name (and title, artist or album for audio), including non-Latin titles.
 - **Recent** tab: unfinished and recently played videos, with progress bars and "12 min left".
 - Thumbnails show a watch-progress bar. The most recently played video is highlighted.
-- Permission flow: Android 13+ granular video access, Android 14+ "selected videos", legacy storage on Android 12 and below, and Photos access on iOS. Denied and blocked states link to Settings.
+- Permission flow: Android 13+ granular video and audio access, Android 14+ "selected videos", legacy storage on Android 12 and below, and Photos access on iOS. Denied and blocked states link to Settings.
 
 ### Player
 
@@ -29,6 +30,7 @@ Bottom tabs: Library · Recent · Settings.
 - **Audio track** and **embedded subtitle track** selection. **External subtitles** (`.srt`, `.ass`, `.ssa`) with delay adjustment.
 - **Lock screen** controls, **sleep timer** (timed or end of video), **picture-in-picture**, **background play** with notification controls (optional).
 - Opens in landscape for wide videos and portrait for tall ones; the rotate button switches.
+- **Audio mode**: album art on a blurred backdrop with title and artist. Controls stay on screen, and playback always continues in the background with notification controls.
 - Aspect modes, auto-hiding controls, buffering and error states (retry, or skip to the next video).
 
 ### Gestures
@@ -47,7 +49,7 @@ Each gesture can be turned off in Settings.
 
 ### Settings
 
-Saved on the device: theme (system, light, dark), resume playback, auto-play next, background play, skip interval, default aspect ratio, each gesture, subtitle size and background, clear watch history.
+Saved on the device: theme (system, light, dark), audio and video in separate tabs or together, resume playback, auto-play next, background play, skip interval, default aspect ratio, each gesture, subtitle size and background, clear watch history.
 
 ### Aspect modes
 
@@ -152,32 +154,41 @@ src/
     icons.ts                  Per-icon Lucide imports
   test/                       Fixtures, navigation doubles, store reset
 modules/zxplayer-brightness/  In-repo TurboModule for screen brightness (Kotlin + Obj-C++)
-modules/zxplayer-media/       In-repo TurboModule for the Android video library and thumbnails (Kotlin)
+modules/zxplayer-media/       In-repo TurboModule for the Android video / audio library and thumbnails (Kotlin)
 __mocks__/                    Jest mocks for every native module
 ```
 
 ### Native dependencies
 
-| Package                                       | Used for                                              |
-| --------------------------------------------- | ----------------------------------------------------- |
-| `react-native-video`                          | Playback (ExoPlayer / AVPlayer)                       |
-| `react-native-gesture-handler` (v3 hooks API) | Player and scrub-bar gestures                         |
-| `@react-native-camera-roll/camera-roll`       | Media scanning on iOS; `ph://` thumbnails             |
-| `react-native-volume-manager`                 | Media volume without the system HUD                   |
-| `@react-native-documents/picker`              | Picking subtitle files                                |
-| `@react-native-async-storage/async-storage`   | Saved settings, watch history, library preferences    |
-| `react-native-svg` + `lucide-react-native`    | Icons and gradient scrims                             |
-| `@react-navigation/bottom-tabs`               | Library / Recent / Settings tabs                      |
-| `zxplayer-brightness` (local)                 | Window brightness (Android) / screen brightness (iOS) |
-| `zxplayer-media` (local)                      | Android video library scan and system thumbnails      |
+| Package                                       | Used for                                                |
+| --------------------------------------------- | ------------------------------------------------------- |
+| `react-native-video`                          | Playback (ExoPlayer / AVPlayer)                         |
+| `react-native-gesture-handler` (v3 hooks API) | Player and scrub-bar gestures                           |
+| `@react-native-camera-roll/camera-roll`       | Media scanning on iOS; `ph://` thumbnails               |
+| `react-native-volume-manager`                 | Media volume without the system HUD                     |
+| `@react-native-documents/picker`              | Picking subtitle files                                  |
+| `@react-native-async-storage/async-storage`   | Saved settings, watch history, library preferences      |
+| `react-native-svg` + `lucide-react-native`    | Icons and gradient scrims                               |
+| `@react-navigation/bottom-tabs`               | Library / Recent / Settings tabs                        |
+| `zxplayer-brightness` (local)                 | Window brightness (Android) / screen brightness (iOS)   |
+| `zxplayer-media` (local)                      | Android video / audio library and thumbnails, album art |
 
 Icons are imported one module at a time from `src/shared/icons.ts`, because Metro would otherwise bundle every Lucide icon. Some Lucide names (e.g. `history`) exist only as type aliases, so `src/shared/__tests__/icons.test.ts` checks that each import has a runtime module.
 
 Background play uses react-native-video's media-session service. It is declared in `AndroidManifest.xml` together with the foreground-service and notification permissions; iOS uses the `audio` background mode.
 
-On Android the library comes from `zxplayer-media`, which reads names, sizes, durations and resolutions straight from MediaStore columns. It loads thumbnails from the system thumbnail cache and keeps a JPEG copy in the app cache. No video file is opened while scanning, so large libraries list quickly. iOS, and Android builds without the module, use camera-roll.
+On Android the library comes from `zxplayer-media`, which reads names, sizes, durations, resolutions and audio tags straight from MediaStore columns. It loads thumbnails from the system thumbnail cache and keeps a JPEG copy in the app cache. No video file is opened while scanning, so large libraries list quickly. iOS, and Android builds without the module, use camera-roll.
 
 Brightness on Android uses a window override, so it only affects ZX Player and needs no `WRITE_SETTINGS` permission. On iOS brightness is device-wide, so the original level is restored when the player closes or the app is backgrounded.
+
+## Performance
+
+What keeps large libraries and playback smooth, and what to preserve when changing them:
+
+- **Library scan:** on Android, `zxplayer-media` reads MediaStore columns in pages of 250 and never opens a file. camera-roll, kept for iOS, opens every video to read its duration.
+- **Thumbnails:** system thumbnails (`loadThumbnail`) on four threads, cached as JPEGs in the app cache. The queue starts the newest request first, so on-screen rows win, and rows scrolled away cancel their pending requests.
+- **Lists:** rows are memoised with stable callbacks: `useVideoActions` reads the queue through a ref, so a folder loading page by page doesn't re-render visible rows. Windowing is tuned in `src/shared/utils/listTuning.ts`, and images skip Android's fade-in.
+- **Player:** the playback position lives in a small store (`playbackClock.ts`), not React state. Only the seek bar and file subtitles re-render four times a second. Local files start on a short ExoPlayer buffer (0.5 s, 1 s after a seek).
 
 ## Testing
 
@@ -193,6 +204,6 @@ Gestures are driven through gesture-handler's `createGestureController`. Native 
 ## Known limitations
 
 - Subtitle files are read as UTF-8; other encodings (e.g. Windows-1252) show garbled characters.
-- Only videos indexed by the system media library are listed. On iOS that means the Photos library, not files stored in the Files app.
+- Only media indexed by the system media library is listed. On iOS that means videos in the Photos library, not files stored in the Files app, and no audio.
 - Image-based embedded subtitles (PGS, VobSub) depend on the platform player's support.
 - Background play, picture-in-picture and track switching depend on native player behaviour. They have not been exercised on a physical device as part of this test suite.

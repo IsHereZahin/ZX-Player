@@ -12,6 +12,7 @@ import {
 
 const {
   READ_MEDIA_VIDEO,
+  READ_MEDIA_AUDIO,
   READ_MEDIA_VISUAL_USER_SELECTED,
   READ_EXTERNAL_STORAGE,
 } = PermissionsAndroid.PERMISSIONS;
@@ -46,6 +47,12 @@ describe('iOS', () => {
       'limited',
     );
     await expect(requestMediaPermission()).resolves.toBe('limited');
+  });
+
+  it('reports the audio library as unavailable', async () => {
+    await expect(checkMediaPermission('audio')).resolves.toBe('unavailable');
+    await expect(requestMediaPermission('audio')).resolves.toBe('unavailable');
+    expect(iosRequestReadWriteGalleryPermission).not.toHaveBeenCalled();
   });
 });
 
@@ -101,6 +108,56 @@ describe('Android 14+', () => {
       .spyOn(PermissionsAndroid, 'requestMultiple')
       .mockResolvedValue(results as never);
     await expect(requestMediaPermission()).resolves.toBe(expected);
+  });
+});
+
+describe('Android 14+ audio', () => {
+  beforeEach(() => useAndroid(34));
+
+  it('asks only for audio access, which has no partial option', async () => {
+    const request = jest
+      .spyOn(PermissionsAndroid, 'requestMultiple')
+      .mockResolvedValue({ [READ_MEDIA_AUDIO]: GRANTED } as never);
+
+    await expect(requestMediaPermission('audio')).resolves.toBe('granted');
+    expect(request).toHaveBeenCalledWith([READ_MEDIA_AUDIO]);
+  });
+
+  it('asks for video and audio together for a combined library', async () => {
+    const request = jest
+      .spyOn(PermissionsAndroid, 'requestMultiple')
+      .mockResolvedValue({
+        [READ_MEDIA_VIDEO]: GRANTED,
+        [READ_MEDIA_AUDIO]: GRANTED,
+      } as never);
+
+    await expect(requestMediaPermission('all')).resolves.toBe('granted');
+    expect(request).toHaveBeenCalledWith([
+      READ_MEDIA_VIDEO,
+      READ_MEDIA_AUDIO,
+      READ_MEDIA_VISUAL_USER_SELECTED,
+    ]);
+  });
+
+  it.each([
+    [{ [READ_MEDIA_VIDEO]: GRANTED, [READ_MEDIA_AUDIO]: DENIED }, 'limited'],
+    [
+      { [READ_MEDIA_VIDEO]: DENIED, [READ_MEDIA_AUDIO]: NEVER_ASK_AGAIN },
+      'blocked',
+    ],
+    [{ [READ_MEDIA_VIDEO]: DENIED, [READ_MEDIA_AUDIO]: DENIED }, 'denied'],
+  ])('maps combined request results %p to %p', async (results, expected) => {
+    jest
+      .spyOn(PermissionsAndroid, 'requestMultiple')
+      .mockResolvedValue(results as never);
+    await expect(requestMediaPermission('all')).resolves.toBe(expected);
+  });
+
+  it('treats one granted kind of a combined library as partial access', async () => {
+    jest
+      .spyOn(PermissionsAndroid, 'check')
+      .mockImplementation(async permission => permission === READ_MEDIA_AUDIO);
+    await expect(checkMediaPermission('all')).resolves.toBe('limited');
   });
 });
 

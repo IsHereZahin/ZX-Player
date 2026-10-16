@@ -11,6 +11,7 @@ import { makeStyles } from '../../shared/theming';
 import { MEDIA_LIST_TUNING } from '../../shared/utils/listTuning';
 import { VideoRow } from '../library/components/VideoRow';
 import { useVideoActions } from '../library/hooks/useVideoActions';
+import { isAudioLibrarySupported } from '../library/services/mediaLibrary';
 import type { VideoItem } from '../library/types';
 import { clearHistory, isInProgress, useHistoryList } from './watchHistory';
 
@@ -77,7 +78,11 @@ export function RecentScreen(_props: Props) {
         <EmptyState
           icon={HistoryIcon}
           title="Nothing watched yet"
-          message="Videos you play appear here, so you can pick up right where you left off."
+          message={
+            isAudioLibrarySupported()
+              ? 'Videos and audio you play appear here, so you can pick up right where you left off.'
+              : 'Videos you play appear here, so you can pick up right where you left off.'
+          }
           testID="recent-empty"
         />
       ) : (

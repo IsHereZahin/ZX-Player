@@ -15,8 +15,13 @@ export type SubtitleSize = (typeof SUBTITLE_SIZES)[number];
 export const APPEARANCES = ['system', 'light', 'dark'] as const;
 export type Appearance = (typeof APPEARANCES)[number];
 
+/** Audio in its own tab, or together with videos in the Library tab. */
+export const LIBRARY_LAYOUTS = ['separate', 'together'] as const;
+export type LibraryLayout = (typeof LIBRARY_LAYOUTS)[number];
+
 export interface Settings {
   appearance: Appearance;
+  libraryLayout: LibraryLayout;
   resumePlayback: boolean;
   autoPlayNext: boolean;
   backgroundPlay: boolean;
@@ -33,6 +38,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   appearance: 'system',
+  libraryLayout: 'separate',
   resumePlayback: true,
   autoPlayNext: true,
   backgroundPlay: false,
@@ -70,6 +76,7 @@ export function parseSettings(raw: unknown): Settings {
 
   return {
     appearance: oneOf('appearance', APPEARANCES),
+    libraryLayout: oneOf('libraryLayout', LIBRARY_LAYOUTS),
     resumePlayback: bool('resumePlayback'),
     autoPlayNext: bool('autoPlayNext'),
     backgroundPlay: bool('backgroundPlay'),

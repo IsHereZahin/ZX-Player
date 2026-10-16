@@ -31,6 +31,8 @@ import { Scrim } from './Scrim';
 import { SeekBar } from './SeekBar';
 
 export interface PlayerControlsProps {
+  /** Audio has no picture: no subtitles, aspect, rotation, PiP or lock, and the transport sits low. */
+  mode: 'video' | 'audio';
   title: string;
   /** e.g. "3 of 12" when playing through a list. */
   queueLabel: string | null;
@@ -66,6 +68,8 @@ export interface PlayerControlsProps {
  */
 export function PlayerControls(props: PlayerControlsProps) {
   const insets = useSafeAreaInsets();
+  const isAudio = props.mode === 'audio';
+  const itemNoun = isAudio ? 'track' : 'video';
   const sidePadding = {
     paddingLeft: Math.max(insets.left, spacing.md),
     paddingRight: Math.max(insets.right, spacing.md),
@@ -102,14 +106,16 @@ export function PlayerControls(props: PlayerControlsProps) {
             <Text style={styles.queue}>{props.queueLabel}</Text>
           ) : null}
         </View>
-        <IconButton
-          icon={CaptionsIcon}
-          variant="overlay"
-          active={props.subtitlesActive}
-          accessibilityLabel="Subtitles"
-          onPress={props.onOpenSubtitles}
-          testID="subtitles-button"
-        />
+        {isAudio ? null : (
+          <IconButton
+            icon={CaptionsIcon}
+            variant="overlay"
+            active={props.subtitlesActive}
+            accessibilityLabel="Subtitles"
+            onPress={props.onOpenSubtitles}
+            testID="subtitles-button"
+          />
+        )}
         {props.showAudioTracks ? (
           <IconButton
             icon={AudioLinesIcon}
@@ -148,11 +154,14 @@ export function PlayerControls(props: PlayerControlsProps) {
         />
       </View>
 
-      <View style={styles.center} pointerEvents="box-none">
+      <View
+        style={[styles.center, isAudio && styles.centerAudio]}
+        pointerEvents="box-none"
+      >
         <IconButton
           icon={SkipBackIcon}
           variant="overlay"
-          accessibilityLabel="Previous video"
+          accessibilityLabel={`Previous ${itemNoun}`}
           onPress={props.onPrevious}
           disabled={!props.hasPrevious}
           testID="previous-button"
@@ -182,7 +191,7 @@ export function PlayerControls(props: PlayerControlsProps) {
         <IconButton
           icon={SkipForwardIcon}
           variant="overlay"
-          accessibilityLabel="Next video"
+          accessibilityLabel={`Next ${itemNoun}`}
           onPress={props.onNext}
           disabled={!props.hasNext}
           testID="next-button"
@@ -203,35 +212,37 @@ export function PlayerControls(props: PlayerControlsProps) {
           onSeek={props.onSeek}
           onScrubbingChange={props.onScrubbingChange}
         />
-        <View style={styles.actions}>
-          <IconButton
-            icon={LockIcon}
-            variant="ghost"
-            accessibilityLabel="Lock controls"
-            onPress={props.onLock}
-            testID="lock-button"
-          />
-          <View style={styles.actionsRight}>
+        {isAudio ? null : (
+          <View style={styles.actions}>
             <IconButton
-              icon={RatioIcon}
-              accessibilityLabel="Change aspect ratio"
-              onPress={props.onCycleAspect}
-              testID="aspect-button"
+              icon={LockIcon}
+              variant="ghost"
+              accessibilityLabel="Lock controls"
+              onPress={props.onLock}
+              testID="lock-button"
             />
-            <IconButton
-              icon={ScreenRotationIcon}
-              accessibilityLabel="Rotate screen"
-              onPress={props.onRotate}
-              testID="rotate-button"
-            />
-            <IconButton
-              icon={PictureInPictureIcon}
-              accessibilityLabel="Picture in picture"
-              onPress={props.onPictureInPicture}
-              testID="pip-button"
-            />
+            <View style={styles.actionsRight}>
+              <IconButton
+                icon={RatioIcon}
+                accessibilityLabel="Change aspect ratio"
+                onPress={props.onCycleAspect}
+                testID="aspect-button"
+              />
+              <IconButton
+                icon={ScreenRotationIcon}
+                accessibilityLabel="Rotate screen"
+                onPress={props.onRotate}
+                testID="rotate-button"
+              />
+              <IconButton
+                icon={PictureInPictureIcon}
+                accessibilityLabel="Picture in picture"
+                onPress={props.onPictureInPicture}
+                testID="pip-button"
+              />
+            </View>
           </View>
-        </View>
+        )}
       </View>
     </View>
   );
@@ -286,6 +297,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xl,
+  },
+  centerAudio: {
+    alignItems: 'flex-end',
+    paddingBottom: spacing.lg,
   },
   bottomBar: {
     gap: spacing.xs,

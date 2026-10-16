@@ -1,10 +1,12 @@
 import NativeZxplayerMedia from './NativeZxplayerMedia';
 
 export type {
-  NativeVideo,
-  NativeVideoFolder,
-  NativeVideoPage,
+  NativeMediaFolder,
+  NativeMediaItem,
+  NativeMediaPage,
 } from './NativeZxplayerMedia';
+
+export type MediaKind = 'video' | 'audio';
 
 export const isNativeMediaAvailable = NativeZxplayerMedia != null;
 
@@ -15,22 +17,19 @@ function requireModule() {
   return NativeZxplayerMedia;
 }
 
-export function getVideoFolders() {
-  return requireModule().getVideoFolders();
+export function getFolders(kind: MediaKind) {
+  return requireModule().getFolders(kind);
 }
 
-export function getVideos(
+export function getMedia(
+  kind: MediaKind,
   bucketId: string | null,
   offset: number,
   limit: number,
 ) {
-  return requireModule().getVideos(bucketId, offset, limit);
+  return requireModule().getMedia(kind, bucketId, offset, limit);
 }
 
-export function getThumbnail(
-  videoId: string,
-  cacheKey: string,
-  maxSize: number,
-) {
-  return requireModule().getThumbnail(videoId, cacheKey, maxSize);
+export function getThumbnail(uri: string, cacheKey: string, maxSize: number) {
+  return requireModule().getThumbnail(uri, cacheKey, maxSize);
 }

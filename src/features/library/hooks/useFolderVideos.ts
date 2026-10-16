@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { reportError } from '../../../shared/logger';
-import { fetchAllFolderVideos } from '../services/mediaLibrary';
+import { fetchAllFolderMedia } from '../services/mediaLibrary';
 import type { VideoFolder, VideoItem } from '../types';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -31,7 +31,7 @@ export function useFolderVideos(folder: VideoFolder) {
       }
 
       try {
-        await fetchAllFolderVideos(
+        await fetchAllFolderMedia(
           folder,
           soFar => {
             if (isStale()) {

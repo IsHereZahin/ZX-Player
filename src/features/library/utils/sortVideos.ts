@@ -24,10 +24,13 @@ const nameCollator = new Intl.Collator(undefined, {
   sensitivity: 'base',
 });
 
+/** The name shown in lists: an audio file's tag title when it has one. */
+const sortName = (item: VideoItem) => item.title || item.fileName;
+
 function compareBy(key: SortKey, a: VideoItem, b: VideoItem): number {
   switch (key) {
     case 'name':
-      return nameCollator.compare(a.fileName, b.fileName);
+      return nameCollator.compare(sortName(a), sortName(b));
     case 'duration':
       return a.durationSec - b.durationSec;
     case 'size':
@@ -47,7 +50,7 @@ export function sortVideos(
   return [...videos].sort(
     (a, b) =>
       factor * compareBy(key, a, b) ||
-      nameCollator.compare(a.fileName, b.fileName),
+      nameCollator.compare(sortName(a), sortName(b)),
   );
 }
 
@@ -61,7 +64,11 @@ export function filterVideos(
     return [];
   }
   return videos.filter(video => {
-    const name = video.fileName.toLocaleLowerCase();
-    return words.every(word => name.includes(word));
+    // Audio also matches on its tags (title, artist, album).
+    const haystack = [video.fileName, video.title, video.artist, video.album]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase();
+    return words.every(word => haystack.includes(word));
   });
 }

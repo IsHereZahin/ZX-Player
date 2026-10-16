@@ -5,25 +5,28 @@ import { spacing, typography } from '../../../shared/theme';
 import { makeStyles } from '../../../shared/theming';
 import { formatTimeLeft } from '../../../shared/utils/format';
 import { watchProgress, type WatchEntry } from '../../history/watchHistory';
-import { describeFileName } from '../services/mediaLibrary';
+import { mediaTitle } from '../services/mediaLibrary';
 import { VideoThumbnail } from './VideoThumbnail';
 
 const CARD_WIDTH = 208;
 
 interface ContinueWatchingRailProps {
+  /** e.g. "Continue watching" or "Continue listening". */
+  title: string;
   entries: WatchEntry[];
   onPlay: (index: number) => void;
 }
 
-/** Horizontal strip of unfinished videos at the top of the library. */
+/** Horizontal strip of unfinished items at the top of the library. */
 export function ContinueWatchingRail({
+  title: heading,
   entries,
   onPlay,
 }: ContinueWatchingRailProps) {
   const styles = useStyles();
   const renderItem = useCallback(
     ({ item, index }: { item: WatchEntry; index: number }) => {
-      const { title } = describeFileName(item.video.fileName);
+      const title = mediaTitle(item.video);
       return (
         <Pressable
           accessibilityRole="button"
@@ -52,7 +55,7 @@ export function ContinueWatchingRail({
   return (
     <View style={styles.container}>
       <Text style={styles.heading} accessibilityRole="header">
-        Continue watching
+        {heading}
       </Text>
       <FlatList
         horizontal

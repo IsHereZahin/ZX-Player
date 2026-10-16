@@ -1,7 +1,9 @@
 package com.isherezahin.zxplayer.media
 
 import android.content.ContentUris
+import android.database.Cursor
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -17,11 +19,31 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /**
- * Reads the video library straight from MediaStore columns (no file is opened), and
- * thumbnails from the system thumbnail cache, the way native players do.
+ * Reads the video and audio library straight from MediaStore columns (no file is opened),
+ * and thumbnails / album art from the system thumbnail cache, the way native players do.
  */
 class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
     NativeZxplayerMediaSpec(reactContext) {
+
+  private enum class Kind(val uri: Uri) {
+    VIDEO(MediaStore.Video.Media.EXTERNAL_CONTENT_URI),
+    AUDIO(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI);
+
+    /** Audio rows only gained bucket columns in Android 10; before that the path decides. */
+    val hasBucketColumns: Boolean
+      get() = this == VIDEO || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+
+    companion object {
+      fun of(value: String): Kind =
+          when (value) {
+            "video" -> VIDEO
+            "audio" -> AUDIO
+            else -> throw IllegalArgumentException("Unknown media kind: $value")
+          }
+    }
+  }
+
+  private data class Bucket(val id: String, val name: String)
 
   // Queries and thumbnails get their own threads so a long scan never delays thumbnails.
   private val queryExecutor: ExecutorService = Executors.newSingleThreadExecutor()
@@ -31,28 +53,21 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
   private val resolver
     get() = reactApplicationContext.contentResolver
 
-  override fun getVideoFolders(promise: Promise) {
+  override fun getFolders(kind: String, promise: Promise) {
     queryExecutor.execute {
       try {
+        val source = Kind.of(kind)
+        val projection =
+            if (source.hasBucketColumns) arrayOf(BUCKET_ID, BUCKET_NAME) else arrayOf(DATA)
         val counts = LinkedHashMap<String, Pair<String, Int>>()
-        resolver
-            .query(
-                VIDEO_URI,
-                arrayOf(BUCKET_ID, BUCKET_NAME),
-                null,
-                null,
-                null,
-            )
-            ?.use { cursor ->
-              val idColumn = cursor.getColumnIndexOrThrow(BUCKET_ID)
-              val nameColumn = cursor.getColumnIndexOrThrow(BUCKET_NAME)
-              while (cursor.moveToNext()) {
-                val id = cursor.getString(idColumn) ?: continue
-                val name = cursor.getString(nameColumn) ?: UNKNOWN_FOLDER
-                val previous = counts[id]
-                counts[id] = Pair(previous?.first ?: name, (previous?.second ?: 0) + 1)
-              }
-            }
+        resolver.query(source.uri, projection, null, null, null)?.use { cursor ->
+          val reader = BucketReader(cursor, source)
+          while (cursor.moveToNext()) {
+            val bucket = reader.read() ?: continue
+            val previous = counts[bucket.id]
+            counts[bucket.id] = Pair(previous?.first ?: bucket.name, (previous?.second ?: 0) + 1)
+          }
+        }
 
         val folders = Arguments.createArray()
         for ((id, entry) in counts) {
@@ -65,54 +80,83 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
         }
         promise.resolve(folders)
       } catch (error: Exception) {
-        promise.reject("E_MEDIA_QUERY", "Could not read video folders", error)
+        promise.reject("E_MEDIA_QUERY", "Could not read media folders", error)
       }
     }
   }
 
-  override fun getVideos(bucketId: String?, offset: Double, limit: Double, promise: Promise) {
+  override fun getMedia(
+      kind: String,
+      bucketId: String?,
+      offset: Double,
+      limit: Double,
+      promise: Promise
+  ) {
     queryExecutor.execute {
       try {
-        val projection = mutableListOf(ID, NAME, SIZE, DURATION, WIDTH, HEIGHT, MODIFIED)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-          projection.add(ORIENTATION)
+        val source = Kind.of(kind)
+        val projection = mutableListOf(ID, NAME, SIZE, DURATION, MODIFIED)
+        if (source == Kind.VIDEO) {
+          projection += listOf(WIDTH, HEIGHT)
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) projection += ORIENTATION
+        } else {
+          projection += listOf(TITLE, ARTIST, ALBUM)
         }
-        val selection = if (bucketId != null) "$BUCKET_ID = ?" else null
-        val selectionArgs = if (bucketId != null) arrayOf(bucketId) else null
+        // Without bucket columns, rows are matched to the folder by their path instead.
+        val filterByPath = bucketId != null && !source.hasBucketColumns
+        if (filterByPath) projection += DATA
+        val selection = if (bucketId != null && !filterByPath) "$BUCKET_ID = ?" else null
+        val selectionArgs = if (selection != null) arrayOf(bucketId) else null
         val start = offset.toInt().coerceAtLeast(0)
         val count = limit.toInt().coerceAtLeast(1)
 
-        val videos = Arguments.createArray()
+        val items = Arguments.createArray()
         var hasMore = false
         resolver
-            .query(VIDEO_URI, projection.toTypedArray(), selection, selectionArgs, "$MODIFIED DESC")
+            .query(
+                source.uri, projection.toTypedArray(), selection, selectionArgs, "$MODIFIED DESC")
             ?.use { cursor ->
-              if (start > 0 && !cursor.moveToPosition(start - 1)) {
+              if (!filterByPath && start > 0 && !cursor.moveToPosition(start - 1)) {
                 return@use
               }
-              val columns = Columns(cursor.columnNames.toList())
+              val columns = Columns(cursor)
+              val reader = BucketReader(cursor, source)
+              var skipped = if (filterByPath) 0 else start
               var read = 0
-              while (read < count && cursor.moveToNext()) {
-                videos.pushMap(readVideo(cursor, columns))
+              while (cursor.moveToNext()) {
+                if (filterByPath && reader.read()?.id != bucketId) continue
+                if (skipped < start) {
+                  skipped += 1
+                  continue
+                }
+                if (read == count) {
+                  hasMore = true
+                  break
+                }
+                items.pushMap(readItem(cursor, columns, source))
                 read += 1
               }
-              hasMore = cursor.position < cursor.count - 1
             }
 
         promise.resolve(
             Arguments.createMap().apply {
-              putArray("videos", videos)
+              putArray("items", items)
               putBoolean("hasMore", hasMore)
             })
       } catch (error: Exception) {
-        promise.reject("E_MEDIA_QUERY", "Could not read videos", error)
+        promise.reject("E_MEDIA_QUERY", "Could not read media", error)
       }
     }
   }
 
-  override fun getThumbnail(videoId: String, cacheKey: String, maxSize: Double, promise: Promise) {
+  override fun getThumbnail(uri: String, cacheKey: String, maxSize: Double, promise: Promise) {
     thumbnailExecutor.execute {
       try {
+        val contentUri = Uri.parse(uri)
+        // Only media-library items: never let JS point this at another app's provider.
+        if (contentUri.scheme != "content" || contentUri.authority != MediaStore.AUTHORITY) {
+          throw IllegalArgumentException("Not a media library item")
+        }
         val directory = File(reactApplicationContext.cacheDir, "thumbnails").apply { mkdirs() }
         val safeKey = cacheKey.replace(UNSAFE_FILE_CHARS, "_")
         val target = File(directory, "$safeKey.jpg")
@@ -121,20 +165,15 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
           return@execute
         }
 
-        val id = videoId.toLong()
         val edge = maxSize.toInt().coerceIn(MIN_EDGE, MAX_EDGE)
-        val bitmap =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-              resolver.loadThumbnail(ContentUris.withAppendedId(VIDEO_URI, id), Size(edge, edge), null)
-            } else {
-              @Suppress("DEPRECATION")
-              MediaStore.Video.Thumbnails.getThumbnail(
-                  resolver, id, MediaStore.Video.Thumbnails.MINI_KIND, null)
-                  ?: throw IOException("No thumbnail for video $id")
-            }
+        val bitmap = loadArtwork(contentUri, edge)
+        if (bitmap == null) {
+          promise.resolve(null)
+          return@execute
+        }
 
         // Write to a unique temporary file first so a half-written JPEG is never served, even
-        // when two rows request the same video at once.
+        // when two rows request the same item at once.
         val partial = File.createTempFile(safeKey, ".tmp", directory)
         FileOutputStream(partial).use { stream ->
           bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, stream)
@@ -142,7 +181,7 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
         bitmap.recycle()
         if (!partial.renameTo(target)) {
           partial.delete()
-          throw IOException("Could not store thumbnail for video $id")
+          throw IOException("Could not store thumbnail for $uri")
         }
         promise.resolve(Uri.fromFile(target).toString())
       } catch (error: Exception) {
@@ -157,21 +196,89 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
     super.invalidate()
   }
 
-  private class Columns(names: List<String>) {
-    val id = names.indexOf(ID)
-    val name = names.indexOf(NAME)
-    val size = names.indexOf(SIZE)
-    val duration = names.indexOf(DURATION)
-    val width = names.indexOf(WIDTH)
-    val height = names.indexOf(HEIGHT)
-    val modified = names.indexOf(MODIFIED)
-    val orientation = names.indexOf(ORIENTATION)
+  /** Video frame or embedded album art; null when there is none (common for audio). */
+  private fun loadArtwork(uri: Uri, edge: Int): Bitmap? {
+    val isAudio = uri.pathSegments.contains("audio")
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      return try {
+        resolver.loadThumbnail(uri, Size(edge, edge), null)
+      } catch (missing: IOException) {
+        null
+      }
+    }
+    val id = ContentUris.parseId(uri)
+    return if (isAudio) {
+      legacyAlbumArt(id, edge)
+    } else {
+      @Suppress("DEPRECATION")
+      MediaStore.Video.Thumbnails.getThumbnail(
+          resolver, id, MediaStore.Video.Thumbnails.MINI_KIND, null)
+    }
   }
 
-  private fun readVideo(cursor: android.database.Cursor, columns: Columns): WritableMap {
+  /** Album art before Android 10 lives in a separate album-art table. */
+  private fun legacyAlbumArt(audioId: Long, edge: Int): Bitmap? {
+    val albumId =
+        resolver
+            .query(
+                ContentUris.withAppendedId(Kind.AUDIO.uri, audioId),
+                arrayOf(MediaStore.Audio.Media.ALBUM_ID),
+                null,
+                null,
+                null)
+            ?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else null } ?: return null
+    val artUri = ContentUris.withAppendedId(LEGACY_ALBUM_ART_URI, albumId)
+    return try {
+      val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+      resolver.openInputStream(artUri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+      var sample = 1
+      while (bounds.outWidth / (sample * 2) >= edge && bounds.outHeight / (sample * 2) >= edge) {
+        sample *= 2
+      }
+      val options = BitmapFactory.Options().apply { inSampleSize = sample }
+      resolver.openInputStream(artUri)?.use { BitmapFactory.decodeStream(it, null, options) }
+    } catch (missing: IOException) {
+      null
+    }
+  }
+
+  /** Folder of the current row, from bucket columns or (older audio rows) the file path. */
+  private class BucketReader(private val cursor: Cursor, kind: Kind) {
+    private val byColumns = kind.hasBucketColumns
+    private val idColumn = cursor.getColumnIndex(BUCKET_ID)
+    private val nameColumn = cursor.getColumnIndex(BUCKET_NAME)
+    private val dataColumn = cursor.getColumnIndex(DATA)
+
+    fun read(): Bucket? {
+      if (byColumns) {
+        val id = cursor.getString(idColumn) ?: return null
+        return Bucket(id, cursor.getString(nameColumn) ?: UNKNOWN_FOLDER)
+      }
+      val path = cursor.getString(dataColumn) ?: return null
+      val parent = File(path).parentFile ?: return null
+      // MediaProvider derives bucket ids the same way, so audio and video folders line up.
+      return Bucket(parent.path.lowercase().hashCode().toString(), parent.name)
+    }
+  }
+
+  private class Columns(cursor: Cursor) {
+    val id = cursor.getColumnIndex(ID)
+    val name = cursor.getColumnIndex(NAME)
+    val size = cursor.getColumnIndex(SIZE)
+    val duration = cursor.getColumnIndex(DURATION)
+    val modified = cursor.getColumnIndex(MODIFIED)
+    val width = cursor.getColumnIndex(WIDTH)
+    val height = cursor.getColumnIndex(HEIGHT)
+    val orientation = cursor.getColumnIndex(ORIENTATION)
+    val title = cursor.getColumnIndex(TITLE)
+    val artist = cursor.getColumnIndex(ARTIST)
+    val album = cursor.getColumnIndex(ALBUM)
+  }
+
+  private fun readItem(cursor: Cursor, columns: Columns, kind: Kind): WritableMap {
     val id = cursor.getLong(columns.id)
-    var width = cursor.getInt(columns.width)
-    var height = cursor.getInt(columns.height)
+    var width = if (columns.width >= 0) cursor.getInt(columns.width) else 0
+    var height = if (columns.height >= 0) cursor.getInt(columns.height) else 0
     // Portrait recordings are stored landscape with a rotation flag.
     if (columns.orientation >= 0) {
       val rotation = cursor.getInt(columns.orientation)
@@ -183,33 +290,48 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
 
     return Arguments.createMap().apply {
       putString("id", id.toString())
-      putString("uri", ContentUris.withAppendedId(VIDEO_URI, id).toString())
-      putString("fileName", cursor.getString(columns.name) ?: "Video $id")
+      putString("uri", ContentUris.withAppendedId(kind.uri, id).toString())
+      putString("fileName", cursor.getString(columns.name) ?: "Media $id")
       if (sizeBytes > 0) putDouble("sizeBytes", sizeBytes.toDouble()) else putNull("sizeBytes")
       putDouble("durationSec", cursor.getLong(columns.duration) / 1000.0)
       putInt("width", width)
       putInt("height", height)
       putDouble("modifiedAtSec", cursor.getLong(columns.modified).toDouble())
+      putTag("title", cursor, columns.title)
+      putTag("artist", cursor, columns.artist)
+      putTag("album", cursor, columns.album)
     }
   }
 
+  private fun WritableMap.putTag(key: String, cursor: Cursor, column: Int) {
+    val value = if (column >= 0) cursor.getString(column)?.trim() else null
+    // MediaStore reports missing tags as "<unknown>".
+    if (value.isNullOrEmpty() || value == MediaStore.UNKNOWN_STRING) putNull(key)
+    else putString(key, value)
+  }
+
   private companion object {
-    val VIDEO_URI: Uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-    const val ID = MediaStore.Video.Media._ID
-    const val NAME = MediaStore.Video.Media.DISPLAY_NAME
-    const val SIZE = MediaStore.Video.Media.SIZE
-    const val DURATION = MediaStore.Video.Media.DURATION
-    const val WIDTH = MediaStore.Video.Media.WIDTH
-    const val HEIGHT = MediaStore.Video.Media.HEIGHT
-    const val MODIFIED = MediaStore.Video.Media.DATE_MODIFIED
+    const val ID = MediaStore.MediaColumns._ID
+    const val NAME = MediaStore.MediaColumns.DISPLAY_NAME
+    const val SIZE = MediaStore.MediaColumns.SIZE
+    const val MODIFIED = MediaStore.MediaColumns.DATE_MODIFIED
+    // Present on both tables (VideoColumns / AudioColumns) on every supported API level.
+    const val DURATION = MediaStore.Video.VideoColumns.DURATION
+    const val WIDTH = MediaStore.MediaColumns.WIDTH
+    const val HEIGHT = MediaStore.MediaColumns.HEIGHT
     const val ORIENTATION = "orientation"
-    const val BUCKET_ID = MediaStore.Video.Media.BUCKET_ID
-    const val BUCKET_NAME = MediaStore.Video.Media.BUCKET_DISPLAY_NAME
+    const val TITLE = MediaStore.Audio.AudioColumns.TITLE
+    const val ARTIST = MediaStore.Audio.AudioColumns.ARTIST
+    const val ALBUM = MediaStore.Audio.AudioColumns.ALBUM
+    const val BUCKET_ID = MediaStore.Video.VideoColumns.BUCKET_ID
+    const val BUCKET_NAME = MediaStore.Video.VideoColumns.BUCKET_DISPLAY_NAME
+    @Suppress("DEPRECATION") const val DATA = MediaStore.MediaColumns.DATA
     const val UNKNOWN_FOLDER = "Unknown folder"
     const val THUMBNAIL_THREADS = 4
     const val MIN_EDGE = 64
     const val MAX_EDGE = 1024
     const val JPEG_QUALITY = 82
+    val LEGACY_ALBUM_ART_URI: Uri = Uri.parse("content://media/external/audio/albumart")
     val UNSAFE_FILE_CHARS = Regex("[^A-Za-z0-9_-]")
   }
 }

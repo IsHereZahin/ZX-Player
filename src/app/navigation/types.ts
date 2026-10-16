@@ -5,10 +5,17 @@ import type {
 } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import type { VideoFolder, VideoItem } from '../../features/library/types';
+import type {
+  MediaScope,
+  VideoFolder,
+  VideoItem,
+} from '../../features/library/types';
 
 export type MainTabParamList = {
+  /** Videos, or videos and audio together (Settings → Audio and video). */
   Library: undefined;
+  /** Only shown while audio has its own tab. */
+  Audio: undefined;
   Recent: undefined;
   Settings: undefined;
 };
@@ -16,9 +23,9 @@ export type MainTabParamList = {
 export type RootStackParamList = {
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   FolderVideos: { folder: VideoFolder };
-  Search: undefined;
+  Search: { scope: MediaScope } | undefined;
   Player: {
-    /** Videos in play order; next/previous move through this list. */
+    /** Items in play order; next/previous move through this list. */
     queue: VideoItem[];
     startIndex: number;
     /** Ignore the saved position for the first video. */

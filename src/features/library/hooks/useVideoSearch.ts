@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { reportError } from '../../../shared/logger';
-import { loadVideoIndex } from '../services/videoIndex';
-import type { VideoItem } from '../types';
+import { loadMediaIndex } from '../services/videoIndex';
+import type { MediaScope, VideoItem } from '../types';
 import { filterVideos } from '../utils/sortVideos';
 
-/** Searches every video in the library by file name. */
-export function useVideoSearch(query: string) {
+/** Searches every item of the scope by title and file name. */
+export function useVideoSearch(query: string, scope: MediaScope) {
   const [index, setIndex] = useState<VideoItem[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -14,7 +14,7 @@ export function useVideoSearch(query: string) {
   useEffect(() => {
     let active = true;
     setFailed(false);
-    loadVideoIndex(attempt > 0).then(
+    loadMediaIndex(scope, attempt > 0).then(
       videos => {
         if (active) {
           setIndex(videos);
@@ -30,7 +30,7 @@ export function useVideoSearch(query: string) {
     return () => {
       active = false;
     };
-  }, [attempt]);
+  }, [attempt, scope]);
 
   const results = useMemo(
     () => (index ? filterVideos(index, query) : []),

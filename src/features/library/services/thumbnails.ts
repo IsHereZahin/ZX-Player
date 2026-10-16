@@ -13,38 +13,42 @@ const THUMBNAIL_MAX_EDGE = 320;
 const MAX_CONCURRENT_THUMBNAILS = 4;
 
 const queue = createTaskQueue(MAX_CONCURRENT_THUMBNAILS, { order: 'lifo' });
-const memoryCache = new Map<string, string>();
+/** A null entry records that the item has no artwork (common for audio). */
+const memoryCache = new Map<string, string | null>();
 
-function cacheKey(video: VideoItem): string {
+function cacheKey(item: VideoItem): string {
   // Including the modification time invalidates the on-disk thumbnail if the file changes.
-  return `zxplayer_${video.id}_${video.modifiedAtSec}`.replace(/[^\w-]/g, '_');
+  return `zxplayer_${item.id}_${item.modifiedAtSec}`.replace(/[^\w-]/g, '_');
 }
 
-/** Returns a thumbnail URI immediately when one is already available. */
-export function getCachedThumbnail(video: VideoItem): string | null {
-  // iOS renders `ph://` asset URIs directly via PhotoKit, which keeps its own thumbnail cache.
+/**
+ * Thumbnail (or album art) URI when already known: a string, null when the item has no
+ * artwork, or undefined when it still has to be requested.
+ */
+export function getCachedThumbnail(item: VideoItem): string | null | undefined {
   if (Platform.OS === 'ios') {
-    return video.uri;
+    // iOS renders `ph://` asset URIs directly via PhotoKit, which keeps its own cache.
+    return item.kind === 'video' ? item.uri : null;
   }
-  return memoryCache.get(cacheKey(video)) ?? null;
+  return memoryCache.get(cacheKey(item));
 }
 
-/** Fetches (or reuses the on-disk copy of) the system thumbnail for an Android video. */
-export function requestThumbnail(video: VideoItem): QueuedTask<string> {
-  const cached = getCachedThumbnail(video);
-  if (cached) {
+/** Fetches (or reuses the on-disk copy of) the system thumbnail for an Android item. */
+export function requestThumbnail(item: VideoItem): QueuedTask<string | null> {
+  const cached = getCachedThumbnail(item);
+  if (cached !== undefined) {
     return { promise: Promise.resolve(cached), cancel: () => {} };
   }
   if (!isNativeMediaAvailable) {
     return {
-      promise: Promise.reject(new Error('Video thumbnails are unavailable')),
+      promise: Promise.reject(new Error('Thumbnails are unavailable')),
       cancel: () => {},
     };
   }
 
-  const key = cacheKey(video);
+  const key = cacheKey(item);
   const task = queue.enqueue(() =>
-    getThumbnail(video.id, key, THUMBNAIL_MAX_EDGE),
+    getThumbnail(item.uri, key, THUMBNAIL_MAX_EDGE),
   );
 
   return {

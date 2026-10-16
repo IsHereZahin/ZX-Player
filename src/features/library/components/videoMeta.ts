@@ -8,26 +8,32 @@ import {
   resumePosition,
   type WatchEntry,
 } from '../../history/watchHistory';
-import { describeFileName } from '../services/mediaLibrary';
+import { describeFileName, mediaTitle } from '../services/mediaLibrary';
 import type { VideoItem } from '../types';
+
+function detailParts(item: VideoItem, extension: string | null) {
+  if (item.kind === 'audio' && (item.artist || item.album)) {
+    return [item.artist, item.album];
+  }
+  return [
+    formatResolution(item.width, item.height),
+    formatBytes(item.sizeBytes),
+    extension,
+  ];
+}
 
 /** Display strings shared by list rows, grid cards and sheets. */
 export function describeVideo(video: VideoItem, entry: WatchEntry | undefined) {
-  const { title, extension } = describeFileName(video.fileName);
-  const details = [
-    formatResolution(video.width, video.height),
-    formatBytes(video.sizeBytes),
-    extension,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const { extension } = describeFileName(video.fileName);
+  const title = mediaTitle(video);
+  const details = detailParts(video, extension).filter(Boolean).join(' · ');
 
   const resumeAt = resumePosition(entry);
   let status: string | null = null;
   if (entry && resumeAt !== null) {
     status = formatTimeLeft(entry.durationSec - resumeAt);
   } else if (entry && isFinished(entry)) {
-    status = 'Watched';
+    status = video.kind === 'audio' ? 'Played' : 'Watched';
   }
 
   return { title, details, status };

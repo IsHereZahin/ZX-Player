@@ -58,6 +58,22 @@ describe('SettingsScreen', () => {
     expect(screen.getByText('Light')).toBeOnTheScreen();
   });
 
+  it('chooses between separate and combined audio and video', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    await renderScreen();
+    expect(screen.getByText('Separate tabs')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('setting-library-layout'));
+    await fireEvent.press(screen.getByTestId('layout-option-together'));
+
+    expect(settingsStore.getState().libraryLayout).toBe('together');
+  });
+
+  it('hides the audio layout option where there is no audio library', async () => {
+    await renderScreen();
+    expect(screen.queryByTestId('setting-library-layout')).toBeNull();
+  });
+
   it('asks for notification permission when enabling background play on Android 13+', async () => {
     jest.replaceProperty(Platform, 'OS', 'android');
     jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);

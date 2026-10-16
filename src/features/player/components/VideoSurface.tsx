@@ -57,7 +57,10 @@ interface VideoSurfaceProps {
   videoRef: RefObject<VideoRef | null>;
   sourceKey: number;
   uri: string;
+  /** Labels the media notification during background play. */
   title: string;
+  artist: string;
+  artworkUri?: string;
   paused: boolean;
   rate: number;
   repeat: boolean;
@@ -80,6 +83,8 @@ export const VideoSurface = memo(function VideoSurfaceView({
   sourceKey,
   uri,
   title,
+  artist,
+  artworkUri,
   paused,
   rate,
   repeat,
@@ -96,10 +101,10 @@ export const VideoSurface = memo(function VideoSurfaceView({
   const source = useMemo(
     () => ({
       uri,
-      metadata: { title, artist: 'ZX Player' },
+      metadata: { title, artist, imageUri: artworkUri },
       bufferConfig: LOCAL_FILE_BUFFER,
     }),
-    [title, uri],
+    [artist, artworkUri, title, uri],
   );
   const layout = resolveVideoLayout(
     aspectMode,

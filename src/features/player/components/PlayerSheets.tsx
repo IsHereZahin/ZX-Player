@@ -105,6 +105,8 @@ function Tile({
 }
 
 interface MoreSheetProps extends BaseSheetProps {
+  /** Hides the picture-only options (subtitles, aspect ratio, background play). */
+  isAudio: boolean;
   speed: number;
   aspectMode: AspectMode;
   sleepLabel: string;
@@ -149,19 +151,23 @@ export function MoreSheet(props: MoreSheetProps) {
             testID="more-audio"
           />
         ) : null}
-        <Tile
-          icon={CaptionsIcon}
-          label="Subtitles"
-          onPress={props.onSubtitles}
-          testID="more-subtitles"
-        />
-        <Tile
-          icon={RatioIcon}
-          label="Aspect ratio"
-          value={ASPECT_MODE_LABELS[props.aspectMode]}
-          onPress={props.onAspect}
-          testID="more-aspect"
-        />
+        {props.isAudio ? null : (
+          <>
+            <Tile
+              icon={CaptionsIcon}
+              label="Subtitles"
+              onPress={props.onSubtitles}
+              testID="more-subtitles"
+            />
+            <Tile
+              icon={RatioIcon}
+              label="Aspect ratio"
+              value={ASPECT_MODE_LABELS[props.aspectMode]}
+              onPress={props.onAspect}
+              testID="more-aspect"
+            />
+          </>
+        )}
         <Tile
           icon={TimerIcon}
           label="Sleep timer"
@@ -178,17 +184,20 @@ export function MoreSheet(props: MoreSheetProps) {
           onPress={props.onRepeat}
           testID="more-repeat"
         />
-        <Tile
-          icon={HeadphonesIcon}
-          label="Background play"
-          value={props.backgroundPlay ? 'On' : 'Off'}
-          active={props.backgroundPlay}
-          onPress={props.onBackgroundPlay}
-          testID="more-background"
-        />
+        {/* Audio always keeps playing in the background. */}
+        {props.isAudio ? null : (
+          <Tile
+            icon={HeadphonesIcon}
+            label="Background play"
+            value={props.backgroundPlay ? 'On' : 'Off'}
+            active={props.backgroundPlay}
+            onPress={props.onBackgroundPlay}
+            testID="more-background"
+          />
+        )}
         <Tile
           icon={InfoIcon}
-          label="Video details"
+          label={props.isAudio ? 'Details' : 'Video details'}
           onPress={props.onInfo}
           testID="more-info"
         />

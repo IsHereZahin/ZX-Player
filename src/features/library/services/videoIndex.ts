@@ -1,23 +1,28 @@
-import type { VideoItem } from '../types';
-import { ALL_VIDEOS_FOLDER, fetchAllFolderVideos } from './mediaLibrary';
+import type { MediaScope, VideoItem } from '../types';
+import { allMediaFolder, fetchAllFolderMedia } from './mediaLibrary';
 
-let cached: Promise<VideoItem[]> | null = null;
+const cache = new Map<MediaScope, Promise<VideoItem[]>>();
 
 /**
- * Every video in the library, loaded once per session and shared by search. A failed load
- * is not cached, so the next call retries.
+ * Every item of a scope, loaded once per session and shared by search. A failed load is
+ * not cached, so the next call retries.
  */
-export function loadVideoIndex(forceRefresh = false): Promise<VideoItem[]> {
-  if (!cached || forceRefresh) {
-    cached = fetchAllFolderVideos(ALL_VIDEOS_FOLDER).catch(error => {
-      cached = null;
+export function loadMediaIndex(
+  scope: MediaScope,
+  forceRefresh = false,
+): Promise<VideoItem[]> {
+  let index = cache.get(scope);
+  if (!index || forceRefresh) {
+    index = fetchAllFolderMedia(allMediaFolder(scope)).catch(error => {
+      cache.delete(scope);
       throw error;
     });
+    cache.set(scope, index);
   }
-  return cached;
+  return index;
 }
 
 /** Test hook. */
 export function resetVideoIndex(): void {
-  cached = null;
+  cache.clear();
 }

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { ProgressBar } from '../../../shared/components/ProgressBar';
-import { FilmIcon } from '../../../shared/icons';
+import { FilmIcon, MusicIcon } from '../../../shared/icons';
 import { radius, spacing, typography } from '../../../shared/theme';
 import { makeStyles, useColors } from '../../../shared/theming';
 import { formatDuration } from '../../../shared/utils/format';
@@ -26,6 +26,9 @@ export function VideoThumbnail({
   const uri = useThumbnail(video);
   const [failed, setFailed] = useState(false);
   const height = Math.round((width * 9) / 16);
+  // Album art is square: it sits centred in the same 16:9 slot so mixed lists line up.
+  const isAudio = video.kind === 'audio';
+  const PlaceholderIcon = isAudio ? MusicIcon : FilmIcon;
 
   useEffect(() => setFailed(false), [uri]);
 
@@ -34,7 +37,11 @@ export function VideoThumbnail({
       {uri && !failed ? (
         <Image
           source={{ uri }}
-          style={StyleSheet.absoluteFill}
+          style={
+            isAudio
+              ? [styles.albumArt, { width: height, height }]
+              : StyleSheet.absoluteFill
+          }
           resizeMode="cover"
           // Android fades every image in over 300 ms, which reads as lag while scrolling.
           fadeDuration={0}
@@ -43,7 +50,7 @@ export function VideoThumbnail({
         />
       ) : (
         <View style={styles.placeholder} testID="thumbnail-placeholder">
-          <FilmIcon
+          <PlaceholderIcon
             size={Math.min(28, width / 5)}
             color={colors.textMuted}
             strokeWidth={1.5}
@@ -74,6 +81,9 @@ const useStyles = makeStyles(colors => ({
     overflow: 'hidden',
     borderRadius: radius.md,
     backgroundColor: colors.surfaceRaised,
+  },
+  albumArt: {
+    alignSelf: 'center',
   },
   placeholder: {
     flex: 1,

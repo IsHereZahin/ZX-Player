@@ -47,10 +47,12 @@ export const sampleFolder: VideoFolder = {
   title: 'Camera',
   count: 3,
   album: { name: 'Camera', kind: 'Album' },
+  scope: 'video',
 };
 
 export const sampleVideo: VideoItem = {
   id: '101',
+  kind: 'video',
   uri: 'content://media/external/video/media/101',
   fileName: 'Holiday trip.mp4',
   durationSec: 600,
@@ -69,6 +71,35 @@ export function makeVideo(
     id,
     uri: `content://media/external/video/media/${id}`,
     fileName: `Video ${id}.mp4`,
+    ...overrides,
+  };
+}
+
+export const sampleSong: VideoItem = {
+  id: '501',
+  kind: 'audio',
+  uri: 'content://media/external/audio/media/501',
+  fileName: 'track01.mp3',
+  durationSec: 214,
+  sizeBytes: 6 * 1024 * 1024,
+  width: 0,
+  height: 0,
+  modifiedAtSec: 1_700_000_900,
+  title: 'Night Drive',
+  artist: 'The Blue Hours',
+  album: 'Neon',
+};
+
+export function makeSong(
+  id: string,
+  overrides: Partial<VideoItem> = {},
+): VideoItem {
+  return {
+    ...sampleSong,
+    id,
+    uri: `content://media/external/audio/media/${id}`,
+    fileName: `Song ${id}.mp3`,
+    title: `Song ${id}`,
     ...overrides,
   };
 }

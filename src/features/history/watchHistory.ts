@@ -54,6 +54,9 @@ export function isInProgress(entry: WatchEntry): boolean {
 const isNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
+const optionalText = (value: unknown): string | null =>
+  typeof value === 'string' && value.length > 0 ? value : null;
+
 function parseVideo(raw: unknown): VideoItem | null {
   if (
     !isRecord(raw) ||
@@ -68,8 +71,10 @@ function parseVideo(raw: unknown): VideoItem | null {
   ) {
     return null;
   }
-  return {
+  const item: VideoItem = {
     id: raw.id,
+    // Entries saved before audio support have no kind; they are all videos.
+    kind: raw.kind === 'audio' ? 'audio' : 'video',
     uri: raw.uri,
     fileName: raw.fileName,
     durationSec: raw.durationSec,
@@ -78,6 +83,12 @@ function parseVideo(raw: unknown): VideoItem | null {
     height: raw.height,
     modifiedAtSec: raw.modifiedAtSec,
   };
+  if (item.kind === 'audio') {
+    item.title = optionalText(raw.title);
+    item.artist = optionalText(raw.artist);
+    item.album = optionalText(raw.album);
+  }
+  return item;
 }
 
 /** Keeps only well-formed entries from stored history. */

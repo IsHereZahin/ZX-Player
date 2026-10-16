@@ -52,6 +52,7 @@ export function VideoActionsSheet({
   const entry = useWatchEntry(video.id);
   const { title, details } = describeVideo(video, entry);
   const resumeAt = resumePosition(entry);
+  const isAudio = video.kind === 'audio';
   const run = (action: () => void) => () => {
     onClose();
     action();
@@ -85,21 +86,21 @@ export function VideoActionsSheet({
       {entry && isFinished(entry) ? (
         <OptionRow
           icon={CircleCheckIcon}
-          label="Mark as unwatched"
+          label={isAudio ? 'Mark as not played' : 'Mark as unwatched'}
           onPress={run(() => clearProgress(video.id))}
           testID="action-mark-unwatched"
         />
       ) : (
         <OptionRow
           icon={CircleCheckIcon}
-          label="Mark as watched"
+          label={isAudio ? 'Mark as played' : 'Mark as watched'}
           onPress={run(() => markWatched(video))}
           testID="action-mark-watched"
         />
       )}
       <OptionRow
         icon={InfoIcon}
-        label="Video details"
+        label={isAudio ? 'Details' : 'Video details'}
         onPress={run(() => onShowInfo(video))}
         testID="action-info"
       />
@@ -147,13 +148,22 @@ export function VideoInfoSheet({
       ? `${video.width} × ${video.height}${quality ? ` (${quality})` : ''}`
       : null;
 
+  const isAudio = video.kind === 'audio';
+
   return (
     <Sheet
       visible={visible}
       onClose={onClose}
-      title="Video details"
+      title={isAudio ? 'Audio details' : 'Video details'}
       testID="video-info"
     >
+      {isAudio ? (
+        <>
+          <InfoRow label="Title" value={video.title ?? null} />
+          <InfoRow label="Artist" value={video.artist ?? null} />
+          <InfoRow label="Album" value={video.album ?? null} />
+        </>
+      ) : null}
       <InfoRow label="File name" value={video.fileName} />
       <InfoRow
         label="Duration"
@@ -186,7 +196,7 @@ export function SortSheet({
     <Sheet
       visible={visible}
       onClose={onClose}
-      title="Sort videos"
+      title="Sort by"
       testID="sort-sheet"
     >
       {SORT_OPTIONS.map(option => (

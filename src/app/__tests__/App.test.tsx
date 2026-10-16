@@ -1,5 +1,10 @@
 import React from 'react';
-import { Appearance, StyleSheet } from 'react-native';
+import {
+  Appearance,
+  PermissionsAndroid,
+  Platform,
+  StyleSheet,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
@@ -11,6 +16,10 @@ import App from '../App';
 
 const screenBackground = (testID: string) =>
   StyleSheet.flatten(screen.getByTestId(testID).props.style).backgroundColor;
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
 
 describe('App', () => {
   it('boots into the library and switches tabs', async () => {
@@ -43,6 +52,24 @@ describe('App', () => {
     await act(async () => updateSettings({ appearance: 'system' }));
     expect(setColorScheme).toHaveBeenLastCalledWith('auto');
     setColorScheme.mockRestore();
+  });
+
+  it('gives audio its own tab on Android unless set to show it together', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);
+    jest.spyOn(PermissionsAndroid, 'check').mockResolvedValue(true);
+    await render(<App />);
+
+    expect(
+      await screen.findByRole('header', { name: 'Videos' }),
+    ).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('tab-audio'));
+    expect(
+      await screen.findByRole('header', { name: 'Audio' }),
+    ).toBeOnTheScreen();
+
+    await act(async () => updateSettings({ libraryLayout: 'together' }));
+    expect(screen.queryByTestId('tab-audio')).toBeNull();
   });
 
   it('restores saved settings before showing any screen', async () => {

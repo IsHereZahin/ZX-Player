@@ -18,16 +18,19 @@ import { useLastPlayedId } from '../../history/watchHistory';
 import { VIDEO_ROW_HEIGHT, VideoRow } from '../components/VideoRow';
 import { useVideoActions } from '../hooks/useVideoActions';
 import { useVideoSearch } from '../hooks/useVideoSearch';
+import { SCOPE_COPY } from '../scopeCopy';
 import type { VideoItem } from '../types';
 
 type Props = RootStackScreenProps<'Search'>;
 
-export function SearchScreen({ navigation }: Props) {
+export function SearchScreen({ navigation, route }: Props) {
   const styles = useStyles();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
-  const { results, loading, failed, retry } = useVideoSearch(query);
+  const scope = route.params?.scope ?? 'video';
+  const copy = SCOPE_COPY[scope];
+  const { results, loading, failed, retry } = useVideoSearch(query, scope);
   const { play, openMenu, sheets } = useVideoActions(results);
   const lastPlayedId = useLastPlayedId();
   const trimmed = query.trim();
@@ -50,7 +53,7 @@ export function SearchScreen({ navigation }: Props) {
         <EmptyState
           icon={CircleAlertIcon}
           title="Couldn't search your library"
-          message="Something went wrong while reading your videos."
+          message="Something went wrong while reading your library."
           actionLabel="Try again"
           onAction={retry}
           testID="search-error"
@@ -62,7 +65,11 @@ export function SearchScreen({ navigation }: Props) {
         <EmptyState
           icon={SearchIcon}
           title="Search your library"
-          message="Find any video on this device by its name."
+          message={
+            scope === 'video'
+              ? 'Find any video on this device by its name.'
+              : 'Find anything by its name, title, artist or album.'
+          }
           testID="search-idle"
         />
       );
@@ -75,7 +82,7 @@ export function SearchScreen({ navigation }: Props) {
         <EmptyState
           icon={SearchIcon}
           title="No matches"
-          message={`No video names contain “${trimmed}”.`}
+          message={copy.noMatches(trimmed)}
           testID="search-empty"
         />
       );
@@ -125,7 +132,7 @@ export function SearchScreen({ navigation }: Props) {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search videos"
+            placeholder={copy.searchLabel}
             placeholderTextColor={colors.textMuted}
             selectionColor={colors.primaryBright}
             cursorColor={colors.primaryBright}
@@ -134,7 +141,7 @@ export function SearchScreen({ navigation }: Props) {
             autoCorrect={false}
             autoCapitalize="none"
             returnKeyType="search"
-            accessibilityLabel="Search videos"
+            accessibilityLabel={copy.searchLabel}
             testID="search-input"
           />
           {query ? (

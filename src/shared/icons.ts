@@ -26,6 +26,7 @@ export { default as HardDriveIcon } from 'lucide-react-native/icons/hard-drive';
 export { default as HeadphonesIcon } from 'lucide-react-native/icons/headphones';
 export { default as HistoryIcon } from 'lucide-react-native/icons/rotate-ccw-clock';
 export { default as InfoIcon } from 'lucide-react-native/icons/info';
+export { default as LayersIcon } from 'lucide-react-native/icons/layers';
 export { default as LayoutGridIcon } from 'lucide-react-native/icons/layout-grid';
 export { default as ListIcon } from 'lucide-react-native/icons/list';
 export { default as ListVideoIcon } from 'lucide-react-native/icons/list-video';

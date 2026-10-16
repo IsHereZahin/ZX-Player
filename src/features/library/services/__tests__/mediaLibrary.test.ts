@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 import * as nativeMedia from 'zxplayer-media';
-import type { NativeVideo } from 'zxplayer-media';
+import type { NativeMediaItem } from 'zxplayer-media';
 
 import {
   makePhotoIdentifier,
@@ -10,13 +10,14 @@ import {
 } from '../../../../test/fixtures';
 import {
   ALL_VIDEOS_FOLDER_ID,
+  allMediaFolder,
   buildFolderList,
   buildFolderListFromBuckets,
   describeFileName,
-  fetchAllFolderVideos,
+  fetchAllFolderMedia,
   fetchFolderVideos,
-  fetchVideoFolders,
-  fromNativeVideo,
+  fetchFolders,
+  fromNativeItem,
   NATIVE_PAGE_SIZE,
   toVideoItem,
   VIDEO_PAGE_SIZE,
@@ -25,13 +26,13 @@ import type { VideoFolder } from '../../types';
 
 const getAlbums = CameraRoll.getAlbums as jest.Mock;
 const getPhotos = CameraRoll.getPhotos as jest.Mock;
-const getNativeFolders = nativeMedia.getVideoFolders as jest.Mock;
-const getNativeVideos = nativeMedia.getVideos as jest.Mock;
+const getNativeFolders = nativeMedia.getFolders as jest.Mock;
+const getNativeMedia = nativeMedia.getMedia as jest.Mock;
 
 function makeNativeVideo(
   id: string,
-  overrides: Partial<NativeVideo> = {},
-): NativeVideo {
+  overrides: Partial<NativeMediaItem> = {},
+): NativeMediaItem {
   return {
     id,
     uri: `content://media/external/video/media/${id}`,
@@ -41,8 +42,27 @@ function makeNativeVideo(
     width: 1280,
     height: 720,
     modifiedAtSec: 1_700_000_000,
+    title: null,
+    artist: null,
+    album: null,
     ...overrides,
   };
+}
+
+function makeNativeSong(
+  id: string,
+  overrides: Partial<NativeMediaItem> = {},
+): NativeMediaItem {
+  return makeNativeVideo(id, {
+    uri: `content://media/external/audio/media/${id}`,
+    fileName: `track-${id}.mp3`,
+    width: 0,
+    height: 0,
+    title: `Track ${id}`,
+    artist: 'Artist',
+    album: 'Album',
+    ...overrides,
+  });
 }
 
 const cameraBucket: VideoFolder = {
@@ -51,6 +71,7 @@ const cameraBucket: VideoFolder = {
   count: 3,
   album: { name: 'Camera', kind: 'Album' },
   bucketId: '-1739773001',
+  scope: 'video',
 };
 
 afterEach(() => {
@@ -75,6 +96,7 @@ describe('buildFolderList', () => {
       title: 'All videos',
       count: 6,
       album: null,
+      scope: 'video',
     });
   });
 
@@ -118,6 +140,7 @@ describe('buildFolderListFromBuckets', () => {
       count: 3,
       album: { name: 'Camera', kind: 'Album' },
       bucketId: '1',
+      scope: 'video',
     });
   });
 
@@ -133,10 +156,10 @@ describe('buildFolderListFromBuckets', () => {
   });
 });
 
-describe('fetchVideoFolders', () => {
+describe('fetchFolders', () => {
   it('queries video albums of every type', async () => {
     getAlbums.mockResolvedValueOnce(sampleAlbums);
-    const folders = await fetchVideoFolders();
+    const folders = await fetchFolders();
     expect(getAlbums).toHaveBeenCalledWith({
       assetType: 'Videos',
       albumType: 'All',
@@ -150,7 +173,7 @@ describe('fetchVideoFolders', () => {
       { id: '1', name: 'Camera', count: 3 },
     ]);
 
-    const folders = await fetchVideoFolders();
+    const folders = await fetchFolders();
 
     expect(getAlbums).not.toHaveBeenCalled();
     expect(folders.map(folder => folder.id)).toEqual([
@@ -164,41 +187,43 @@ describe('fetchVideoFolders', () => {
     jest.replaceProperty(nativeMedia, 'isNativeMediaAvailable', false);
     getAlbums.mockResolvedValueOnce(sampleAlbums);
 
-    await fetchVideoFolders();
+    await fetchFolders();
 
     expect(getNativeFolders).not.toHaveBeenCalled();
     expect(getAlbums).toHaveBeenCalled();
   });
 });
 
-describe('fetchAllFolderVideos on Android', () => {
+describe('fetchAllFolderMedia on Android', () => {
   beforeEach(() => {
     jest.replaceProperty(Platform, 'OS', 'android');
   });
 
   it('pages through the bucket and reports progress after each page', async () => {
-    getNativeVideos
+    getNativeMedia
       .mockResolvedValueOnce({
-        videos: [makeNativeVideo('1'), makeNativeVideo('2')],
+        items: [makeNativeVideo('1'), makeNativeVideo('2')],
         hasMore: true,
       })
       .mockResolvedValueOnce({
         // A file added between queries shifts the window; "2" repeats.
-        videos: [makeNativeVideo('2'), makeNativeVideo('3')],
+        items: [makeNativeVideo('2'), makeNativeVideo('3')],
         hasMore: false,
       });
     const onPage = jest.fn();
 
-    const videos = await fetchAllFolderVideos(cameraBucket, onPage);
+    const videos = await fetchAllFolderMedia(cameraBucket, onPage);
 
-    expect(getNativeVideos).toHaveBeenNthCalledWith(
+    expect(getNativeMedia).toHaveBeenNthCalledWith(
       1,
+      'video',
       '-1739773001',
       0,
       NATIVE_PAGE_SIZE,
     );
-    expect(getNativeVideos).toHaveBeenNthCalledWith(
+    expect(getNativeMedia).toHaveBeenNthCalledWith(
       2,
+      'video',
       '-1739773001',
       2,
       NATIVE_PAGE_SIZE,
@@ -209,34 +234,34 @@ describe('fetchAllFolderVideos on Android', () => {
   });
 
   it('queries every bucket for "All videos"', async () => {
-    await fetchAllFolderVideos({
-      id: ALL_VIDEOS_FOLDER_ID,
-      title: 'All videos',
-      count: null,
-      album: null,
-    });
-    expect(getNativeVideos).toHaveBeenCalledWith(null, 0, NATIVE_PAGE_SIZE);
+    await fetchAllFolderMedia(allMediaFolder('video'));
+    expect(getNativeMedia).toHaveBeenCalledWith(
+      'video',
+      null,
+      0,
+      NATIVE_PAGE_SIZE,
+    );
   });
 
   it('stops after the current page once cancelled', async () => {
-    getNativeVideos.mockResolvedValue({
-      videos: [makeNativeVideo('1')],
+    getNativeMedia.mockResolvedValue({
+      items: [makeNativeVideo('1')],
       hasMore: true,
     });
 
-    const videos = await fetchAllFolderVideos(
+    const videos = await fetchAllFolderMedia(
       cameraBucket,
       undefined,
       () => true,
     );
 
-    expect(getNativeVideos).toHaveBeenCalledTimes(1);
+    expect(getNativeMedia).toHaveBeenCalledTimes(1);
     expect(videos).toEqual([]);
   });
 
   it('uses camera-roll for a folder saved before bucket ids existed', async () => {
-    await fetchAllFolderVideos(sampleFolder);
-    expect(getNativeVideos).not.toHaveBeenCalled();
+    await fetchAllFolderMedia(sampleFolder);
+    expect(getNativeMedia).not.toHaveBeenCalled();
     expect(getPhotos.mock.calls[0][0].groupName).toBe('Camera');
   });
 });
@@ -284,12 +309,7 @@ describe('fetchFolderVideos', () => {
       edges: [],
       page_info: { has_next_page: false },
     });
-    await fetchFolderVideos({
-      id: ALL_VIDEOS_FOLDER_ID,
-      title: 'All videos',
-      count: null,
-      album: null,
-    });
+    await fetchFolderVideos(allMediaFolder('video'));
     expect(getPhotos.mock.calls[0][0]).not.toHaveProperty('groupName');
   });
 });
@@ -298,6 +318,7 @@ describe('toVideoItem', () => {
   it('maps camera-roll fields', () => {
     expect(toVideoItem(makePhotoIdentifier('7'))).toEqual({
       id: '7',
+      kind: 'video',
       uri: 'content://media/external/video/media/7',
       fileName: 'clip-7.mp4',
       durationSec: 125,
@@ -324,10 +345,11 @@ describe('toVideoItem', () => {
   });
 });
 
-describe('fromNativeVideo', () => {
+describe('fromNativeItem', () => {
   it('maps MediaStore rows', () => {
-    expect(fromNativeVideo(makeNativeVideo('7'))).toEqual({
+    expect(fromNativeItem(makeNativeVideo('7'), 'video')).toEqual({
       id: '7',
+      kind: 'video',
       uri: 'content://media/external/video/media/7',
       fileName: 'clip-7.mp4',
       durationSec: 90,
@@ -339,17 +361,96 @@ describe('fromNativeVideo', () => {
   });
 
   it('tolerates missing columns', () => {
-    const item = fromNativeVideo(
+    const item = fromNativeItem(
       makeNativeVideo('8', {
         fileName: '',
         sizeBytes: null,
         durationSec: Number.NaN,
         uri: 'file:///storage/My%20Movie.mkv',
       }),
+      'video',
     );
     expect(item.fileName).toBe('My Movie.mkv');
     expect(item.sizeBytes).toBeNull();
     expect(item.durationSec).toBe(0);
+  });
+
+  it('keeps audio tags', () => {
+    expect(fromNativeItem(makeNativeSong('9'), 'audio')).toMatchObject({
+      kind: 'audio',
+      title: 'Track 9',
+      artist: 'Artist',
+      album: 'Album',
+    });
+  });
+});
+
+describe('audio', () => {
+  beforeEach(() => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+  });
+
+  it('lists audio folders from MediaStore', async () => {
+    getNativeFolders.mockResolvedValueOnce([
+      { id: '7', name: 'Music', count: 12 },
+    ]);
+
+    const folders = await fetchFolders('audio');
+
+    expect(getNativeFolders).toHaveBeenCalledWith('audio');
+    expect(folders.map(folder => [folder.title, folder.count])).toEqual([
+      ['All audio', 12],
+      ['Music', 12],
+    ]);
+    expect(folders.every(folder => folder.scope === 'audio')).toBe(true);
+  });
+
+  it('shows each directory once when video and audio are combined', async () => {
+    getNativeFolders
+      .mockResolvedValueOnce([{ id: '1', name: 'Downloads', count: 2 }])
+      .mockResolvedValueOnce([
+        { id: '1', name: 'Downloads', count: 3 },
+        { id: '7', name: 'Music', count: 4 },
+      ]);
+
+    const folders = await fetchFolders('all');
+
+    expect(folders.map(folder => [folder.title, folder.count])).toEqual([
+      ['All media', 9],
+      ['Downloads', 5],
+      ['Music', 4],
+    ]);
+  });
+
+  it('loads videos, then audio, for a combined folder', async () => {
+    getNativeMedia
+      .mockResolvedValueOnce({ items: [makeNativeVideo('1')], hasMore: false })
+      .mockResolvedValueOnce({ items: [makeNativeSong('2')], hasMore: false });
+    const onPage = jest.fn();
+
+    const items = await fetchAllFolderMedia(
+      { ...cameraBucket, scope: 'all' },
+      onPage,
+    );
+
+    expect(getNativeMedia.mock.calls.map(call => call[0])).toEqual([
+      'video',
+      'audio',
+    ]);
+    expect(items.map(item => [item.id, item.kind])).toEqual([
+      ['1', 'video'],
+      ['2', 'audio'],
+    ]);
+    expect(onPage).toHaveBeenCalledTimes(2);
+  });
+
+  it('has no audio library on iOS', async () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    await expect(fetchFolders('audio')).resolves.toEqual([]);
+    await expect(fetchAllFolderMedia(allMediaFolder('audio'))).resolves.toEqual(
+      [],
+    );
+    expect(getNativeFolders).not.toHaveBeenCalled();
   });
 });
 
