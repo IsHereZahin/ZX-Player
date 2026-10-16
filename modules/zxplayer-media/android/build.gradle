@@ -23,4 +23,6 @@ repositories {
 dependencies {
     // Version is resolved by the React Native Gradle Plugin.
     implementation "com.facebook.react:react-android"
+    // Same Media3 release as react-native-video, which owns the actual player.
+    implementation "androidx.media3:media3-session:${safeExtGet("media3Version", "1.8.0")}"
 }

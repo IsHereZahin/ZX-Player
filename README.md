@@ -29,7 +29,8 @@ Bottom tabs: Videos · Audio · Recent · Settings. With **Settings → Audio an
 - **Playback speed** 0.5×–3×, **press and hold for 2×**.
 - **Audio track** and **embedded subtitle track** selection. **External subtitles** (`.srt`, `.ass`, `.ssa`) with delay adjustment.
 - **Lock screen** controls, **sleep timer** (timed or end of video), **picture-in-picture**, **background play** with notification controls (optional).
-- Opens in landscape for wide videos and portrait for tall ones; the rotate button switches.
+- **Mini player**: with background play on (always for audio), leaving the player keeps it playing behind a mini player above the tab bar, with play/pause, next and stop. Tap it to return to the full player.
+- Each video opens in its own orientation (landscape for wide, portrait for tall), decided from the library before the file loads, so the screen doesn't turn after playback starts. The rotate button overrides it for the rest of the session. The video's thumbnail shows until the first frame is drawn.
 - **Audio mode**: album art on a blurred backdrop with title and artist. Controls stay on screen, and playback always continues in the background with notification controls.
 - Aspect modes, auto-hiding controls, buffering and error states (retry, or skip to the next video).
 
@@ -175,7 +176,7 @@ __mocks__/                    Jest mocks for every native module
 
 Icons are imported one module at a time from `src/shared/icons.ts`, because Metro would otherwise bundle every Lucide icon. Some Lucide names (e.g. `history`) exist only as type aliases, so `src/shared/__tests__/icons.test.ts` checks that each import has a runtime module.
 
-Background play uses react-native-video's media-session service. It is declared in `AndroidManifest.xml` together with the foreground-service and notification permissions; iOS uses the `audio` background mode.
+Background play on Android runs through ZX Player's own media session (`zxplayer-media`: a Media3 `MediaSessionService` with a stand-in player that mirrors the real one). It gives the notification and lock screen **Previous / Play-Pause / Next** (react-native-video's own notification only seeks ±10 s), and as a foreground service it keeps playback alive with the screen off. iOS uses react-native-video's Now Playing integration and the `audio` background mode.
 
 On Android the library comes from `zxplayer-media`, which reads names, sizes, durations, resolutions and audio tags straight from MediaStore columns. It loads thumbnails from the system thumbnail cache and keeps a JPEG copy in the app cache. No video file is opened while scanning, so large libraries list quickly. iOS, and Android builds without the module, use camera-roll.
 
@@ -188,7 +189,7 @@ What keeps large libraries and playback smooth, and what to preserve when changi
 - **Library scan:** on Android, `zxplayer-media` reads MediaStore columns in pages of 250 and never opens a file. camera-roll, kept for iOS, opens every video to read its duration.
 - **Thumbnails:** system thumbnails (`loadThumbnail`) on four threads, cached as JPEGs in the app cache. The queue starts the newest request first, so on-screen rows win, and rows scrolled away cancel their pending requests.
 - **Lists:** rows are memoised with stable callbacks: `useVideoActions` reads the queue through a ref, so a folder loading page by page doesn't re-render visible rows. Windowing is tuned in `src/shared/utils/listTuning.ts`, and images skip Android's fade-in.
-- **Player:** the playback position lives in a small store (`playbackClock.ts`), not React state. Only the seek bar and file subtitles re-render four times a second. Local files start on a short ExoPlayer buffer (0.5 s, 1 s after a seek).
+- **Player:** one native player serves the whole queue; moving to the next item only changes its source. It lives at the app root (`src/app/PlayerHost.tsx`), above the navigator, so it outlives the Player screen; the `Player` route only holds the screen orientation and back navigation. The playback position lives in a small store (`playbackClock.ts`), not React state. Only the seek bar and file subtitles re-render four times a second. Local files start on a short ExoPlayer buffer (0.5 s, 1 s after a seek).
 
 ## Testing
 

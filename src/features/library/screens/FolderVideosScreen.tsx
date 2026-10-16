@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 
-import type { RootStackScreenProps } from '../../../app/navigation/types';
+import type { LibraryStackScreenProps } from '../../../app/navigation/types';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { IconButton } from '../../../shared/components/IconButton';
 import { ScreenHeader } from '../../../shared/components/ScreenHeader';
@@ -35,7 +35,7 @@ import { updateLibraryPrefs, useLibraryPrefs } from '../libraryPrefs';
 import type { VideoItem } from '../types';
 import { sortVideos } from '../utils/sortVideos';
 
-type Props = RootStackScreenProps<'FolderVideos'>;
+type Props = LibraryStackScreenProps<'FolderVideos'>;
 
 const FAB_CLEARANCE = 96;
 

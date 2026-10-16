@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform, type AppStateStatus } from 'react-native';
 import {
   act,
   fireEvent,
@@ -11,9 +11,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { createGestureController } from 'react-native-gesture-handler/jest-utils';
 import { keepLocalCopy, pick } from '@react-native-documents/picker';
 import { resetBrightness, setBrightness } from 'zxplayer-brightness';
+import { clearNowPlaying, setNowPlaying } from 'zxplayer-media';
 import { setVolume } from 'react-native-volume-manager';
 
-import type { RootStackScreenProps } from '../../../../app/navigation/types';
 import { reportError } from '../../../../shared/logger';
 import {
   makeSong,
@@ -22,7 +22,6 @@ import {
   sampleSong,
   sampleVideo,
 } from '../../../../test/fixtures';
-import { mockNavigation, screenProps } from '../../../../test/navigation';
 import { historyStore, recordProgress } from '../../../history/watchHistory';
 import type { VideoItem } from '../../../library/types';
 import { updateSettings } from '../../../settings/settingsStore';
@@ -34,7 +33,15 @@ const { mockVideoRef } = jest.requireMock<{
 
 const SCREEN = { width: 800, height: 400 };
 
-type PlayerParams = RootStackScreenProps<'Player'>['route']['params'];
+interface PlayerParams {
+  queue: VideoItem[];
+  startIndex: number;
+  startFromBeginning?: boolean;
+  minimized?: boolean;
+}
+
+const onClose = jest.fn();
+const onOrientationChange = jest.fn();
 
 const video = () => screen.getByTestId('video-surface');
 
@@ -56,11 +63,11 @@ async function renderPlayer(
 ) {
   const result = await render(
     <PlayerScreen
-      {...screenProps<RootStackScreenProps<'Player'>>('Player', {
-        queue: [sampleVideo],
-        startIndex: 0,
-        ...params,
-      })}
+      queue={[sampleVideo]}
+      startIndex={0}
+      {...params}
+      onClose={onClose}
+      onOrientationChange={onOrientationChange}
     />,
     { wrapper: GestureHandlerRootView },
   );
@@ -106,6 +113,19 @@ const tap = (x: number, y = 200): GestureStep[] => [
 
 const queueOf = (count: number): VideoItem[] =>
   Array.from({ length: count }, (_, i) => makeVideo(String(i + 1)));
+
+/** Captures the app's AppState listeners; call the result to change the app state. */
+function captureAppState() {
+  const listeners: Array<(state: AppStateStatus) => void> = [];
+  jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_type, listener) => {
+      listeners.push(listener as (state: AppStateStatus) => void);
+      return { remove: jest.fn() } as never;
+    });
+  return (state: AppStateStatus) =>
+    act(async () => listeners.forEach(listener => listener(state)));
+}
 
 /** Sheets opened from "More" wait for iOS modal dismissal, which Jest never reports. */
 function useAndroid() {
@@ -183,14 +203,59 @@ describe('controls', () => {
 
   it('matches orientation to the video and rotates on demand', async () => {
     await renderPlayer();
-    expect(mockNavigation.setOptions).toHaveBeenLastCalledWith({
-      orientation: 'landscape',
-    });
+    expect(onOrientationChange).toHaveBeenLastCalledWith('landscape');
 
     await fireEvent.press(screen.getByTestId('rotate-button'));
-    expect(mockNavigation.setOptions).toHaveBeenLastCalledWith({
-      orientation: 'portrait_up',
+    expect(onOrientationChange).toHaveBeenLastCalledWith('portrait');
+  });
+
+  it('opens a portrait video in portrait, before it has loaded', async () => {
+    await render(
+      <PlayerScreen
+        queue={[makeVideo('9', { width: 1080, height: 1920 })]}
+        startIndex={0}
+        onClose={onClose}
+        onOrientationChange={onOrientationChange}
+      />,
+      { wrapper: GestureHandlerRootView },
+    );
+    expect(onOrientationChange).toHaveBeenLastCalledWith('portrait');
+  });
+
+  it('turns the screen for each video in the queue', async () => {
+    await renderPlayer({
+      queue: [makeVideo('1'), makeVideo('2', { width: 1080, height: 1920 })],
     });
+    expect(onOrientationChange).toHaveBeenLastCalledWith('landscape');
+
+    await fireEvent.press(screen.getByTestId('next-button'));
+    expect(onOrientationChange).toHaveBeenLastCalledWith('portrait');
+  });
+
+  it('keeps a manual rotation for the rest of the queue', async () => {
+    await renderPlayer({ queue: queueOf(2) });
+    await fireEvent.press(screen.getByTestId('rotate-button'));
+    await fireEvent.press(screen.getByTestId('next-button'));
+    expect(onOrientationChange).toHaveBeenLastCalledWith('portrait');
+  });
+
+  it('waits for the player on Android 9, whose library sizes ignore rotation', async () => {
+    useAndroid();
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(28);
+    await renderPlayer(
+      { queue: [makeVideo('9')] },
+      { naturalSize: { width: 1080, height: 1920, orientation: 'portrait' } },
+    );
+    expect(onOrientationChange).toHaveBeenCalledWith(null);
+    expect(onOrientationChange).toHaveBeenLastCalledWith('portrait');
+  });
+
+  it('shows the thumbnail until the first frame is drawn', async () => {
+    await renderPlayer();
+    expect(screen.getByTestId('video-poster')).toBeOnTheScreen();
+
+    await fireEvent(video(), 'readyForDisplay');
+    expect(screen.queryByTestId('video-poster')).toBeNull();
   });
 
   it('changes playback speed', async () => {
@@ -238,8 +303,8 @@ describe('controls', () => {
 
     await fireEvent.press(screen.getByTestId('playback-retry'));
     expect(screen.queryByTestId('playback-error')).toBeNull();
-    await loadVideo();
-    expect(mockVideoRef.seek).toHaveBeenLastCalledWith(42);
+    // A fresh native player starts where the failed one stopped.
+    expect(video().props.source.startPosition).toBe(42000);
   });
 
   it('hides everything but the video in picture-in-picture', async () => {
@@ -254,6 +319,68 @@ describe('controls', () => {
     expect(video()).toBeOnTheScreen();
   });
 
+  it('keeps playing when picture-in-picture sends the app to the background', async () => {
+    const setAppState = captureAppState();
+    await renderPlayer();
+
+    await fireEvent.press(screen.getByTestId('pip-button'));
+    await setAppState('background');
+    expect(video().props.paused).toBe(false);
+  });
+
+  it('brings the controls back after picture-in-picture, even unannounced', async () => {
+    const setAppState = captureAppState();
+    await renderPlayer();
+    await fireEvent.press(screen.getByTestId('pip-button'));
+    await fireEvent(video(), 'pictureInPictureStatusChanged', {
+      isActive: true,
+    });
+
+    await setAppState('active');
+
+    expect(screen.getByTestId('player-controls')).toBeOnTheScreen();
+  });
+
+  it('still pauses when the app is backgrounded without background play', async () => {
+    const setAppState = captureAppState();
+    await renderPlayer();
+    await setAppState('background');
+    expect(video().props.paused).toBe(true);
+  });
+
+  it('follows pauses and resumes made outside the app, such as in PiP', async () => {
+    await renderPlayer();
+
+    await fireEvent(video(), 'playbackStateChanged', {
+      isPlaying: false,
+      isSeeking: false,
+    });
+    expect(screen.getByLabelText('Play')).toBeOnTheScreen();
+    expect(video().props.paused).toBe(true);
+
+    await fireEvent(video(), 'playbackStateChanged', {
+      isPlaying: true,
+      isSeeking: false,
+    });
+    expect(screen.getByLabelText('Pause')).toBeOnTheScreen();
+  });
+
+  it('does not mistake buffering or seeking for a pause', async () => {
+    await renderPlayer();
+
+    await fireEvent(video(), 'playbackStateChanged', {
+      isPlaying: false,
+      isSeeking: true,
+    });
+    await fireEvent(video(), 'buffer', { isBuffering: true });
+    await fireEvent(video(), 'playbackStateChanged', {
+      isPlaying: false,
+      isSeeking: false,
+    });
+
+    expect(video().props.paused).toBe(false);
+  });
+
   it('restores system brightness when the player closes', async () => {
     const { unmount } = await renderPlayer();
     await unmount();
@@ -262,6 +389,38 @@ describe('controls', () => {
 });
 
 describe('queue', () => {
+  it('keeps only the playing video, without controls, while minimised', async () => {
+    const result = await renderPlayer();
+    const nativePlayer = video();
+
+    await result.rerender(
+      <PlayerScreen
+        queue={[sampleVideo]}
+        startIndex={0}
+        minimized
+        onClose={onClose}
+        onOrientationChange={onOrientationChange}
+      />,
+    );
+
+    expect(video()).toBe(nativePlayer);
+    expect(video().props.paused).toBe(false);
+    expect(screen.queryByTestId('player-controls')).toBeNull();
+  });
+
+  it('keeps one native player for the whole queue, switching its source', async () => {
+    await renderPlayer({ queue: queueOf(2) });
+    const firstPlayer = video();
+
+    await fireEvent.press(screen.getByTestId('next-button'));
+
+    expect(video()).toBe(firstPlayer);
+    expect(video().props.source.uri).toBe(
+      'content://media/external/video/media/2',
+    );
+    expect(video().props.source.startPosition).toBe(0);
+  });
+
   it('moves through the list with next and previous', async () => {
     await renderPlayer({ queue: queueOf(3), startIndex: 1 });
     expect(screen.getByText('Video 2')).toBeOnTheScreen();
@@ -372,7 +531,9 @@ describe('resume and history', () => {
     recordProgress(sampleVideo, 125, 600);
     await renderPlayer();
 
-    expect(mockVideoRef.seek).toHaveBeenLastCalledWith(125);
+    // Resumes natively from the start position, without a second seek.
+    expect(video().props.source.startPosition).toBe(125000);
+    expect(mockVideoRef.seek).not.toHaveBeenCalled();
     expect(screen.getByTestId('player-toast')).toHaveTextContent(
       /Resumed from 2:05/,
     );
@@ -692,5 +853,77 @@ describe('audio', () => {
     await fireEvent.press(screen.getByTestId('next-button'));
     expect(screen.queryByTestId('audio-artwork')).toBeNull();
     expect(screen.getByTestId('subtitles-button')).toBeOnTheScreen();
+  });
+});
+
+describe('notification and lock-screen controls', () => {
+  const { __sendRemoteCommand: press } = jest.requireMock<{
+    __sendRemoteCommand: (command: string, positionMs?: number) => void;
+  }>('zxplayer-media');
+
+  beforeEach(() => {
+    useAndroid();
+    updateSettings({ backgroundPlay: true });
+  });
+
+  it('shows the playing item with previous and next where the queue has them', async () => {
+    await renderPlayer({ queue: queueOf(3), startIndex: 1 });
+
+    expect(setNowPlaying).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        id: '2',
+        title: 'Video 2',
+        playing: true,
+        hasPrevious: true,
+        hasNext: true,
+        durationMs: 600000,
+      }),
+    );
+    expect(video().props.showNotificationControls).toBe(false);
+  });
+
+  it('moves through the queue from the notification', async () => {
+    await renderPlayer({ queue: queueOf(3) });
+
+    await act(async () => press('next'));
+    expect(screen.getByText('Video 2')).toBeOnTheScreen();
+
+    await act(async () => press('previous'));
+    expect(screen.getByText('Video 1')).toBeOnTheScreen();
+  });
+
+  it('plays, pauses and seeks from the notification', async () => {
+    await renderPlayer();
+
+    await act(async () => press('pause'));
+    expect(video().props.paused).toBe(true);
+    expect(setNowPlaying).toHaveBeenLastCalledWith(
+      expect.objectContaining({ playing: false }),
+    );
+
+    await act(async () => press('play'));
+    expect(video().props.paused).toBe(false);
+
+    await act(async () => press('seek', 30000));
+    expect(mockVideoRef.seek).toHaveBeenLastCalledWith(30);
+  });
+
+  it('stays out of the notification without background play', async () => {
+    updateSettings({ backgroundPlay: false });
+    await renderPlayer();
+    expect(setNowPlaying).not.toHaveBeenCalled();
+  });
+
+  it('removes the notification when the player closes', async () => {
+    const result = await renderPlayer();
+    await result.unmount();
+    expect(clearNowPlaying).toHaveBeenCalled();
+  });
+
+  it('leaves Now Playing to the video player on iOS', async () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    await renderPlayer();
+    expect(setNowPlaying).not.toHaveBeenCalled();
+    expect(video().props.showNotificationControls).toBe(true);
   });
 });

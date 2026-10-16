@@ -8,9 +8,13 @@ import {
 } from '@testing-library/react-native';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 
-import type { RootStackScreenProps } from '../../../../app/navigation/types';
+import type { LibraryStackScreenProps } from '../../../../app/navigation/types';
 import { makePhotoIdentifier, sampleFolder } from '../../../../test/fixtures';
-import { mockNavigation, screenProps } from '../../../../test/navigation';
+import {
+  lastPlaybackRequest,
+  mockNavigation,
+  screenProps,
+} from '../../../../test/navigation';
 import { historyStore, isFinished } from '../../../history/watchHistory';
 import { libraryPrefsStore } from '../../libraryPrefs';
 import { FolderVideosScreen } from '../FolderVideosScreen';
@@ -34,7 +38,7 @@ function page(ids: string[], nextCursor?: string) {
 async function renderScreen() {
   await render(
     <FolderVideosScreen
-      {...screenProps<RootStackScreenProps<'FolderVideos'>>('FolderVideos', {
+      {...screenProps<LibraryStackScreenProps<'FolderVideos'>>('FolderVideos', {
         folder: sampleFolder,
       })}
     />,
@@ -46,9 +50,7 @@ afterEach(() => {
 });
 
 const playerQueueIds = () =>
-  (
-    mockNavigation.navigate.mock.calls.at(-1)?.[1].queue as { id: string }[]
-  ).map(video => video.id);
+  (lastPlaybackRequest()?.queue ?? []).map(video => video.id);
 
 describe('FolderVideosScreen', () => {
   it('loads every page and shows video details', async () => {
@@ -71,7 +73,8 @@ describe('FolderVideosScreen', () => {
     await renderScreen();
 
     await fireEvent.press(await screen.findByText('Episode 2'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('Player', {
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Player');
+    expect(lastPlaybackRequest()).toEqual({
       queue: expect.any(Array),
       startIndex: 1,
       startFromBeginning: false,
@@ -79,10 +82,7 @@ describe('FolderVideosScreen', () => {
     expect(playerQueueIds()).toEqual(['1', '2', '3']);
 
     await fireEvent.press(screen.getByTestId('play-all'));
-    expect(mockNavigation.navigate).toHaveBeenLastCalledWith(
-      'Player',
-      expect.objectContaining({ startIndex: 0 }),
-    );
+    expect(lastPlaybackRequest()?.startIndex).toBe(0);
   });
 
   it('sorts naturally by name and remembers the choice', async () => {

@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { FlatList, RefreshControl, Text, View } from 'react-native';
 
-import type { MainTabScreenProps } from '../../../app/navigation/types';
+import type { LibraryStackScreenProps } from '../../../app/navigation/types';
 import { useOpenPlayer } from '../../../app/navigation/useOpenPlayer';
 import { AppLogo } from '../../../shared/components/AppLogo';
 import { EmptyState } from '../../../shared/components/EmptyState';
@@ -27,12 +27,12 @@ import type { MediaScope, VideoFolder } from '../types';
 
 const CONTINUE_WATCHING_LIMIT = 12;
 
-type Props = MainTabScreenProps<'Library'> | MainTabScreenProps<'Audio'>;
+type Props = LibraryStackScreenProps<'LibraryHome'>;
 
 /** Folders of one library tab: videos, audio, or both (see `useLibraryScope`). */
 export function LibraryScreen({ navigation, route }: Props) {
   const styles = useStyles();
-  const scope = useLibraryScope(route.name);
+  const scope = useLibraryScope(route.params.tab);
   const copy = SCOPE_COPY[scope];
   const openFolder = useCallback(
     (folder: VideoFolder) => navigation.navigate('FolderVideos', { folder }),

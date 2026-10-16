@@ -6,6 +6,7 @@ import Video, {
   type OnBufferData,
   type OnLoadData,
   type OnPictureInPictureStatusChangedData,
+  type OnPlaybackStateChangedData,
   type OnProgressData,
   type OnTextTrackDataChangedData,
   type OnTextTracksData,
@@ -15,6 +16,7 @@ import Video, {
 } from 'react-native-video';
 
 import { playerColors } from '../../../shared/theme';
+import { usesOwnMediaSession } from '../hooks/useMediaSession';
 import {
   resolveVideoLayout,
   type AspectMode,
@@ -46,6 +48,37 @@ export interface VideoEvents {
   onPictureInPictureStatusChanged: (
     data: OnPictureInPictureStatusChangedData,
   ) => void;
+  onPlaybackStateChanged: (data: OnPlaybackStateChangedData) => void;
+  onReadyForDisplay: () => void;
+}
+
+const EVENT_NAMES: ReadonlyArray<keyof VideoEvents> = [
+  'onLoad',
+  'onProgress',
+  'onBuffer',
+  'onEnd',
+  'onError',
+  'onAudioTracks',
+  'onTextTracks',
+  'onTextTrackDataChanged',
+  'onPictureInPictureStatusChanged',
+  'onPlaybackStateChanged',
+  'onReadyForDisplay',
+];
+
+/**
+ * Stable handlers that pass each event on to whichever item's handlers are bound in
+ * `target` at the time, so one native player can serve the whole queue.
+ */
+export function forwardVideoEvents(
+  target: RefObject<VideoEvents | null>,
+): VideoEvents {
+  const forwarded: Partial<Record<keyof VideoEvents, unknown>> = {};
+  for (const name of EVENT_NAMES) {
+    forwarded[name] = (data: never) =>
+      (target.current?.[name] as ((value: never) => void) | undefined)?.(data);
+  }
+  return forwarded as VideoEvents;
 }
 
 /** Which subtitle the player itself should render (external files are drawn by the app). */
@@ -53,10 +86,13 @@ export type NativeTextTrack =
   | { kind: 'off' }
   | { kind: 'embedded'; index: number };
 
-interface VideoSurfaceProps {
-  videoRef: RefObject<VideoRef | null>;
+/** What the item being played wants from the native player. */
+export interface SurfaceConfig {
+  /** Changing it recreates the native player (used to retry after an error). */
   sourceKey: number;
   uri: string;
+  /** Where playback starts, applied natively without a separate seek. */
+  startPositionSec: number;
   /** Labels the media notification during background play. */
   title: string;
   artist: string;
@@ -65,23 +101,28 @@ interface VideoSurfaceProps {
   rate: number;
   repeat: boolean;
   aspectMode: AspectMode;
-  container: Size;
   naturalSize: Size | null;
   audioTrackIndex: number | null;
   textTrack: NativeTextTrack;
   subtitleFontSize: number;
   backgroundPlay: boolean;
+}
+
+interface VideoSurfaceProps extends SurfaceConfig {
+  videoRef: RefObject<VideoRef | null>;
+  container: Size;
   events: VideoEvents;
 }
 
 /**
- * The native video view. Memoised so progress ticks elsewhere in the player don't
- * re-render it.
+ * The native video view. It stays mounted from one queue item to the next (only its
+ * source changes), and is memoised so progress ticks don't re-render it.
  */
 export const VideoSurface = memo(function VideoSurfaceView({
   videoRef,
   sourceKey,
   uri,
+  startPositionSec,
   title,
   artist,
   artworkUri,
@@ -101,10 +142,11 @@ export const VideoSurface = memo(function VideoSurfaceView({
   const source = useMemo(
     () => ({
       uri,
+      startPosition: Math.round(startPositionSec * 1000),
       metadata: { title, artist, imageUri: artworkUri },
       bufferConfig: LOCAL_FILE_BUFFER,
     }),
-    [artist, artworkUri, title, uri],
+    [artist, artworkUri, startPositionSec, title, uri],
   );
   const layout = resolveVideoLayout(
     aspectMode,
@@ -154,7 +196,8 @@ export const VideoSurface = memo(function VideoSurfaceView({
         ignoreSilentSwitch="ignore"
         playInBackground={backgroundPlay}
         playWhenInactive={backgroundPlay}
-        showNotificationControls={backgroundPlay}
+        // Android uses ZX Player's own media session instead (see useMediaSession).
+        showNotificationControls={backgroundPlay && !usesOwnMediaSession()}
         onLoad={events.onLoad}
         onProgress={events.onProgress}
         onBuffer={events.onBuffer}
@@ -164,6 +207,8 @@ export const VideoSurface = memo(function VideoSurfaceView({
         onTextTracks={events.onTextTracks}
         onTextTrackDataChanged={events.onTextTrackDataChanged}
         onPictureInPictureStatusChanged={events.onPictureInPictureStatusChanged}
+        onPlaybackStateChanged={events.onPlaybackStateChanged}
+        onReadyForDisplay={events.onReadyForDisplay}
         testID="video-surface"
       />
     </View>

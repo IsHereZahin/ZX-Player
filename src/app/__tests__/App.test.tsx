@@ -36,6 +36,18 @@ describe('App', () => {
     expect(await screen.findByText('Resume playback')).toBeOnTheScreen();
   });
 
+  it('opens folders inside the tab, keeping the tab bar', async () => {
+    (CameraRoll.getAlbums as jest.Mock).mockResolvedValueOnce(sampleAlbums);
+    await render(<App />);
+
+    await fireEvent.press(await screen.findByText('Camera'));
+
+    expect(
+      await screen.findByRole('header', { name: 'Camera' }),
+    ).toBeOnTheScreen();
+    expect(screen.getByTestId('tab-recent')).toBeOnTheScreen();
+  });
+
   it('follows the chosen theme and passes it on to native UI', async () => {
     const setColorScheme = jest.spyOn(Appearance, 'setColorScheme');
     (CameraRoll.getAlbums as jest.Mock).mockResolvedValueOnce(sampleAlbums);

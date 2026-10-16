@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { FlatList, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { RootStackScreenProps } from '../../../app/navigation/types';
+import type { LibraryStackScreenProps } from '../../../app/navigation/types';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { IconButton } from '../../../shared/components/IconButton';
 import {
@@ -21,14 +21,14 @@ import { useVideoSearch } from '../hooks/useVideoSearch';
 import { SCOPE_COPY } from '../scopeCopy';
 import type { VideoItem } from '../types';
 
-type Props = RootStackScreenProps<'Search'>;
+type Props = LibraryStackScreenProps<'Search'>;
 
 export function SearchScreen({ navigation, route }: Props) {
   const styles = useStyles();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
-  const scope = route.params?.scope ?? 'video';
+  const { scope } = route.params;
   const copy = SCOPE_COPY[scope];
   const { results, loading, failed, retry } = useVideoSearch(query, scope);
   const { play, openMenu, sheets } = useVideoActions(results);

@@ -2,9 +2,13 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 
-import type { RootStackScreenProps } from '../../../../app/navigation/types';
+import type { LibraryStackScreenProps } from '../../../../app/navigation/types';
 import { makePhotoIdentifier } from '../../../../test/fixtures';
-import { mockNavigation, screenProps } from '../../../../test/navigation';
+import {
+  lastPlaybackRequest,
+  mockNavigation,
+  screenProps,
+} from '../../../../test/navigation';
 import { SearchScreen } from '../SearchScreen';
 
 jest.mock('@react-navigation/native', () => ({
@@ -16,7 +20,11 @@ const getPhotos = CameraRoll.getPhotos as jest.Mock;
 
 async function renderScreen() {
   await render(
-    <SearchScreen {...screenProps<RootStackScreenProps<'Search'>>('Search')} />,
+    <SearchScreen
+      {...screenProps<LibraryStackScreenProps<'Search'>>('Search', {
+        scope: 'video',
+      })}
+    />,
   );
 }
 
@@ -48,7 +56,8 @@ describe('SearchScreen', () => {
     expect(getPhotos.mock.calls[0][0]).not.toHaveProperty('groupName');
 
     await fireEvent.press(screen.getByText('Sylhet trip'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('Player', {
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Player');
+    expect(lastPlaybackRequest()).toEqual({
       queue: [
         expect.objectContaining({ id: '1' }),
         expect.objectContaining({ id: '3' }),

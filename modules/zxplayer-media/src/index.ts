@@ -1,9 +1,13 @@
 import NativeZxplayerMedia from './NativeZxplayerMedia';
 
+import type { NowPlayingInfo, RemoteCommand } from './NativeZxplayerMedia';
+
 export type {
   NativeMediaFolder,
   NativeMediaItem,
   NativeMediaPage,
+  NowPlayingInfo,
+  RemoteCommand,
 } from './NativeZxplayerMedia';
 
 export type MediaKind = 'video' | 'audio';
@@ -32,4 +36,18 @@ export function getMedia(
 
 export function getThumbnail(uri: string, cacheKey: string, maxSize: number) {
   return requireModule().getThumbnail(uri, cacheKey, maxSize);
+}
+
+export function setNowPlaying(info: NowPlayingInfo) {
+  requireModule().setNowPlaying(info);
+}
+
+export function clearNowPlaying() {
+  requireModule().clearNowPlaying();
+}
+
+export function addRemoteCommandListener(
+  listener: (command: RemoteCommand) => void,
+): { remove: () => void } {
+  return requireModule().onRemoteCommand(listener);
 }

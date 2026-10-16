@@ -1,4 +1,10 @@
-import React, { useCallback, useLayoutEffect, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Dimensions,
   StatusBar,
@@ -6,22 +12,46 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
+import type { VideoRef } from 'react-native-video';
 
-import type { RootStackScreenProps } from '../../../app/navigation/types';
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
 import { playerColors } from '../../../shared/theme';
 import { ThemeProvider } from '../../../shared/theming';
 import { clamp } from '../../../shared/utils/math';
+import type { VideoItem } from '../../library/types';
 import { useSettings } from '../../settings/settingsStore';
 import type { RepeatMode } from '../components/PlayerSheets';
+import {
+  forwardVideoEvents,
+  VideoSurface,
+  type SurfaceConfig,
+  type VideoEvents,
+} from '../components/VideoSurface';
 import { useBrightnessControl } from '../hooks/useBrightnessControl';
+import { endMediaSession } from '../hooks/useMediaSession';
 import { useSleepTimer } from '../hooks/useSleepTimer';
 import { useVolumeControl } from '../hooks/useVolumeControl';
+import type { PlayerOrientation } from '../nowPlaying';
 import type { AspectMode, Size } from '../utils/aspectRatio';
+import {
+  orientationOfItem,
+  orientationOfSize,
+  type Orientation,
+} from '../utils/orientation';
 import { PlayerSession } from './PlayerSession';
 
-type Props = RootStackScreenProps<'Player'>;
-type Orientation = 'landscape' | 'portrait';
+interface PlayerScreenProps {
+  /** Items in play order; next/previous move through this list. */
+  queue: VideoItem[];
+  startIndex: number;
+  /** Ignore the saved position for the first item. */
+  startFromBeginning?: boolean;
+  /** Playing on behind the mini player: only the native player is kept, off screen. */
+  minimized?: boolean;
+  onClose: () => void;
+  /** The orientation the full player wants the screen in (null: follow the device). */
+  onOrientationChange: (orientation: PlayerOrientation) => void;
+}
 
 function initialLayout(): Size {
   const { width, height } = Dimensions.get('window');
@@ -29,14 +59,22 @@ function initialLayout(): Size {
 }
 
 /**
- * Owns what carries over from one video to the next (queue position, speed, repeat,
- * aspect ratio, lock, sleep timer, orientation, brightness and volume). Per-video state
- * lives in `PlayerSession`, which is remounted for every video.
+ * Owns what carries over from one video to the next: the native player itself, queue
+ * position, speed, repeat, aspect ratio, lock, sleep timer, orientation, brightness and
+ * volume. Per-video state lives in `PlayerSession`, which is remounted for every video
+ * and steers the shared native player. Keeping one native player for the whole queue
+ * makes moving on to the next item quick and reliable, also with the screen off.
  */
-export function PlayerScreen({ navigation, route }: Props) {
-  const { queue, startIndex, startFromBeginning = false } = route.params;
+export function PlayerScreen({
+  queue,
+  startIndex,
+  startFromBeginning = false,
+  minimized = false,
+  onClose,
+  onOrientationChange,
+}: PlayerScreenProps) {
   const settings = useSettings();
-  const brightness = useBrightnessControl();
+  const brightness = useBrightnessControl(!minimized);
   const volume = useVolumeControl();
 
   const [index, setIndex] = useState(() =>
@@ -52,11 +90,31 @@ export function PlayerScreen({ navigation, route }: Props) {
     settings.defaultAspectMode,
   );
   const [locked, setLocked] = useState(false);
-  const [orientation, setOrientation] = useState<Orientation | null>(null);
+  // Each video opens in its own orientation; the rotate button overrides that for the
+  // rest of the session.
+  const [userOrientation, setUserOrientation] = useState<Orientation | null>(
+    null,
+  );
+  // From the player once a file loads, for items whose library metadata can't tell.
+  // Kept across items so an unknown next item doesn't flip the screen before it loads.
+  const [loadedOrientation, setLoadedOrientation] =
+    useState<Orientation | null>(null);
   const [pauseSignal, setPauseSignal] = useState(0);
   const sleep = useSleepTimer(() => setPauseSignal(count => count + 1));
 
+  const videoRef = useRef<VideoRef>(null);
+  const boundEvents = useRef<VideoEvents | null>(null);
+  const events = useMemo(() => forwardVideoEvents(boundEvents), []);
+  const bindEvents = useCallback((itemEvents: VideoEvents) => {
+    boundEvents.current = itemEvents;
+  }, []);
+  const [surface, setSurface] = useState<SurfaceConfig | null>(null);
+
   const video = queue[index];
+  const orientation: PlayerOrientation =
+    userOrientation ??
+    (video ? orientationOfItem(video) : null) ??
+    loadedOrientation;
   const hasNext = index < queue.length - 1;
   const hasPrevious = index > 0;
   const latest = useLatestRef({
@@ -68,16 +126,12 @@ export function PlayerScreen({ navigation, route }: Props) {
     sleep,
   });
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      orientation:
-        orientation === 'landscape'
-          ? 'landscape'
-          : orientation === 'portrait'
-          ? 'portrait_up'
-          : 'default',
-    });
-  }, [navigation, orientation]);
+  useEffect(() => {
+    onOrientationChange(orientation);
+  }, [onOrientationChange, orientation]);
+
+  // The notification goes when the player closes, not between queue items.
+  useEffect(() => endMediaSession, []);
 
   const onLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -123,21 +177,15 @@ export function PlayerScreen({ navigation, route }: Props) {
     return false;
   }, [goTo, latest]);
 
-  // Match the screen to the first video's shape; the rotate button overrides it.
   const onNaturalSize = useCallback((size: Size) => {
-    setOrientation(
-      current =>
-        current ?? (size.width >= size.height ? 'landscape' : 'portrait'),
-    );
+    setLoadedOrientation(orientationOfSize(size));
   }, []);
 
   const rotate = useCallback(() => {
-    setOrientation(current => {
-      const effective =
-        current ?? (layout.width >= layout.height ? 'landscape' : 'portrait');
-      return effective === 'landscape' ? 'portrait' : 'landscape';
-    });
-  }, [layout.height, layout.width]);
+    const effective =
+      orientation ?? (layout.width >= layout.height ? 'landscape' : 'portrait');
+    setUserOrientation(effective === 'landscape' ? 'portrait' : 'landscape');
+  }, [layout.height, layout.width, orientation]);
 
   if (!video) {
     return null;
@@ -147,8 +195,20 @@ export function PlayerScreen({ navigation, route }: Props) {
     // Shared components (sheets, buttons) inside the player stay dark in a light app.
     <ThemeProvider scheme="dark">
       <View style={styles.root} onLayout={onLayout} testID="player-screen">
-        <StatusBar hidden animated />
+        {minimized ? null : <StatusBar hidden animated />}
+        {/* Always the first child, so entering or leaving PiP never remounts it. */}
+        {surface ? (
+          <VideoSurface
+            {...surface}
+            videoRef={videoRef}
+            container={layout}
+            events={events}
+          />
+        ) : null}
         <PlayerSession
+          videoRef={videoRef}
+          onSurfaceChange={setSurface}
+          onBindEvents={bindEvents}
           key={`${index}-${video.id}`}
           video={video}
           queueLabel={
@@ -176,7 +236,8 @@ export function PlayerScreen({ navigation, route }: Props) {
           onSleepTimerChange={sleep.setTimer}
           onRotate={rotate}
           onNaturalSize={onNaturalSize}
-          onClose={navigation.goBack}
+          minimized={minimized}
+          onClose={onClose}
         />
       </View>
     </ThemeProvider>

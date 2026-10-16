@@ -8,6 +8,10 @@ import {
 import { resetVideoIndex } from '../features/library/services/videoIndex';
 import { clearThumbnailMemoryCache } from '../features/library/services/thumbnails';
 import {
+  activePlaybackStore,
+  stopPlayback,
+} from '../features/player/nowPlaying';
+import {
   DEFAULT_SETTINGS,
   settingsStore,
 } from '../features/settings/settingsStore';
@@ -29,4 +33,6 @@ export function resetAppState(): void {
   libraryPrefsStore.setState(DEFAULT_LIBRARY_PREFS);
   resetVideoIndex();
   clearThumbnailMemoryCache();
+  stopPlayback();
+  activePlaybackStore.setState(null);
 }

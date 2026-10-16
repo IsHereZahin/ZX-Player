@@ -4,7 +4,11 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import type { MainTabScreenProps } from '../../../app/navigation/types';
 import { makeVideo } from '../../../test/fixtures';
-import { mockNavigation, screenProps } from '../../../test/navigation';
+import {
+  lastPlaybackRequest,
+  mockNavigation,
+  screenProps,
+} from '../../../test/navigation';
 import { RecentScreen } from '../RecentScreen';
 import { historyStore, recordProgress } from '../watchHistory';
 
@@ -46,13 +50,10 @@ describe('RecentScreen', () => {
     expect(screen.getByText('Watched')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByText('Drama'));
-    const [, params] = mockNavigation.navigate.mock.calls[0];
-    expect(params.queue.map((video: { id: string }) => video.id)).toEqual([
-      'c',
-      'b',
-      'a',
-    ]);
-    expect(params.startIndex).toBe(1);
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Player');
+    const request = lastPlaybackRequest();
+    expect(request?.queue.map(video => video.id)).toEqual(['c', 'b', 'a']);
+    expect(request?.startIndex).toBe(1);
   });
 
   it('clears history after confirmation', async () => {

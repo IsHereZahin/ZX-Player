@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon: the ZX Player mark (play button with a Z-shaped seam) in one colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="1.6"
+        android:scaleY="1.6">
+        <group>
+            <clip-path android:pathData="M-200,44.4 L65.28,44.4 L53.28,59.9 L200,59.9 L200,-200 L-200,-200 Z" />
+            <path
+                android:fillColor="#FFFFFFFF"
+                android:pathData="M41,31 L41,77 L80,54 Z"
+                android:strokeColor="#FFFFFFFF"
+                android:strokeLineJoin="round"
+                android:strokeWidth="7" />
+        </group>
+        <group>
+            <clip-path android:pathData="M-200,48.6 L56.72,48.6 L44.72,64.1 L200,64.1 L200,200 L-200,200 Z" />
+            <path
+                android:fillColor="#FFFFFFFF"
+                android:pathData="M41,31 L41,77 L80,54 Z"
+                android:strokeColor="#FFFFFFFF"
+                android:strokeLineJoin="round"
+                android:strokeWidth="7" />
+        </group>
+    </group>
+</vector>

@@ -1,4 +1,4 @@
-import type { TurboModule } from 'react-native';
+import type { CodegenTypes, TurboModule } from 'react-native';
 import { TurboModuleRegistry } from 'react-native';
 
 export type NativeMediaItem = {
@@ -21,6 +21,28 @@ export type NativeMediaPage = { items: NativeMediaItem[]; hasMore: boolean };
 
 export type NativeMediaFolder = { id: string; name: string; count: number };
 
+/** What the notification and lock screen show (Android media session). */
+export type NowPlayingInfo = {
+  id: string;
+  title: string;
+  artist: string;
+  artworkUri: string | null;
+  durationMs: number;
+  positionMs: number;
+  playing: boolean;
+  buffering: boolean;
+  speed: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+};
+
+/** A button pressed in the notification or on the lock screen. */
+export type RemoteCommand = {
+  /** "play", "pause", "previous", "next" or "seek". */
+  command: string;
+  positionMs: number;
+};
+
 export interface Spec extends TurboModule {
   /** `kind` is "video" or "audio". */
   getFolders(kind: string): Promise<NativeMediaFolder[]>;
@@ -37,6 +59,11 @@ export interface Spec extends TurboModule {
     cacheKey: string,
     maxSize: number,
   ): Promise<string | null>;
+  /** Starts or updates the media session behind the playback notification. */
+  setNowPlaying(info: NowPlayingInfo): void;
+  /** Ends the media session and removes the notification. */
+  clearNowPlaying(): void;
+  readonly onRemoteCommand: CodegenTypes.EventEmitter<RemoteCommand>;
 }
 
 export default TurboModuleRegistry.get<Spec>('ZxplayerMedia');

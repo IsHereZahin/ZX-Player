@@ -8,9 +8,13 @@ import {
 } from '@react-native-camera-roll/camera-roll';
 import { getFolders } from 'zxplayer-media';
 
-import type { MainTabScreenProps } from '../../../../app/navigation/types';
+import type { LibraryStackScreenProps } from '../../../../app/navigation/types';
 import { makeVideo, sampleAlbums, sampleSong } from '../../../../test/fixtures';
-import { mockNavigation, screenProps } from '../../../../test/navigation';
+import {
+  lastPlaybackRequest,
+  mockNavigation,
+  screenProps,
+} from '../../../../test/navigation';
 import { recordProgress } from '../../../history/watchHistory';
 import { updateSettings } from '../../../settings/settingsStore';
 import { LibraryScreen } from '../LibraryScreen';
@@ -26,7 +30,11 @@ const requestPermission = iosRequestReadWriteGalleryPermission as jest.Mock;
 
 async function renderScreen(tab: 'Library' | 'Audio' = 'Library') {
   await render(
-    <LibraryScreen {...screenProps<MainTabScreenProps<'Library'>>(tab)} />,
+    <LibraryScreen
+      {...screenProps<LibraryStackScreenProps<'LibraryHome'>>('LibraryHome', {
+        tab,
+      })}
+    />,
   );
 }
 
@@ -73,7 +81,8 @@ describe('LibraryScreen', () => {
     expect(screen.queryByTestId('continue-8')).toBeNull();
 
     await fireEvent.press(screen.getByTestId('continue-7'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('Player', {
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Player');
+    expect(lastPlaybackRequest()).toEqual({
       queue: [lecture],
       startIndex: 0,
       startFromBeginning: false,

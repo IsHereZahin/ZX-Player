@@ -1,11 +1,20 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type RefObject,
 } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import type { VideoRef } from 'react-native-video';
+import {
+  ActivityIndicator,
+  Image,
+  Platform,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAfterSheetClose } from '../../../shared/components/Sheet';
@@ -44,14 +53,20 @@ import {
   SubtitleOverlay,
   TimedSubtitleOverlay,
 } from '../components/SubtitleOverlay';
-import { VideoSurface, type NativeTextTrack } from '../components/VideoSurface';
+import type {
+  NativeTextTrack,
+  SurfaceConfig,
+  VideoEvents,
+} from '../components/VideoSurface';
 import type { LevelControl } from '../hooks/levelControl';
 import { useAutoHideControls } from '../hooks/useAutoHideControls';
 import { usePlayback } from '../hooks/usePlayback';
 import { usePlaybackProgress } from '../hooks/usePlaybackProgress';
 import { describeSleepTimer, type SleepTimer } from '../hooks/useSleepTimer';
 import { useSubtitles } from '../hooks/useSubtitles';
+import { useMediaSession } from '../hooks/useMediaSession';
 import { useToast } from '../hooks/useToast';
+import { activePlaybackStore } from '../nowPlaying';
 import {
   ASPECT_MODE_DESCRIPTIONS,
   ASPECT_MODE_LABELS,
@@ -87,6 +102,14 @@ const REPEAT_TOASTS: Record<RepeatMode, string> = {
 };
 
 export interface PlayerSessionProps {
+  /** Playing on behind the mini player: keep playback going, draw nothing. */
+  minimized: boolean;
+  /** The native player, which outlives this item (see PlayerScreen). */
+  videoRef: RefObject<VideoRef | null>;
+  /** Tells the native player what this item needs (source, paused, tracks, …). */
+  onSurfaceChange: (config: SurfaceConfig) => void;
+  /** Routes the native player's events to this item. */
+  onBindEvents: (events: VideoEvents) => void;
   video: VideoItem;
   queueLabel: string | null;
   hasNext: boolean;
@@ -142,6 +165,7 @@ export function PlayerSession(props: PlayerSessionProps) {
   }, [latest]);
 
   const playback = usePlayback({
+    videoRef: props.videoRef,
     initialDurationSec: video.durationSec,
     startAtSec: resumeAt,
     backgroundPlay,
@@ -169,6 +193,28 @@ export function PlayerSession(props: PlayerSessionProps) {
   );
   const { keepAlive } = controls;
   const { seekTo, getCurrentTime, togglePlayback, pause } = playback;
+
+  // Lets the mini player show and steer this item while the player is minimised.
+  const { paused, duration, clock } = playback;
+  const { hasNext, onNext } = props;
+  useEffect(() => {
+    activePlaybackStore.setState({
+      item: video,
+      paused,
+      hasNext,
+      duration,
+      clock,
+      togglePlayback,
+      next: onNext,
+    });
+  }, [clock, duration, hasNext, onNext, paused, togglePlayback, video]);
+  useEffect(
+    () => () =>
+      activePlaybackStore.setState(current =>
+        current?.clock === clock ? null : current,
+      ),
+    [clock],
+  );
   const title = mediaTitle(video);
 
   // Once the file is open: adopt its default tracks, report its shape, offer "start over".
@@ -368,30 +414,89 @@ export function PlayerSession(props: PlayerSessionProps) {
   };
   const showSpinner = playback.buffering && !playback.paused && !playback.error;
 
+  // Notification and lock-screen controls (Previous / Play-Pause / Next).
+  useMediaSession({
+    enabled: backgroundPlay,
+    id: video.id,
+    title,
+    artist: (isAudio && video.artist) || 'ZX Player',
+    artworkUri,
+    paused: playback.paused,
+    buffering: playback.buffering,
+    duration: playback.duration,
+    speed: props.speed,
+    clock: playback.clock,
+    hasPrevious: props.hasPrevious,
+    hasNext: props.hasNext,
+    onPlay: playback.play,
+    onPause: pause,
+    onPrevious: props.onPrevious,
+    onNext: props.onNext,
+    onSeek: seekTo,
+  });
+
+  const surface = useMemo<SurfaceConfig>(
+    () => ({
+      sourceKey: playback.sourceKey,
+      uri: video.uri,
+      startPositionSec: playback.startAt,
+      title,
+      artist: (isAudio && video.artist) || 'ZX Player',
+      artworkUri,
+      paused: playback.paused,
+      rate: boosted ? 2 : props.speed,
+      repeat: props.repeatMode === 'one',
+      aspectMode: pictureInPicture ? 'fit' : props.aspectMode,
+      naturalSize: playback.naturalSize,
+      audioTrackIndex,
+      textTrack: nativeTextTrack,
+      subtitleFontSize,
+      backgroundPlay,
+    }),
+    [
+      artworkUri,
+      audioTrackIndex,
+      backgroundPlay,
+      boosted,
+      isAudio,
+      nativeTextTrack,
+      pictureInPicture,
+      playback.naturalSize,
+      playback.paused,
+      playback.sourceKey,
+      playback.startAt,
+      props.aspectMode,
+      props.repeatMode,
+      props.speed,
+      subtitleFontSize,
+      title,
+      video.artist,
+      video.uri,
+    ],
+  );
+  // Layout effects, so the native player switches source in the same frame.
+  const { onSurfaceChange, onBindEvents } = props;
+  useLayoutEffect(
+    () => onBindEvents(playback.videoEvents),
+    [onBindEvents, playback.videoEvents],
+  );
+  useLayoutEffect(() => onSurfaceChange(surface), [onSurfaceChange, surface]);
+
   return (
     <>
-      {/* Always the first child, so entering or leaving PiP never remounts the player. */}
-      <VideoSurface
-        videoRef={playback.videoRef}
-        sourceKey={playback.sourceKey}
-        uri={video.uri}
-        title={title}
-        artist={(isAudio && video.artist) || 'ZX Player'}
-        artworkUri={artworkUri}
-        paused={playback.paused}
-        rate={boosted ? 2 : props.speed}
-        repeat={props.repeatMode === 'one'}
-        aspectMode={pictureInPicture ? 'fit' : props.aspectMode}
-        container={layout}
-        naturalSize={playback.naturalSize}
-        audioTrackIndex={audioTrackIndex}
-        textTrack={nativeTextTrack}
-        subtitleFontSize={subtitleFontSize}
-        backgroundPlay={backgroundPlay}
-        events={playback.videoEvents}
-      />
-      {pictureInPicture ? null : (
+      {pictureInPicture || props.minimized ? null : (
         <>
+          {/* The thumbnail stands in until the first frame: playback feels instant. */}
+          {!isAudio && artworkUri && !playback.readyForDisplay ? (
+            <Image
+              source={{ uri: artworkUri }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="contain"
+              fadeDuration={0}
+              accessibilityIgnoresInvertColors
+              testID="video-poster"
+            />
+          ) : null}
           {isAudio ? <AudioArtwork item={video} layout={layout} /> : null}
 
           {externalTrack ? (

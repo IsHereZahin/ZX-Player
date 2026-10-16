@@ -1,10 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import { AppState } from 'react-native';
 import type {
   OnAudioTracksData,
   OnBufferData,
   OnLoadData,
   OnPictureInPictureStatusChangedData,
+  OnPlaybackStateChangedData,
   OnProgressData,
   OnTextTrackDataChangedData,
   OnTextTracksData,
@@ -35,6 +43,8 @@ function describePlaybackError({ error }: OnVideoErrorData): PlaybackError {
 }
 
 interface PlaybackOptions {
+  /** The native player, shared by every item of the queue. */
+  videoRef: RefObject<VideoRef | null>;
   initialDurationSec: number;
   /** Position to jump to once the video has loaded (resume). */
   startAtSec?: number | null;
@@ -45,13 +55,14 @@ interface PlaybackOptions {
 
 /** Playback state for one video plus the event handlers to wire into `<Video>`. */
 export function usePlayback({
+  videoRef,
   initialDurationSec,
   startAtSec,
   backgroundPlay,
   onEnded,
 }: PlaybackOptions) {
-  const videoRef = useRef<VideoRef>(null);
-  const seekOnLoadRef = useRef(startAtSec ?? 0);
+  // Where the source starts: the resume point, or where a failed attempt stopped.
+  const [startAt, setStartAt] = useState(startAtSec ?? 0);
   const latest = useLatestRef({ backgroundPlay, onEnded });
 
   const [paused, setPaused, pausedRef] = useStateWithRef(false);
@@ -59,14 +70,20 @@ export function usePlayback({
   const [duration, setDuration, durationRef] =
     useStateWithRef(initialDurationSec);
   const [clock] = useState(() => createPlaybackClock(startAtSec ?? 0));
-  const [buffering, setBuffering] = useState(true);
-  const [loaded, setLoaded] = useState(false);
+  const [buffering, setBuffering, bufferingRef] = useStateWithRef(true);
+  const [loaded, setLoaded, loadedRef] = useStateWithRef(false);
+  // True once the first frame is on screen (until then a poster can stand in).
+  const [readyForDisplay, setReadyForDisplay] = useState(false);
   const [naturalSize, setNaturalSize] = useState<Size | null>(null);
   const [audioTracks, setAudioTracks] = useState<MediaTrack[]>([]);
   const [textTracks, setTextTracks] = useState<MediaTrack[]>([]);
   // iOS reports the active embedded cue as text instead of drawing it.
   const [embeddedCueText, setEmbeddedCueText] = useState('');
-  const [pictureInPicture, setPictureInPicture] = useState(false);
+  const [pictureInPicture, setPictureInPicture, pictureInPictureRef] =
+    useStateWithRef(false);
+  // Set from the PiP request until the app comes back to the foreground: going into PiP
+  // sends the app to the background before the player reports PiP as active.
+  const pictureInPictureRequested = useRef(false);
   const [error, setError] = useState<PlaybackError | null>(null);
   // Changing the key remounts <Video>, which is how a failed source is retried.
   const [sourceKey, setSourceKey] = useState(0);
@@ -90,7 +107,7 @@ export function usePlayback({
         setEnded(false);
       }
     },
-    [durationRef, endedRef, setCurrentTime, setEnded],
+    [durationRef, endedRef, setCurrentTime, setEnded, videoRef],
   );
 
   const play = useCallback(() => {
@@ -117,16 +134,18 @@ export function usePlayback({
   const getDuration = useCallback(() => durationRef.current, [durationRef]);
 
   const retry = useCallback(() => {
-    seekOnLoadRef.current = getCurrentTime();
+    setStartAt(getCurrentTime());
+    setReadyForDisplay(false);
     setError(null);
     setBuffering(true);
     setPaused(false);
     setSourceKey(key => key + 1);
-  }, [getCurrentTime, setPaused]);
+  }, [getCurrentTime, setBuffering, setPaused]);
 
   const enterPictureInPicture = useCallback(() => {
+    pictureInPictureRequested.current = true;
     videoRef.current?.enterPictureInPicture();
-  }, []);
+  }, [videoRef]);
 
   const onLoad = useCallback(
     (data: OnLoadData) => {
@@ -136,12 +155,8 @@ export function usePlayback({
       setTextTracks(data.textTracks ?? []);
       setBuffering(false);
       setLoaded(true);
-      if (seekOnLoadRef.current > 0) {
-        videoRef.current?.seek(seekOnLoadRef.current);
-        seekOnLoadRef.current = 0;
-      }
     },
-    [setDuration],
+    [setBuffering, setDuration, setLoaded],
   );
 
   const onProgress = useCallback(
@@ -155,7 +170,7 @@ export function usePlayback({
 
   const onBuffer = useCallback(
     ({ isBuffering }: OnBufferData) => setBuffering(isBuffering),
-    [],
+    [setBuffering],
   );
 
   const onEnd = useCallback(() => {
@@ -172,7 +187,7 @@ export function usePlayback({
       setBuffering(false);
       setPaused(true);
     },
-    [setPaused],
+    [setBuffering, setPaused],
   );
 
   const onAudioTracks = useCallback(
@@ -188,22 +203,60 @@ export function usePlayback({
       setEmbeddedCueText(data.subtitleTracks ?? ''),
     [],
   );
+  const onReadyForDisplay = useCallback(() => setReadyForDisplay(true), []);
+
   const onPictureInPictureStatusChanged = useCallback(
     (data: OnPictureInPictureStatusChangedData) =>
       setPictureInPicture(data.isActive),
-    [],
+    [setPictureInPicture],
   );
 
-  // Without background play, stay paused when the app is backgrounded instead of
-  // resuming unexpectedly on return.
+  /**
+   * The native player can be paused or resumed without the app asking: by the PiP
+   * window's buttons, by losing audio focus (a call, another app) or by unplugging
+   * headphones. Adopt its state so the controls stay truthful and one tap always works.
+   * Buffering, seeking and the end of the file also stop playback and are not pauses.
+   */
+  const onPlaybackStateChanged = useCallback(
+    ({ isPlaying, isSeeking }: OnPlaybackStateChangedData) => {
+      if (
+        isSeeking ||
+        !loadedRef.current ||
+        bufferingRef.current ||
+        endedRef.current
+      ) {
+        return;
+      }
+      if (isPlaying === pausedRef.current) {
+        setPaused(!isPlaying);
+      }
+    },
+    [bufferingRef, endedRef, loadedRef, pausedRef, setPaused],
+  );
+
   useEffect(() => {
     const subscription = AppState.addEventListener('change', state => {
-      if (state === 'background' && !latest.current.backgroundPlay) {
+      if (state === 'active') {
+        // Back in the foreground means PiP is over, whether or not the player said so,
+        // so the controls are never left hidden.
+        pictureInPictureRequested.current = false;
+        setPictureInPicture(false);
+        return;
+      }
+      const inPictureInPicture =
+        pictureInPictureRequested.current || pictureInPictureRef.current;
+      // Without background play, stay paused when the app is backgrounded instead of
+      // resuming unexpectedly on return. PiP counts as background, but keeps playing.
+      if (
+        state === 'background' &&
+        !latest.current.backgroundPlay &&
+        !inPictureInPicture
+      ) {
         setPaused(true);
       }
     });
     return () => subscription.remove();
-  }, [latest, setPaused]);
+  }, [latest, pictureInPictureRef, setPaused, setPictureInPicture]);
 
   // Stable identity so the memoised video surface skips re-rendering on progress ticks.
   const videoEvents = useMemo(
@@ -217,6 +270,8 @@ export function usePlayback({
       onTextTracks,
       onTextTrackDataChanged,
       onPictureInPictureStatusChanged,
+      onPlaybackStateChanged,
+      onReadyForDisplay,
     }),
     [
       onLoad,
@@ -228,15 +283,18 @@ export function usePlayback({
       onTextTracks,
       onTextTrackDataChanged,
       onPictureInPictureStatusChanged,
+      onPlaybackStateChanged,
+      onReadyForDisplay,
     ],
   );
 
   return {
-    videoRef,
     sourceKey,
+    startAt,
     paused,
     ended,
     loaded,
+    readyForDisplay,
     duration,
     clock,
     buffering,

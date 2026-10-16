@@ -5,23 +5,31 @@ import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.content.Intent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
+import android.util.Log
 import android.util.Size
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.WritableMap
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 
 /**
  * Reads the video and audio library straight from MediaStore columns (no file is opened),
  * and thumbnails / album art from the system thumbnail cache, the way native players do.
  */
+@OptIn(UnstableApi::class)
 class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
     NativeZxplayerMediaSpec(reactContext) {
 
@@ -190,9 +198,73 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  // Media session (notification and lock-screen controls). The stand-in player lives on
+  // the main thread, so every call hops there.
+
+  private val mainHandler = Handler(Looper.getMainLooper())
+
+  private val sessionPlayer
+    get() = PlaybackSessionService.sharedPlayer(Looper.getMainLooper())
+
+  override fun setNowPlaying(info: ReadableMap) {
+    val next =
+        NowPlaying(
+            id = info.getString("id") ?: "",
+            title = info.getString("title") ?: "",
+            artist = info.getString("artist") ?: "",
+            artworkUri = if (info.hasKey("artworkUri")) info.getString("artworkUri") else null,
+            durationMs = info.getDouble("durationMs").toLong(),
+            positionMs = info.getDouble("positionMs").toLong(),
+            playing = info.getBoolean("playing"),
+            buffering = info.getBoolean("buffering"),
+            speed = info.getDouble("speed").toFloat(),
+            hasPrevious = info.getBoolean("hasPrevious"),
+            hasNext = info.getBoolean("hasNext"),
+        )
+    mainHandler.post {
+      sessionPlayer.onCommand = { command, positionMs ->
+        emitOnRemoteCommand(
+            Arguments.createMap().apply {
+              putString("command", command)
+              putDouble("positionMs", positionMs.toDouble())
+            })
+      }
+      sessionPlayer.update(next)
+      if (!PlaybackSessionService.running) {
+        startSessionService()
+      }
+    }
+  }
+
+  override fun clearNowPlaying() {
+    mainHandler.post { stopSession() }
+  }
+
+  private fun startSessionService() {
+    try {
+      reactApplicationContext.startService(
+          Intent(reactApplicationContext, PlaybackSessionService::class.java))
+    } catch (error: IllegalStateException) {
+      // Android refuses to start services from the background; the next update retries.
+      Log.w(TAG, "Could not start the playback session", error)
+    }
+  }
+
+  private fun stopSession() {
+    sessionPlayer.update(null)
+    if (PlaybackSessionService.running) {
+      reactApplicationContext.stopService(
+          Intent(reactApplicationContext, PlaybackSessionService::class.java))
+    }
+  }
+
   override fun invalidate() {
     queryExecutor.shutdownNow()
     thumbnailExecutor.shutdownNow()
+    mainHandler.post {
+      sessionPlayer.onCommand = null
+      stopSession()
+    }
     super.invalidate()
   }
 
@@ -311,6 +383,7 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
   }
 
   private companion object {
+    const val TAG = "ZxplayerMedia"
     const val ID = MediaStore.MediaColumns._ID
     const val NAME = MediaStore.MediaColumns.DISPLAY_NAME
     const val SIZE = MediaStore.MediaColumns.SIZE

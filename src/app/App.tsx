@@ -12,7 +12,9 @@ import {
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import { palettes, type ColorScheme } from '../shared/theme';
 import { ThemeProvider } from '../shared/theming';
+import { navigationRef } from './navigation/navigationRef';
 import { RootNavigator } from './navigation/RootNavigator';
+import { PlayerHost } from './PlayerHost';
 import { useAppColorScheme } from './useAppColorScheme';
 import { usePersistedStores } from './usePersistedStores';
 
@@ -48,8 +50,10 @@ export default function App() {
         <ThemeProvider scheme={scheme}>
           <ErrorBoundary>
             {storesReady ? (
-              <NavigationContainer theme={theme}>
+              <NavigationContainer ref={navigationRef} theme={theme}>
                 <RootNavigator />
+                {/* Above the navigator, so playback can outlive the Player screen. */}
+                <PlayerHost />
               </NavigationContainer>
             ) : (
               // Saved settings and history load in milliseconds; avoid flashing defaults.
