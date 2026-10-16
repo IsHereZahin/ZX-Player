@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   detail: {
-    ...typography.caption,
+    ...typography.footnote,
     maxWidth: 480,
     color: playerColors.textSecondary,
     textAlign: 'center',

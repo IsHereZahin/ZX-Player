@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   time: {
-    ...typography.label,
+    ...typography.captionStrong,
     minWidth: 48,
     color: playerColors.white,
     fontVariant: ['tabular-nums'],
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     backgroundColor: playerColors.primary,
   },
   bubbleText: {
-    ...typography.label,
+    ...typography.captionStrong,
     color: playerColors.onPrimary,
     fontVariant: ['tabular-nums'],
   },

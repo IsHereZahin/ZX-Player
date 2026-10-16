@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useStore } from '../../../shared/storage/store';
-import { playerColors, radius, spacing } from '../../../shared/theme';
+import { font, playerColors, radius, spacing } from '../../../shared/theme';
 import { clamp } from '../../../shared/utils/math';
 import type { PlaybackClock } from '../playbackClock';
 import { getSubtitleText, type SubtitleTrack } from '../subtitles';
@@ -77,7 +77,8 @@ const styles = StyleSheet.create({
   },
   text: {
     color: playerColors.white,
-    fontWeight: '600',
+    // Subtitles scale with the screen; tracking for a typical size is close enough.
+    ...font('semibold', 20),
     textAlign: 'center',
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,

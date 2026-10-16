@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     color: playerColors.white,
   },
   queue: {
-    ...typography.label,
+    ...typography.captionStrong,
     color: playerColors.textSecondary,
   },
   speedPill: {
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.22)',
   },
   speedText: {
-    ...typography.label,
+    ...typography.captionStrong,
     fontSize: 13,
     color: playerColors.white,
   },

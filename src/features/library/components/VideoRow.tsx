@@ -102,11 +102,11 @@ const useStyles = makeStyles(colors => ({
     color: colors.primaryText,
   },
   details: {
-    ...typography.caption,
+    ...typography.footnote,
     color: colors.textSecondary,
   },
   status: {
-    ...typography.label,
+    ...typography.captionStrong,
     color: colors.primaryText,
   },
 }));

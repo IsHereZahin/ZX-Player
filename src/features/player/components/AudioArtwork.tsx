@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   title: {
-    ...typography.title,
+    ...typography.title2,
     color: playerColors.white,
     textAlign: 'center',
   },

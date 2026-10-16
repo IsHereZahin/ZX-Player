@@ -7,7 +7,7 @@ Offline local video and audio player for Android and iOS, built with React Nativ
 
 ## Features
 
-The UI is built on one brand colour (blue), with light and dark themes. The theme follows the device by default and can be fixed to Light or Dark in Settings. The player always stays dark. Colour tokens for both themes live in `src/shared/theme.ts`. Components read the active palette through `useColors` / `makeStyles` (`src/shared/theming.tsx`), which build each style sheet once per theme. Icons come from Lucide, and screens share the components in `src/shared/components`.
+The UI follows Apple's design language: system colours with blue as the tint, grouped backgrounds and hairline separators, in light and dark themes. Text uses Apple's type scale, set in the system font (SF Pro) on iOS and in [Inter](https://rsms.me/inter/) on Android (`android/app/src/main/assets/fonts`, SIL Open Font License, see `assets/fonts/Inter-LICENSE.txt`). The theme follows the device by default and can be fixed to Light or Dark in Settings. The player always stays dark. Colour tokens for both themes live in `src/shared/theme.ts`. Components read the active palette through `useColors` / `makeStyles` (`src/shared/theming.tsx`), which build each style sheet once per theme. Icons come from Lucide, and screens share the components in `src/shared/components`.
 
 ### Library
 

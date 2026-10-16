@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     backgroundColor: playerColors.primaryBright,
   },
   levelText: {
-    ...typography.label,
+    ...typography.captionStrong,
     color: playerColors.white,
     fontVariant: ['tabular-nums'],
   },
@@ -184,12 +184,12 @@ const styles = StyleSheet.create({
     backgroundColor: playerColors.playerPanel,
   },
   seekDelta: {
-    ...typography.display,
+    ...typography.largeTitle,
     color: playerColors.white,
     fontVariant: ['tabular-nums'],
   },
   seekPosition: {
-    ...typography.caption,
+    ...typography.footnote,
     color: playerColors.textSecondary,
     fontVariant: ['tabular-nums'],
   },
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     backgroundColor: playerColors.primary,
   },
   boostText: {
-    ...typography.label,
+    ...typography.captionStrong,
     fontSize: 13,
     color: playerColors.onPrimary,
   },

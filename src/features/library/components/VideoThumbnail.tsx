@@ -100,7 +100,7 @@ const useStyles = makeStyles(colors => ({
     backgroundColor: 'rgba(0, 0, 0, 0.78)',
   },
   badgeText: {
-    ...typography.label,
+    ...typography.captionStrong,
     fontSize: 11,
     color: colors.white,
     fontVariant: ['tabular-nums'],

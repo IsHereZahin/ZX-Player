@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   hint: {
-    ...typography.label,
+    ...typography.captionStrong,
     overflow: 'hidden',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,

@@ -177,11 +177,11 @@ const useStyles = makeStyles(colors => ({
     color: colors.danger,
   },
   description: {
-    ...typography.caption,
+    ...typography.footnote,
     color: colors.textSecondary,
   },
   value: {
-    ...typography.caption,
+    ...typography.footnote,
     color: colors.primaryText,
   },
 }));

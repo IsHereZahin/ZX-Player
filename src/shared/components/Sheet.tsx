@@ -277,7 +277,7 @@ const useStyles = makeStyles(colors => ({
     color: colors.textPrimary,
   },
   subtitle: {
-    ...typography.caption,
+    ...typography.footnote,
     marginTop: spacing.xxs,
     color: colors.textSecondary,
   },
@@ -302,7 +302,7 @@ const useStyles = makeStyles(colors => ({
     ...typography.body,
   },
   optionDescription: {
-    ...typography.caption,
+    ...typography.footnote,
     color: colors.textSecondary,
   },
   sectionTitle: {

@@ -54,7 +54,7 @@ function MainTabs() {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
         },
-        tabBarLabelStyle: typography.label,
+        tabBarLabelStyle: typography.captionStrong,
       }}
     >
       <Tab.Screen

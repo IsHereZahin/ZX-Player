@@ -74,7 +74,7 @@ const useStyles = makeStyles(colors => ({
     backgroundColor: colors.primary,
   },
   label: {
-    ...typography.label,
+    ...typography.captionStrong,
     fontSize: 13,
     color: colors.textPrimary,
   },

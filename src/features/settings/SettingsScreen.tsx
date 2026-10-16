@@ -367,7 +367,7 @@ const useStyles = makeStyles(colors => ({
     color: colors.textSecondary,
   },
   aboutText: {
-    ...typography.caption,
+    ...typography.footnote,
     color: colors.textMuted,
     textAlign: 'center',
   },

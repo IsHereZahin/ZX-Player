@@ -83,15 +83,15 @@ const useStyles = makeStyles(colors => ({
     marginLeft: spacing.xs,
   },
   largeTitle: {
-    ...typography.display,
+    ...typography.largeTitle,
     color: colors.textPrimary,
   },
   title: {
-    ...typography.title,
+    ...typography.title2,
     color: colors.textPrimary,
   },
   subtitle: {
-    ...typography.caption,
+    ...typography.footnote,
     color: colors.textSecondary,
   },
   actions: {

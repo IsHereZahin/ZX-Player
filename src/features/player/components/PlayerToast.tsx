@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     backgroundColor: playerColors.playerPanel,
   },
   text: {
-    ...typography.caption,
+    ...typography.footnote,
     flexShrink: 1,
     paddingRight: spacing.sm,
     color: playerColors.white,
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     backgroundColor: playerColors.primarySoftPressed,
   },
   actionText: {
-    ...typography.label,
+    ...typography.captionStrong,
     fontSize: 13,
     color: playerColors.primaryText,
   },

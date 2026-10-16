@@ -1,44 +1,63 @@
-import type { TextStyle } from 'react-native';
+import { Platform, type TextStyle } from 'react-native';
 
 export type ColorScheme = 'light' | 'dark';
 
 /**
- * ZX Player design tokens. Blue is the single brand colour: filled buttons and active
- * states use `primary`, progress/selection marks use `primaryBright`, and blue text or
- * icons on surfaces use `primaryText` (chosen for WCAG AA contrast on `background`).
+ * ZX Player design tokens, modelled on Apple's system colours. Blue is the tint: filled
+ * buttons and active states use `primary`, progress/selection marks use `primaryBright`,
+ * and tinted text or icons use `primaryText`. Screens with grouped lists sit on
+ * `background` with `surface` cells; plain lists sit on `canvas`.
  * Components read the active palette through `useColors` / `makeStyles` (theming.tsx).
  */
 export const darkColors = {
-  primary: '#2563EB',
-  primaryPressed: '#1D4ED8',
-  primaryBright: '#3B82F6',
-  primaryText: '#60A5FA',
-  primarySoft: 'rgba(59, 130, 246, 0.16)',
-  primarySoftPressed: 'rgba(59, 130, 246, 0.26)',
+  primary: '#0A84FF',
+  primaryPressed: '#3D9BFF',
+  primaryBright: '#0A84FF',
+  primaryText: '#0A84FF',
+  primarySoft: 'rgba(10, 132, 255, 0.18)',
+  primarySoftPressed: 'rgba(10, 132, 255, 0.28)',
   onPrimary: '#FFFFFF',
 
-  background: '#0A0C11',
-  surface: '#12151C',
-  surfaceRaised: '#191D26',
-  surfaceHigh: '#232835',
-  border: '#272C38',
-  divider: 'rgba(255, 255, 255, 0.06)',
-  pressed: 'rgba(255, 255, 255, 0.06)',
+  background: '#000000',
+  canvas: '#000000',
+  surface: '#1C1C1E',
+  surfaceRaised: '#2C2C2E',
+  surfaceHigh: '#3A3A3C',
+  border: '#38383A',
+  divider: 'rgba(84, 84, 88, 0.6)',
+  pressed: 'rgba(255, 255, 255, 0.1)',
+  /** Navigation and tab bars. */
+  chrome: 'rgba(22, 22, 24, 0.94)',
+  /** Search fields, segmented-control tracks, switch tracks. */
+  fill: 'rgba(118, 118, 128, 0.24)',
+  fillStrong: 'rgba(118, 118, 128, 0.36)',
 
-  textPrimary: '#F3F5F9',
-  textSecondary: '#A1A9B8',
-  textMuted: '#6B7385',
+  textPrimary: '#FFFFFF',
+  textSecondary: 'rgba(235, 235, 245, 0.6)',
+  textMuted: 'rgba(235, 235, 245, 0.3)',
 
-  danger: '#F87171',
-  dangerSoft: 'rgba(248, 113, 113, 0.14)',
-  success: '#34D399',
+  danger: '#FF453A',
+  dangerSoft: 'rgba(255, 69, 58, 0.18)',
+  success: '#30D158',
+
+  // System accents, e.g. for settings icons and badges.
+  blue: '#0A84FF',
+  green: '#30D158',
+  orange: '#FF9F0A',
+  red: '#FF453A',
+  pink: '#FF375F',
+  purple: '#BF5AF2',
+  indigo: '#5E5CE6',
+  teal: '#40C8E0',
+  yellow: '#FFD60A',
+  gray: '#8E8E93',
 
   white: '#FFFFFF',
   black: '#000000',
-  backdrop: 'rgba(0, 0, 0, 0.6)',
-  playerPanel: 'rgba(17, 20, 27, 0.94)',
-  playerChip: 'rgba(17, 20, 27, 0.72)',
-  playerButton: 'rgba(255, 255, 255, 0.12)',
+  backdrop: 'rgba(0, 0, 0, 0.5)',
+  playerPanel: 'rgba(30, 30, 32, 0.94)',
+  playerChip: 'rgba(30, 30, 32, 0.72)',
+  playerButton: 'rgba(255, 255, 255, 0.14)',
   trackInactive: 'rgba(255, 255, 255, 0.24)',
   trackBuffered: 'rgba(255, 255, 255, 0.42)',
 };
@@ -46,38 +65,53 @@ export const darkColors = {
 export type ColorTokens = { readonly [K in keyof typeof darkColors]: string };
 
 export const lightColors: ColorTokens = {
-  primary: '#2563EB',
-  primaryPressed: '#1D4ED8',
-  primaryBright: '#2563EB',
-  primaryText: '#1D4ED8',
-  primarySoft: 'rgba(37, 99, 235, 0.10)',
-  primarySoftPressed: 'rgba(37, 99, 235, 0.18)',
+  primary: '#007AFF',
+  primaryPressed: '#0062CC',
+  primaryBright: '#007AFF',
+  primaryText: '#007AFF',
+  primarySoft: 'rgba(0, 122, 255, 0.12)',
+  primarySoftPressed: 'rgba(0, 122, 255, 0.2)',
   onPrimary: '#FFFFFF',
 
-  background: '#F4F6FA',
+  background: '#F2F2F7',
+  canvas: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceRaised: '#E9EDF3',
-  surfaceHigh: '#DDE3EC',
-  border: '#D5DBE5',
-  divider: 'rgba(15, 23, 42, 0.08)',
-  pressed: 'rgba(15, 23, 42, 0.06)',
+  surfaceRaised: '#E5E5EA',
+  surfaceHigh: '#D1D1D6',
+  border: '#C6C6C8',
+  divider: 'rgba(60, 60, 67, 0.29)',
+  pressed: 'rgba(0, 0, 0, 0.08)',
+  chrome: 'rgba(249, 249, 249, 0.94)',
+  fill: 'rgba(118, 118, 128, 0.12)',
+  fillStrong: 'rgba(118, 118, 128, 0.2)',
 
-  textPrimary: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
+  textPrimary: '#000000',
+  textSecondary: 'rgba(60, 60, 67, 0.6)',
+  textMuted: 'rgba(60, 60, 67, 0.3)',
 
-  danger: '#DC2626',
-  dangerSoft: 'rgba(220, 38, 38, 0.10)',
-  success: '#059669',
+  danger: '#FF3B30',
+  dangerSoft: 'rgba(255, 59, 48, 0.12)',
+  success: '#34C759',
+
+  blue: '#007AFF',
+  green: '#34C759',
+  orange: '#FF9500',
+  red: '#FF3B30',
+  pink: '#FF2D55',
+  purple: '#AF52DE',
+  indigo: '#5856D6',
+  teal: '#30B0C7',
+  yellow: '#FFCC00',
+  gray: '#8E8E93',
 
   white: '#FFFFFF',
   black: '#000000',
-  backdrop: 'rgba(15, 23, 42, 0.45)',
-  playerPanel: 'rgba(17, 20, 27, 0.94)',
-  playerChip: 'rgba(17, 20, 27, 0.72)',
-  playerButton: 'rgba(15, 23, 42, 0.08)',
-  trackInactive: 'rgba(15, 23, 42, 0.14)',
-  trackBuffered: 'rgba(15, 23, 42, 0.28)',
+  backdrop: 'rgba(0, 0, 0, 0.35)',
+  playerPanel: 'rgba(30, 30, 32, 0.94)',
+  playerChip: 'rgba(30, 30, 32, 0.72)',
+  playerButton: 'rgba(0, 0, 0, 0.06)',
+  trackInactive: 'rgba(60, 60, 67, 0.18)',
+  trackBuffered: 'rgba(60, 60, 67, 0.3)',
 };
 
 export const palettes: Record<ColorScheme, ColorTokens> = {
@@ -102,40 +136,75 @@ export const spacing = {
 export const radius = {
   xs: 4,
   sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 22,
+  /** Grouped list sections, search fields. */
+  md: 10,
+  /** Artwork and cards. */
+  lg: 12,
+  /** Sheets. */
+  xl: 14,
   pill: 999,
 } as const;
 
+type Weight = 'regular' | 'medium' | 'semibold' | 'bold';
+
+const ANDROID_FACES: Record<Weight, string> = {
+  regular: 'Inter-Regular',
+  medium: 'Inter-Medium',
+  semibold: 'Inter-SemiBold',
+  bold: 'Inter-Bold',
+};
+const IOS_WEIGHTS: Record<Weight, TextStyle['fontWeight']> = {
+  regular: '400',
+  medium: '500',
+  semibold: '600',
+  bold: '700',
+};
+
+/**
+ * iOS uses the system font (SF Pro), which tracks itself per size. Android uses Inter, the
+ * closest open typeface, with one file per weight (a fontWeight on a custom font would be
+ * synthesised) and Inter's recommended size-dependent tracking.
+ */
+export function font(weight: Weight, size: number): TextStyle {
+  if (Platform.OS === 'ios') {
+    return { fontWeight: IOS_WEIGHTS[weight] };
+  }
+  const trackingEm = -0.0223 + 0.185 * Math.exp(-0.1745 * size);
+  return {
+    fontFamily: ANDROID_FACES[weight],
+    letterSpacing: Math.round(trackingEm * size * 100) / 100,
+  };
+}
+
+function textStyle(
+  size: number,
+  lineHeight: number,
+  weight: Weight,
+): TextStyle {
+  return { fontSize: size, lineHeight, ...font(weight, size) };
+}
+
+/** Apple's text styles (points at the default Dynamic Type size). */
 export const typography = {
-  display: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-  },
-  title: {
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  headline: { fontSize: 16, lineHeight: 22, fontWeight: '600' },
-  body: { fontSize: 15, lineHeight: 21, fontWeight: '400' },
-  bodyStrong: { fontSize: 15, lineHeight: 21, fontWeight: '600' },
-  caption: { fontSize: 13, lineHeight: 18, fontWeight: '400' },
-  label: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
+  largeTitle: textStyle(34, 41, 'bold'),
+  title1: textStyle(28, 34, 'bold'),
+  title2: textStyle(22, 28, 'bold'),
+  title3: textStyle(20, 25, 'semibold'),
+  headline: textStyle(17, 22, 'semibold'),
+  body: textStyle(17, 22, 'regular'),
+  bodyStrong: textStyle(17, 22, 'semibold'),
+  callout: textStyle(16, 21, 'regular'),
+  calloutStrong: textStyle(16, 21, 'semibold'),
+  subheadline: textStyle(15, 20, 'regular'),
+  subheadlineStrong: textStyle(15, 20, 'semibold'),
+  footnote: textStyle(13, 18, 'regular'),
+  footnoteStrong: textStyle(13, 18, 'semibold'),
+  caption: textStyle(12, 16, 'regular'),
+  captionStrong: textStyle(12, 16, 'semibold'),
+  caption2: textStyle(11, 13, 'medium'),
+  /** Grouped-list section headers. */
   overline: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '700',
-    letterSpacing: 0.8,
+    ...textStyle(13, 18, 'regular'),
     textTransform: 'uppercase',
   },
 } satisfies Record<string, TextStyle>;

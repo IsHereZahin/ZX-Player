@@ -92,13 +92,13 @@ const useStyles = makeStyles(colors => ({
     opacity: 0.8,
   },
   title: {
-    ...typography.caption,
+    ...typography.footnote,
     fontWeight: '600',
     marginTop: spacing.sm,
     color: colors.textPrimary,
   },
   caption: {
-    ...typography.label,
+    ...typography.captionStrong,
     marginTop: 2,
     color: colors.primaryText,
   },

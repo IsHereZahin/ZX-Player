@@ -25,6 +25,7 @@ import {
   type IconComponent,
 } from '../../../shared/icons';
 import {
+  font,
   playerColors,
   radius,
   spacing,
@@ -532,13 +533,13 @@ const styles = StyleSheet.create({
     backgroundColor: playerColors.primarySoft,
   },
   tileLabel: {
-    ...typography.label,
-    fontWeight: '500',
+    ...typography.caption,
+    ...font('medium', 12),
     color: playerColors.textPrimary,
     textAlign: 'center',
   },
   tileValue: {
-    ...typography.label,
+    ...typography.captionStrong,
     color: playerColors.primaryText,
   },
   padded: {

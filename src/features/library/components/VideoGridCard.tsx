@@ -87,7 +87,7 @@ const useStyles = makeStyles(colors => ({
     gap: spacing.xxs,
   },
   title: {
-    ...typography.caption,
+    ...typography.footnote,
     fontWeight: '600',
     color: colors.textPrimary,
   },
@@ -95,7 +95,7 @@ const useStyles = makeStyles(colors => ({
     color: colors.primaryText,
   },
   details: {
-    ...typography.label,
+    ...typography.captionStrong,
     fontWeight: '400',
     color: colors.textSecondary,
   },

@@ -188,7 +188,7 @@ const useStyles = makeStyles(colors => ({
     color: colors.textPrimary,
   },
   count: {
-    ...typography.label,
+    ...typography.captionStrong,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     color: colors.textSecondary,

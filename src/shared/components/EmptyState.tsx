@@ -84,7 +84,7 @@ const useStyles = makeStyles(colors => ({
     backgroundColor: colors.primarySoft,
   },
   title: {
-    ...typography.title,
+    ...typography.title2,
     color: colors.textPrimary,
     textAlign: 'center',
   },

@@ -103,7 +103,7 @@ const useStyles = makeStyles(colors => ({
     color: colors.textPrimary,
   },
   subtitle: {
-    ...typography.caption,
+    ...typography.footnote,
     color: colors.textSecondary,
   },
 }));
