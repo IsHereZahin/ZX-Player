@@ -1,8 +1,11 @@
 import React, { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useStore } from '../../../shared/storage/store';
 import { colors, radius, spacing } from '../../../shared/theme';
 import { clamp } from '../../../shared/utils/math';
+import type { PlaybackClock } from '../playbackClock';
+import { getSubtitleText, type SubtitleTrack } from '../subtitles';
 
 interface SubtitleOverlayProps {
   text: string;
@@ -41,6 +44,29 @@ export const SubtitleOverlay = memo(function SubtitleOverlayView({
     </View>
   );
 });
+
+interface TimedSubtitleOverlayProps extends Omit<SubtitleOverlayProps, 'text'> {
+  clock: PlaybackClock;
+  track: SubtitleTrack;
+  /** Seconds the subtitles are shifted by (positive shows them later). */
+  delay: number;
+}
+
+/**
+ * Subtitles from a file, timed against the playback clock. Re-renders only when the
+ * visible cue changes, not on every progress tick.
+ */
+export function TimedSubtitleOverlay({
+  clock,
+  track,
+  delay,
+  ...overlay
+}: TimedSubtitleOverlayProps) {
+  const text = useStore(clock, state =>
+    getSubtitleText(track, state.currentTime - delay),
+  );
+  return <SubtitleOverlay text={text} {...overlay} />;
+}
 
 const styles = StyleSheet.create({
   layer: {

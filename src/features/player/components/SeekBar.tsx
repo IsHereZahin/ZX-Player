@@ -19,6 +19,7 @@ import { useLatestRef } from '../../../shared/hooks/useLatestRef';
 import { colors, radius, spacing, typography } from '../../../shared/theme';
 import { formatDuration } from '../../../shared/utils/format';
 import { clamp } from '../../../shared/utils/math';
+import { usePlaybackClock, type PlaybackClock } from '../playbackClock';
 
 const TOUCH_AREA_HEIGHT = 36;
 const TRACK_HEIGHT = 4;
@@ -27,9 +28,8 @@ const THUMB_SIZE_ACTIVE = 22;
 const BUBBLE_WIDTH = 64;
 
 interface SeekBarProps {
-  currentTime: number;
+  clock: PlaybackClock;
   duration: number;
-  bufferedTime: number;
   /** Step used by screen-reader increment / decrement actions. */
   skipSeconds: number;
   onSeek: (time: number) => void;
@@ -38,13 +38,13 @@ interface SeekBarProps {
 
 /** Scrub bar: tap to jump, drag to preview a position, release to seek. */
 export function SeekBar({
-  currentTime,
+  clock,
   duration,
-  bufferedTime,
   skipSeconds,
   onSeek,
   onScrubbingChange,
 }: SeekBarProps) {
+  const { currentTime, bufferedTime } = usePlaybackClock(clock);
   const [trackWidth, setTrackWidth] = useState(0);
   const [scrubTime, setScrubTime] = useState<number | null>(null);
   const scrubRef = useRef<number | null>(null);
@@ -122,9 +122,9 @@ export function SeekBar({
         event.nativeEvent.actionName === 'increment'
           ? skipSeconds
           : -skipSeconds;
-      onSeek(currentTime + step);
+      onSeek(clock.getState().currentTime + step);
     },
-    [currentTime, onSeek, skipSeconds],
+    [clock, onSeek, skipSeconds],
   );
 
   const scrubbing = scrubTime !== null;

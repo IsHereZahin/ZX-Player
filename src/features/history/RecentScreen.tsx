@@ -7,6 +7,7 @@ import { IconButton } from '../../shared/components/IconButton';
 import { ScreenHeader } from '../../shared/components/ScreenHeader';
 import { HistoryIcon, Trash2Icon } from '../../shared/icons';
 import { colors, spacing, typography } from '../../shared/theme';
+import { MEDIA_LIST_TUNING } from '../../shared/utils/listTuning';
 import { VideoRow } from '../library/components/VideoRow';
 import { useVideoActions } from '../library/hooks/useVideoActions';
 import type { VideoItem } from '../library/types';
@@ -79,6 +80,7 @@ export function RecentScreen(_props: Props) {
         />
       ) : (
         <SectionList
+          {...MEDIA_LIST_TUNING}
           sections={sections}
           keyExtractor={video => video.id}
           renderItem={renderItem}

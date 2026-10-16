@@ -33,6 +33,8 @@ export function VideoThumbnail({
           source={{ uri }}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
+          // Android fades every image in over 300 ms, which reads as lag while scrolling.
+          fadeDuration={0}
           onError={() => setFailed(true)}
           accessibilityIgnoresInvertColors
         />

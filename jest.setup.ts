@@ -1,7 +1,7 @@
 // Native modules are replaced by the manual mocks in /__mocks__.
 jest.mock('react-native-video');
 jest.mock('react-native-volume-manager');
-jest.mock('react-native-create-thumbnail');
+jest.mock('zxplayer-media');
 jest.mock('react-native-svg');
 jest.mock('@react-native-camera-roll/camera-roll');
 jest.mock('@react-native-documents/picker');

@@ -21,6 +21,7 @@ import {
 } from '../../../shared/icons';
 import { colors, radius, spacing, typography } from '../../../shared/theme';
 import { formatSpeed } from '../../../shared/utils/format';
+import type { PlaybackClock } from '../playbackClock';
 import { Scrim } from './Scrim';
 import { SeekBar } from './SeekBar';
 
@@ -29,9 +30,8 @@ export interface PlayerControlsProps {
   /** e.g. "3 of 12" when playing through a list. */
   queueLabel: string | null;
   paused: boolean;
-  currentTime: number;
+  clock: PlaybackClock;
   duration: number;
-  bufferedTime: number;
   skipSeconds: number;
   speed: number;
   hasPrevious: boolean;
@@ -192,9 +192,8 @@ export function PlayerControls(props: PlayerControlsProps) {
         ]}
       >
         <SeekBar
-          currentTime={props.currentTime}
+          clock={props.clock}
           duration={props.duration}
-          bufferedTime={props.bufferedTime}
           skipSeconds={props.skipSeconds}
           onSeek={props.onSeek}
           onScrubbingChange={props.onScrubbingChange}

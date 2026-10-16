@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
+import * as nativeMedia from 'zxplayer-media';
+import type { NativeVideo } from 'zxplayer-media';
 
 import {
   makePhotoIdentifier,
@@ -9,15 +11,47 @@ import {
 import {
   ALL_VIDEOS_FOLDER_ID,
   buildFolderList,
+  buildFolderListFromBuckets,
   describeFileName,
+  fetchAllFolderVideos,
   fetchFolderVideos,
   fetchVideoFolders,
+  fromNativeVideo,
+  NATIVE_PAGE_SIZE,
   toVideoItem,
   VIDEO_PAGE_SIZE,
 } from '../mediaLibrary';
+import type { VideoFolder } from '../../types';
 
 const getAlbums = CameraRoll.getAlbums as jest.Mock;
 const getPhotos = CameraRoll.getPhotos as jest.Mock;
+const getNativeFolders = nativeMedia.getVideoFolders as jest.Mock;
+const getNativeVideos = nativeMedia.getVideos as jest.Mock;
+
+function makeNativeVideo(
+  id: string,
+  overrides: Partial<NativeVideo> = {},
+): NativeVideo {
+  return {
+    id,
+    uri: `content://media/external/video/media/${id}`,
+    fileName: `clip-${id}.mp4`,
+    sizeBytes: 1024,
+    durationSec: 90,
+    width: 1280,
+    height: 720,
+    modifiedAtSec: 1_700_000_000,
+    ...overrides,
+  };
+}
+
+const cameraBucket: VideoFolder = {
+  id: 'bucket:-1739773001',
+  title: 'Camera',
+  count: 3,
+  album: { name: 'Camera', kind: 'Album' },
+  bucketId: '-1739773001',
+};
 
 afterEach(() => {
   jest.clearAllMocks();
@@ -65,6 +99,40 @@ describe('buildFolderList', () => {
   });
 });
 
+describe('buildFolderListFromBuckets', () => {
+  it('drops empty buckets, sorts by title and totals the library', () => {
+    const folders = buildFolderListFromBuckets([
+      { id: '3', name: 'zoo', count: 1 },
+      { id: '1', name: 'Camera', count: 3 },
+      { id: '2', name: 'Empty', count: 0 },
+    ]);
+    expect(folders.map(folder => folder.title)).toEqual([
+      'All videos',
+      'Camera',
+      'zoo',
+    ]);
+    expect(folders[0].count).toBe(4);
+    expect(folders[1]).toEqual({
+      id: 'bucket:1',
+      title: 'Camera',
+      count: 3,
+      album: { name: 'Camera', kind: 'Album' },
+      bucketId: '1',
+    });
+  });
+
+  it('keeps same-named folders apart by bucket id', () => {
+    const folders = buildFolderListFromBuckets([
+      { id: '1', name: 'Movies', count: 2 },
+      { id: '2', name: 'Movies', count: 5 },
+    ]);
+    expect(folders.slice(1).map(folder => folder.id)).toEqual([
+      'bucket:1',
+      'bucket:2',
+    ]);
+  });
+});
+
 describe('fetchVideoFolders', () => {
   it('queries video albums of every type', async () => {
     getAlbums.mockResolvedValueOnce(sampleAlbums);
@@ -74,6 +142,102 @@ describe('fetchVideoFolders', () => {
       albumType: 'All',
     });
     expect(folders).toHaveLength(3);
+  });
+
+  it('reads MediaStore buckets natively on Android', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    getNativeFolders.mockResolvedValueOnce([
+      { id: '1', name: 'Camera', count: 3 },
+    ]);
+
+    const folders = await fetchVideoFolders();
+
+    expect(getAlbums).not.toHaveBeenCalled();
+    expect(folders.map(folder => folder.id)).toEqual([
+      ALL_VIDEOS_FOLDER_ID,
+      'bucket:1',
+    ]);
+  });
+
+  it('falls back to camera-roll when the native module is missing', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    jest.replaceProperty(nativeMedia, 'isNativeMediaAvailable', false);
+    getAlbums.mockResolvedValueOnce(sampleAlbums);
+
+    await fetchVideoFolders();
+
+    expect(getNativeFolders).not.toHaveBeenCalled();
+    expect(getAlbums).toHaveBeenCalled();
+  });
+});
+
+describe('fetchAllFolderVideos on Android', () => {
+  beforeEach(() => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+  });
+
+  it('pages through the bucket and reports progress after each page', async () => {
+    getNativeVideos
+      .mockResolvedValueOnce({
+        videos: [makeNativeVideo('1'), makeNativeVideo('2')],
+        hasMore: true,
+      })
+      .mockResolvedValueOnce({
+        // A file added between queries shifts the window; "2" repeats.
+        videos: [makeNativeVideo('2'), makeNativeVideo('3')],
+        hasMore: false,
+      });
+    const onPage = jest.fn();
+
+    const videos = await fetchAllFolderVideos(cameraBucket, onPage);
+
+    expect(getNativeVideos).toHaveBeenNthCalledWith(
+      1,
+      '-1739773001',
+      0,
+      NATIVE_PAGE_SIZE,
+    );
+    expect(getNativeVideos).toHaveBeenNthCalledWith(
+      2,
+      '-1739773001',
+      2,
+      NATIVE_PAGE_SIZE,
+    );
+    expect(videos.map(video => video.id)).toEqual(['1', '2', '3']);
+    expect(onPage).toHaveBeenCalledTimes(2);
+    expect(getPhotos).not.toHaveBeenCalled();
+  });
+
+  it('queries every bucket for "All videos"', async () => {
+    await fetchAllFolderVideos({
+      id: ALL_VIDEOS_FOLDER_ID,
+      title: 'All videos',
+      count: null,
+      album: null,
+    });
+    expect(getNativeVideos).toHaveBeenCalledWith(null, 0, NATIVE_PAGE_SIZE);
+  });
+
+  it('stops after the current page once cancelled', async () => {
+    getNativeVideos.mockResolvedValue({
+      videos: [makeNativeVideo('1')],
+      hasMore: true,
+    });
+
+    const videos = await fetchAllFolderVideos(
+      cameraBucket,
+      undefined,
+      () => true,
+    );
+
+    expect(getNativeVideos).toHaveBeenCalledTimes(1);
+    expect(videos).toEqual([]);
+  });
+
+  it('uses camera-roll for a folder saved before bucket ids existed', async () => {
+    await fetchAllFolderVideos(sampleFolder);
+    expect(getNativeVideos).not.toHaveBeenCalled();
+    expect(getPhotos.mock.calls[0][0].groupName).toBe('Camera');
   });
 });
 
@@ -151,6 +315,35 @@ describe('toVideoItem', () => {
         fileSize: null,
         // The native layer can send null even though the type says number.
         playableDuration: null as unknown as number,
+        uri: 'file:///storage/My%20Movie.mkv',
+      }),
+    );
+    expect(item.fileName).toBe('My Movie.mkv');
+    expect(item.sizeBytes).toBeNull();
+    expect(item.durationSec).toBe(0);
+  });
+});
+
+describe('fromNativeVideo', () => {
+  it('maps MediaStore rows', () => {
+    expect(fromNativeVideo(makeNativeVideo('7'))).toEqual({
+      id: '7',
+      uri: 'content://media/external/video/media/7',
+      fileName: 'clip-7.mp4',
+      durationSec: 90,
+      sizeBytes: 1024,
+      width: 1280,
+      height: 720,
+      modifiedAtSec: 1_700_000_000,
+    });
+  });
+
+  it('tolerates missing columns', () => {
+    const item = fromNativeVideo(
+      makeNativeVideo('8', {
+        fileName: '',
+        sizeBytes: null,
+        durationSec: Number.NaN,
         uri: 'file:///storage/My%20Movie.mkv',
       }),
     );

@@ -16,6 +16,7 @@ import { useLatestRef } from '../../../shared/hooks/useLatestRef';
 import { useStateWithRef } from '../../../shared/hooks/useStateWithRef';
 import { reportError } from '../../../shared/logger';
 import { clamp } from '../../../shared/utils/math';
+import { createPlaybackClock } from '../playbackClock';
 import { normalizeNaturalSize, type Size } from '../utils/aspectRatio';
 import type { MediaTrack } from '../utils/tracks';
 
@@ -57,10 +58,7 @@ export function usePlayback({
   const [ended, setEnded, endedRef] = useStateWithRef(false);
   const [duration, setDuration, durationRef] =
     useStateWithRef(initialDurationSec);
-  const [currentTime, setCurrentTime, currentTimeRef] = useStateWithRef(
-    startAtSec ?? 0,
-  );
-  const [bufferedTime, setBufferedTime] = useState(0);
+  const [clock] = useState(() => createPlaybackClock(startAtSec ?? 0));
   const [buffering, setBuffering] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [naturalSize, setNaturalSize] = useState<Size | null>(null);
@@ -72,6 +70,14 @@ export function usePlayback({
   const [error, setError] = useState<PlaybackError | null>(null);
   // Changing the key remounts <Video>, which is how a failed source is retried.
   const [sourceKey, setSourceKey] = useState(0);
+
+  const setCurrentTime = useCallback(
+    (time: number) =>
+      clock.setState(state =>
+        state.currentTime === time ? state : { ...state, currentTime: time },
+      ),
+    [clock],
+  );
 
   const seekTo = useCallback(
     (time: number) => {
@@ -105,18 +111,18 @@ export function usePlayback({
   }, [pausedRef, play, pause]);
 
   const getCurrentTime = useCallback(
-    () => currentTimeRef.current,
-    [currentTimeRef],
+    () => clock.getState().currentTime,
+    [clock],
   );
   const getDuration = useCallback(() => durationRef.current, [durationRef]);
 
   const retry = useCallback(() => {
-    seekOnLoadRef.current = currentTimeRef.current;
+    seekOnLoadRef.current = getCurrentTime();
     setError(null);
     setBuffering(true);
     setPaused(false);
     setSourceKey(key => key + 1);
-  }, [currentTimeRef, setPaused]);
+  }, [getCurrentTime, setPaused]);
 
   const enterPictureInPicture = useCallback(() => {
     videoRef.current?.enterPictureInPicture();
@@ -139,11 +145,12 @@ export function usePlayback({
   );
 
   const onProgress = useCallback(
-    (data: OnProgressData) => {
-      setCurrentTime(data.currentTime);
-      setBufferedTime(data.playableDuration);
-    },
-    [setCurrentTime],
+    (data: OnProgressData) =>
+      clock.setState({
+        currentTime: data.currentTime,
+        bufferedTime: data.playableDuration,
+      }),
+    [clock],
   );
 
   const onBuffer = useCallback(
@@ -231,8 +238,7 @@ export function usePlayback({
     ended,
     loaded,
     duration,
-    currentTime,
-    bufferedTime,
+    clock,
     buffering,
     naturalSize,
     audioTracks,

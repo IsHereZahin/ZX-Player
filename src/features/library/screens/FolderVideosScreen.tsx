@@ -22,6 +22,7 @@ import {
 } from '../../../shared/icons';
 import { colors, spacing } from '../../../shared/theme';
 import { formatVideoCount } from '../../../shared/utils/format';
+import { MEDIA_LIST_TUNING } from '../../../shared/utils/listTuning';
 import { useLastPlayedId } from '../../history/watchHistory';
 import { PlayAllButton } from '../components/PlayAllButton';
 import { VideoGridCard } from '../components/VideoGridCard';
@@ -123,6 +124,7 @@ export function FolderVideosScreen({ navigation, route }: Props) {
         <FlatList
           // Changing columns requires a fresh list instance.
           key={grid ? `grid-${columns}` : 'list'}
+          {...MEDIA_LIST_TUNING}
           data={sorted}
           keyExtractor={video => video.id}
           renderItem={renderItem}

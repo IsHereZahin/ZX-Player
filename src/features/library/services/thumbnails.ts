@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { createThumbnail } from 'react-native-create-thumbnail';
+import { getThumbnail, isNativeMediaAvailable } from 'zxplayer-media';
 
 import {
   createTaskQueue,
@@ -8,11 +8,11 @@ import {
 import type { VideoItem } from '../types';
 
 const THUMBNAIL_MAX_EDGE = 320;
-const PREFERRED_FRAME_MS = 1000;
-// Frame extraction is serialised natively anyway; a small window keeps visible rows first.
-const MAX_CONCURRENT_EXTRACTIONS = 2;
+// System thumbnails come from MediaStore's cache, so several can load at once. Newest
+// requests go first: they belong to the rows the user is looking at right now.
+const MAX_CONCURRENT_THUMBNAILS = 4;
 
-const queue = createTaskQueue(MAX_CONCURRENT_EXTRACTIONS);
+const queue = createTaskQueue(MAX_CONCURRENT_THUMBNAILS, { order: 'lifo' });
 const memoryCache = new Map<string, string>();
 
 function cacheKey(video: VideoItem): string {
@@ -29,35 +29,28 @@ export function getCachedThumbnail(video: VideoItem): string | null {
   return memoryCache.get(cacheKey(video)) ?? null;
 }
 
-/** Extracts (or reuses the on-disk copy of) a JPEG frame for an Android video. */
+/** Fetches (or reuses the on-disk copy of) the system thumbnail for an Android video. */
 export function requestThumbnail(video: VideoItem): QueuedTask<string> {
   const cached = getCachedThumbnail(video);
   if (cached) {
     return { promise: Promise.resolve(cached), cancel: () => {} };
   }
+  if (!isNativeMediaAvailable) {
+    return {
+      promise: Promise.reject(new Error('Video thumbnails are unavailable')),
+      cancel: () => {},
+    };
+  }
 
   const key = cacheKey(video);
-  const durationMs = video.durationSec * 1000;
-  const timeStamp =
-    durationMs > 0
-      ? Math.min(PREFERRED_FRAME_MS, Math.floor(durationMs / 2))
-      : 0;
-
   const task = queue.enqueue(() =>
-    createThumbnail({
-      url: video.uri,
-      timeStamp,
-      format: 'jpeg',
-      cacheName: key,
-      maxWidth: THUMBNAIL_MAX_EDGE,
-      maxHeight: THUMBNAIL_MAX_EDGE,
-    }),
+    getThumbnail(video.id, key, THUMBNAIL_MAX_EDGE),
   );
 
   return {
-    promise: task.promise.then(({ path }) => {
-      memoryCache.set(key, path);
-      return path;
+    promise: task.promise.then(uri => {
+      memoryCache.set(key, uri);
+      return uri;
     }),
     cancel: task.cancel,
   };

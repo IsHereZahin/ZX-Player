@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 
 import { useOpenPlayer } from '../../../app/navigation/useOpenPlayer';
 import { useAfterSheetClose } from '../../../shared/components/Sheet';
+import { useLatestRef } from '../../../shared/hooks/useLatestRef';
 import { VideoActionsSheet, VideoInfoSheet } from '../components/VideoSheets';
 import type { VideoItem } from '../types';
 
@@ -16,17 +17,21 @@ export function useVideoActions(videos: VideoItem[]) {
   const [selected, setSelected] = useState<VideoItem | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  // Read through a ref: a list that grows page by page would otherwise hand every row a
+  // new `play` callback per page and re-render all of them.
+  const videosRef = useLatestRef(videos);
 
   const play = useCallback(
     (video: VideoItem, fromStart = false) => {
-      const index = videos.findIndex(item => item.id === video.id);
+      const queue = videosRef.current;
+      const index = queue.findIndex(item => item.id === video.id);
       if (index === -1) {
         openPlayer([video], 0, fromStart);
       } else {
-        openPlayer(videos, index, fromStart);
+        openPlayer(queue, index, fromStart);
       }
     },
-    [openPlayer, videos],
+    [openPlayer, videosRef],
   );
 
   const openMenu = useCallback((video: VideoItem) => {

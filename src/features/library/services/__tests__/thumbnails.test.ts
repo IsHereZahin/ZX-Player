@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { createThumbnail } from 'react-native-create-thumbnail';
+import * as nativeMedia from 'zxplayer-media';
 
 import { sampleVideo } from '../../../../test/fixtures';
 import {
@@ -8,7 +8,7 @@ import {
   requestThumbnail,
 } from '../thumbnails';
 
-const createThumbnailMock = createThumbnail as jest.Mock;
+const getThumbnailMock = nativeMedia.getThumbnail as jest.Mock;
 
 afterEach(() => {
   jest.clearAllMocks();
@@ -22,7 +22,7 @@ describe('on iOS', () => {
     await expect(requestThumbnail(sampleVideo).promise).resolves.toBe(
       sampleVideo.uri,
     );
-    expect(createThumbnailMock).not.toHaveBeenCalled();
+    expect(getThumbnailMock).not.toHaveBeenCalled();
   });
 });
 
@@ -31,39 +31,59 @@ describe('on Android', () => {
     jest.replaceProperty(Platform, 'OS', 'android');
   });
 
-  it('extracts a frame once and serves later requests from memory', async () => {
+  it('loads the system thumbnail once and serves later requests from memory', async () => {
     expect(getCachedThumbnail(sampleVideo)).toBeNull();
 
     const path = await requestThumbnail(sampleVideo).promise;
 
-    expect(createThumbnailMock).toHaveBeenCalledWith({
-      url: sampleVideo.uri,
-      timeStamp: 1000,
-      format: 'jpeg',
-      cacheName: 'zxplayer_101_1700000500',
-      maxWidth: 320,
-      maxHeight: 320,
-    });
+    expect(getThumbnailMock).toHaveBeenCalledWith(
+      sampleVideo.id,
+      'zxplayer_101_1700000500',
+      320,
+    );
     expect(path).toBe(
-      'file:///data/cache/thumbnails/zxplayer_101_1700000500.jpeg',
+      'file:///data/cache/thumbnails/zxplayer_101_1700000500.jpg',
     );
     expect(getCachedThumbnail(sampleVideo)).toBe(path);
 
     await requestThumbnail(sampleVideo).promise;
-    expect(createThumbnailMock).toHaveBeenCalledTimes(1);
+    expect(getThumbnailMock).toHaveBeenCalledTimes(1);
   });
 
-  it('picks a frame inside very short clips', async () => {
-    await requestThumbnail({ ...sampleVideo, id: 'short', durationSec: 0.8 })
-      .promise;
-    expect(createThumbnailMock.mock.calls[0][0].timeStamp).toBe(400);
+  it('keys the disk cache by modification time so edited files refresh', async () => {
+    await requestThumbnail({ ...sampleVideo, modifiedAtSec: 42 }).promise;
+    expect(getThumbnailMock.mock.calls[0][1]).toBe('zxplayer_101_42');
+  });
+
+  it('loads the most recently requested rows first', async () => {
+    const order: string[] = [];
+    getThumbnailMock.mockImplementation(async (videoId: string) => {
+      order.push(videoId);
+      return `file:///thumb/${videoId}.jpg`;
+    });
+
+    // Six rows requested in quick succession; four start at once, then the newest wins.
+    const tasks = ['1', '2', '3', '4', '5', '6'].map(
+      id => requestThumbnail({ ...sampleVideo, id }).promise,
+    );
+    await Promise.all(tasks);
+
+    expect(order).toEqual(['1', '2', '3', '4', '6', '5']);
   });
 
   it('surfaces native failures to the caller', async () => {
-    createThumbnailMock.mockRejectedValueOnce(new Error('decoder error'));
+    getThumbnailMock.mockRejectedValueOnce(new Error('decoder error'));
     await expect(requestThumbnail(sampleVideo).promise).rejects.toThrow(
       'decoder error',
     );
     expect(getCachedThumbnail(sampleVideo)).toBeNull();
+  });
+
+  it('fails cleanly when the native module is missing', async () => {
+    jest.replaceProperty(nativeMedia, 'isNativeMediaAvailable', false);
+    await expect(requestThumbnail(sampleVideo).promise).rejects.toThrow(
+      'Video thumbnails are unavailable',
+    );
+    expect(getThumbnailMock).not.toHaveBeenCalled();
   });
 });

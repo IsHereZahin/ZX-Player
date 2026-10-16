@@ -38,7 +38,10 @@ import {
   type SubtitleChoice,
 } from '../components/PlayerSheets';
 import { PlayerToast } from '../components/PlayerToast';
-import { SubtitleOverlay } from '../components/SubtitleOverlay';
+import {
+  SubtitleOverlay,
+  TimedSubtitleOverlay,
+} from '../components/SubtitleOverlay';
 import { VideoSurface, type NativeTextTrack } from '../components/VideoSurface';
 import type { LevelControl } from '../hooks/levelControl';
 import { useAutoHideControls } from '../hooks/useAutoHideControls';
@@ -47,7 +50,6 @@ import { usePlaybackProgress } from '../hooks/usePlaybackProgress';
 import { describeSleepTimer, type SleepTimer } from '../hooks/useSleepTimer';
 import { useSubtitles } from '../hooks/useSubtitles';
 import { useToast } from '../hooks/useToast';
-import { getSubtitleText } from '../subtitles';
 import {
   ASPECT_MODE_DESCRIPTIONS,
   ASPECT_MODE_LABELS,
@@ -331,23 +333,25 @@ export function PlayerSession(props: PlayerSessionProps) {
     40,
   );
 
-  let subtitleText = '';
-  if (
-    subtitleChoice.kind === 'external' &&
-    subtitles.track &&
-    subtitles.visible
-  ) {
-    subtitleText = getSubtitleText(
-      subtitles.track,
-      playback.currentTime - subtitleDelay,
-    );
-  } else if (subtitleChoice.kind === 'embedded' && Platform.OS === 'ios') {
-    // Android draws embedded subtitles natively; iOS hands us the text instead.
-    subtitleText = playback.embeddedCueText;
-  }
+  const externalTrack =
+    subtitleChoice.kind === 'external' && subtitles.visible
+      ? subtitles.track
+      : null;
+  // Android draws embedded subtitles natively; iOS hands us the text instead.
+  const embeddedText =
+    subtitleChoice.kind === 'embedded' && Platform.OS === 'ios'
+      ? playback.embeddedCueText
+      : '';
 
   const pictureInPicture = playback.pictureInPicture;
   const showControls = controls.visible && !locked;
+  const subtitleLayout = {
+    shortSide,
+    scale: subtitleScale,
+    background: settings.subtitleBackground,
+    bottomOffset:
+      (showControls ? CONTROLS_CLEARANCE : spacing.xl) + insets.bottom,
+  };
   const showSpinner = playback.buffering && !playback.paused && !playback.error;
 
   return (
@@ -372,15 +376,16 @@ export function PlayerSession(props: PlayerSessionProps) {
       />
       {pictureInPicture ? null : (
         <>
-          <SubtitleOverlay
-            text={subtitleText}
-            shortSide={shortSide}
-            scale={subtitleScale}
-            background={settings.subtitleBackground}
-            bottomOffset={
-              (showControls ? CONTROLS_CLEARANCE : spacing.xl) + insets.bottom
-            }
-          />
+          {externalTrack ? (
+            <TimedSubtitleOverlay
+              clock={playback.clock}
+              track={externalTrack}
+              delay={subtitleDelay}
+              {...subtitleLayout}
+            />
+          ) : (
+            <SubtitleOverlay text={embeddedText} {...subtitleLayout} />
+          )}
 
           <PlayerGestureLayer
             layout={layout}
@@ -408,9 +413,8 @@ export function PlayerSession(props: PlayerSessionProps) {
               title={title}
               queueLabel={props.queueLabel}
               paused={playback.paused}
-              currentTime={playback.currentTime}
+              clock={playback.clock}
               duration={playback.duration}
-              bufferedTime={playback.bufferedTime}
               skipSeconds={settings.skipSeconds}
               speed={props.speed}
               hasPrevious

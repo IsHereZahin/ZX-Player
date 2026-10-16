@@ -22,6 +22,17 @@ import {
 } from '../utils/aspectRatio';
 
 const PROGRESS_INTERVAL_MS = 250;
+/**
+ * Android (ExoPlayer) buffering for local files. Storage reads are fast, so playback can
+ * start, and resume after a seek, on a short buffer instead of the 2.5 s / 5 s defaults
+ * meant for streaming; capping read-ahead keeps memory low on large files.
+ */
+const LOCAL_FILE_BUFFER = {
+  minBufferMs: 15000,
+  maxBufferMs: 30000,
+  bufferForPlaybackMs: 500,
+  bufferForPlaybackAfterRebufferMs: 1000,
+};
 
 export interface VideoEvents {
   onLoad: (data: OnLoadData) => void;
@@ -83,7 +94,11 @@ export const VideoSurface = memo(function VideoSurfaceView({
 }: VideoSurfaceProps) {
   // Metadata labels the media notification shown during background play.
   const source = useMemo(
-    () => ({ uri, metadata: { title, artist: 'ZX Player' } }),
+    () => ({
+      uri,
+      metadata: { title, artist: 'ZX Player' },
+      bufferConfig: LOCAL_FILE_BUFFER,
+    }),
     [title, uri],
   );
   const layout = resolveVideoLayout(

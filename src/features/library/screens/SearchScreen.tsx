@@ -12,6 +12,7 @@ import {
   XIcon,
 } from '../../../shared/icons';
 import { colors, radius, spacing, typography } from '../../../shared/theme';
+import { MEDIA_LIST_TUNING } from '../../../shared/utils/listTuning';
 import { useLastPlayedId } from '../../history/watchHistory';
 import { VIDEO_ROW_HEIGHT, VideoRow } from '../components/VideoRow';
 import { useVideoActions } from '../hooks/useVideoActions';
@@ -78,6 +79,7 @@ export function SearchScreen({ navigation }: Props) {
     }
     return (
       <FlatList
+        {...MEDIA_LIST_TUNING}
         data={results}
         keyExtractor={video => video.id}
         renderItem={renderItem}

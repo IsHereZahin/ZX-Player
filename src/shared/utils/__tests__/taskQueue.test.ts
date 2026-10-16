@@ -52,6 +52,23 @@ describe('createTaskQueue', () => {
     expect(skipped).not.toHaveBeenCalled();
   });
 
+  it('starts the newest waiting task first in lifo order', async () => {
+    const queue = createTaskQueue(1, { order: 'lifo' });
+    const blocker = deferred<void>();
+    const started: string[] = [];
+    const track = (name: string) => async () => {
+      started.push(name);
+    };
+
+    queue.enqueue(() => blocker.promise);
+    const older = queue.enqueue(track('older'));
+    const newer = queue.enqueue(track('newer'));
+    blocker.resolve();
+    await Promise.all([older.promise, newer.promise]);
+
+    expect(started).toEqual(['newer', 'older']);
+  });
+
   it('releases the slot when a task throws synchronously', async () => {
     const queue = createTaskQueue(1);
     const failing = queue.enqueue(() => {

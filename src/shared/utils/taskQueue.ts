@@ -16,17 +16,28 @@ interface Entry {
   reject: (error: Error) => void;
 }
 
+interface TaskQueueOptions {
+  /**
+   * `lifo` starts the newest task first. For list thumbnails that means the rows on
+   * screen now win over rows the user has already scrolled past.
+   */
+  order?: 'fifo' | 'lifo';
+}
+
 /**
  * Runs async tasks with bounded concurrency. Used so that list rows scrolled off-screen
  * can withdraw expensive native work (thumbnail extraction) before it begins.
  */
-export function createTaskQueue(concurrency: number) {
+export function createTaskQueue(
+  concurrency: number,
+  { order = 'fifo' }: TaskQueueOptions = {},
+) {
   const pending: Entry[] = [];
   let running = 0;
 
   const pump = () => {
     while (running < concurrency && pending.length > 0) {
-      const entry = pending.shift()!;
+      const entry = (order === 'lifo' ? pending.pop() : pending.shift())!;
       running += 1;
       entry.start();
     }

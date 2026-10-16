@@ -9,6 +9,11 @@ export interface VideoFolder {
   count: number | null;
   /** Album used to query this folder; null means the whole video library. */
   album: { name: string; kind: AlbumKind } | null;
+  /**
+   * Android MediaStore bucket, set when folders come from the native media module. Unlike
+   * album names, bucket ids keep two same-named folders apart.
+   */
+  bucketId?: string;
 }
 
 export interface VideoItem {

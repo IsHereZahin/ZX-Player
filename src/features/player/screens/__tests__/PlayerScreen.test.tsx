@@ -123,6 +123,22 @@ describe('controls', () => {
     expect(video().props.paused).toBe(false);
   });
 
+  it('starts local files on a short buffer', async () => {
+    await renderPlayer();
+    expect(video().props.source.bufferConfig).toEqual(
+      expect.objectContaining({
+        bufferForPlaybackMs: 500,
+        bufferForPlaybackAfterRebufferMs: 1000,
+      }),
+    );
+  });
+
+  it('updates the elapsed time from progress events', async () => {
+    await renderPlayer();
+    await progressTo(75);
+    expect(screen.getByText('1:15')).toBeOnTheScreen();
+  });
+
   it('skips by the interval chosen in settings', async () => {
     updateSettings({ skipSeconds: 15 });
     await renderPlayer();

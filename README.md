@@ -126,7 +126,7 @@ src/
   app/                        App root, tabs + native stack navigation, store hydration
   features/
     library/                  Media scanning, permissions, thumbnails, folders, videos, search
-      services/               camera-roll adapter, permission flow, thumbnail queue, search index
+      services/               Media library adapter (native MediaStore / camera-roll), permissions, thumbnail queue, search index
       utils/                  Sorting and filtering (pure TS)
       hooks/  components/  screens/
     history/                  Watch history store (resume, progress) and the Recent tab
@@ -143,6 +143,7 @@ src/
     theme.ts  icons.ts        Design tokens; per-icon Lucide imports
   test/                       Fixtures, navigation doubles, store reset
 modules/zxplayer-brightness/  In-repo TurboModule for screen brightness (Kotlin + Obj-C++)
+modules/zxplayer-media/       In-repo TurboModule for the Android video library and thumbnails (Kotlin)
 __mocks__/                    Jest mocks for every native module
 ```
 
@@ -152,18 +153,20 @@ __mocks__/                    Jest mocks for every native module
 | --------------------------------------------- | ----------------------------------------------------- |
 | `react-native-video`                          | Playback (ExoPlayer / AVPlayer)                       |
 | `react-native-gesture-handler` (v3 hooks API) | Player and scrub-bar gestures                         |
-| `@react-native-camera-roll/camera-roll`       | Media scanning; iOS `ph://` thumbnails                |
-| `react-native-create-thumbnail`               | Android video thumbnails (disk-cached)                |
+| `@react-native-camera-roll/camera-roll`       | Media scanning on iOS; `ph://` thumbnails             |
 | `react-native-volume-manager`                 | Media volume without the system HUD                   |
 | `@react-native-documents/picker`              | Picking subtitle files                                |
 | `@react-native-async-storage/async-storage`   | Saved settings, watch history, library preferences    |
 | `react-native-svg` + `lucide-react-native`    | Icons and gradient scrims                             |
 | `@react-navigation/bottom-tabs`               | Library / Recent / Settings tabs                      |
 | `zxplayer-brightness` (local)                 | Window brightness (Android) / screen brightness (iOS) |
+| `zxplayer-media` (local)                      | Android video library scan and system thumbnails      |
 
 Icons are imported one module at a time from `src/shared/icons.ts`, because Metro would otherwise bundle every Lucide icon. Some Lucide names (e.g. `history`) exist only as type aliases, so `src/shared/__tests__/icons.test.ts` checks that each import has a runtime module.
 
 Background play uses react-native-video's media-session service. It is declared in `AndroidManifest.xml` together with the foreground-service and notification permissions; iOS uses the `audio` background mode.
+
+On Android the library comes from `zxplayer-media`, which reads names, sizes, durations and resolutions straight from MediaStore columns. It loads thumbnails from the system thumbnail cache and keeps a JPEG copy in the app cache. No video file is opened while scanning, so large libraries list quickly. iOS, and Android builds without the module, use camera-roll.
 
 Brightness on Android uses a window override, so it only affects ZX Player and needs no `WRITE_SETTINGS` permission. On iOS brightness is device-wide, so the original level is restored when the player closes or the app is backgrounded.
 
@@ -182,6 +185,5 @@ Gestures are driven through gesture-handler's `createGestureController`. Native 
 
 - Subtitle files are read as UTF-8; other encodings (e.g. Windows-1252) show garbled characters.
 - Only videos indexed by the system media library are listed. On iOS that means the Photos library, not files stored in the Files app.
-- Android groups folders by bucket name, so two folders that share a name appear as one.
 - Image-based embedded subtitles (PGS, VobSub) depend on the platform player's support.
 - Background play, picture-in-picture and track switching depend on native player behaviour. They have not been exercised on a physical device as part of this test suite.

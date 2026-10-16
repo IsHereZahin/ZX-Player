@@ -1,0 +1,29 @@
+{
+  "name": "zxplayer-media",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fast MediaStore video queries and system thumbnails for ZX Player (Android TurboModule).",
+  "license": "UNLICENSED",
+  "author": "ZX Player",
+  "homepage": "https://example.com/zxplayer-media",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "react-native": "src/index.ts",
+  "files": [
+    "src",
+    "android",
+    "react-native.config.js",
+    "!android/build"
+  ],
+  "peerDependencies": {
+    "react-native": "*"
+  },
+  "codegenConfig": {
+    "name": "ZxplayerMediaSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.isherezahin.zxplayer.media"
+    }
+  }
+}
