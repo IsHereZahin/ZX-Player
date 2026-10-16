@@ -72,6 +72,8 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+def hasReleaseKey = project.hasProperty('PLAYZ_UPLOAD_STORE_FILE')
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -84,6 +86,17 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+
+        externalNativeBuild {
+            cmake {
+                // CMake embeds each autolinked library's absolute source path in its object file
+                // name, which pushes some paths past Windows' limits when long-path support is
+                // off (260 chars per file, 248 per directory). Above this limit CMake replaces the
+                // long directory part with a hash; 255 leaves room for the ".d" dependency files.
+                // Shorter paths (e.g. on macOS/Linux CI) are unaffected.
+                arguments "-DCMAKE_OBJECT_PATH_MAX=255"
+            }
+        }
     }
     signingConfigs {
         debug {
@@ -92,15 +105,25 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            // Credentials come from ~/.gradle/gradle.properties so they never live in the repo.
+            // See https://reactnative.dev/docs/signed-apk-android.
+            if (hasReleaseKey) {
+                storeFile file(PLAYZ_UPLOAD_STORE_FILE)
+                storePassword PLAYZ_UPLOAD_STORE_PASSWORD
+                keyAlias PLAYZ_UPLOAD_KEY_ALIAS
+                keyPassword PLAYZ_UPLOAD_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Without the Play-Z release key (e.g. on a contributor's machine) the build still
+            // succeeds with the debug key, but that APK cannot update a release-signed install.
+            signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
