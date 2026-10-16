@@ -17,7 +17,7 @@ const memoryCache = new Map<string, string>();
 
 function cacheKey(video: VideoItem): string {
   // Including the modification time invalidates the on-disk thumbnail if the file changes.
-  return `playz_${video.id}_${video.modifiedAtSec}`.replace(/[^\w-]/g, '_');
+  return `zxplayer_${video.id}_${video.modifiedAtSec}`.replace(/[^\w-]/g, '_');
 }
 
 /** Returns a thumbnail URI immediately when one is already available. */

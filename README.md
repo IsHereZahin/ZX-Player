@@ -1,9 +1,9 @@
-# Play-Z
+# ZX Player
 
 Offline local video player for Android and iOS, built with React Native (New Architecture), TypeScript, `react-native-video` and `react-native-gesture-handler`.
 
-- **App name:** Play-Z
-- **Bundle / application ID:** `com.isherezahin.playz`
+- **App name:** ZX Player
+- **Bundle / application ID:** `com.isherezahin.zxplayer`
 
 ## Features
 
@@ -32,7 +32,7 @@ Offline local video player for Android and iOS, built with React Native (New Arc
 
   "Fill" and "Crop" mean the same thing in most players, so Crop shows the video at its native size to keep the four modes distinct.
 
-- **Subtitles.** Load `.srt`, `.ass` or `.ssa` files through the system file picker. Play-Z parses them itself and renders them identically on both platforms. ASS styling and positioning are dropped and vector drawings are skipped. Files must be UTF-8.
+- **Subtitles.** Load `.srt`, `.ass` or `.ssa` files through the system file picker. ZX Player parses them itself and renders them identically on both platforms. ASS styling and positioning are dropped and vector drawings are skipped. Files must be UTF-8.
 
 ## Requirements
 
@@ -70,6 +70,8 @@ PLAYZ_UPLOAD_STORE_PASSWORD=…
 PLAYZ_UPLOAD_KEY_PASSWORD=…
 ```
 
+The `PLAYZ_` property names, keystore file name and key alias predate the rename to ZX Player and are kept so they keep matching the existing release key.
+
 Back up the keystore and its password together. An APK signed with a different key cannot update an installed copy of the app. Without these properties the release build falls back to the debug key.
 
 On Windows without long-path support, native code paths can exceed 260 characters. `android/app/build.gradle` sets `CMAKE_OBJECT_PATH_MAX=255` so CMake shortens them. That setting is tuned for a project folder about as long as `D:\learning purposes\Play-Z`. In a much deeper folder, enable Windows long paths or move the project to a shorter path.
@@ -101,7 +103,7 @@ src/
       components/  screens/
   shared/                   Theme, logger, reusable components, hooks, utilities
   test/                     Fixtures (mock media library, sample subtitles), test helpers
-modules/playz-brightness/   In-repo TurboModule for screen brightness (Kotlin + Obj-C++)
+modules/zxplayer-brightness/   In-repo TurboModule for screen brightness (Kotlin + Obj-C++)
 __mocks__/                  Jest mocks for every native module
 ```
 
@@ -115,9 +117,9 @@ __mocks__/                  Jest mocks for every native module
 | `react-native-create-thumbnail`               | Android video thumbnails (disk-cached)                |
 | `react-native-volume-manager`                 | Media volume without the system HUD                   |
 | `@react-native-documents/picker`              | Picking subtitle files                                |
-| `playz-brightness` (local)                    | Window brightness (Android) / screen brightness (iOS) |
+| `zxplayer-brightness` (local)                    | Window brightness (Android) / screen brightness (iOS) |
 
-Brightness on Android uses a window override, so it only affects Play-Z and needs no `WRITE_SETTINGS` permission. On iOS brightness is device-wide, so the original level is restored when the player closes or the app is backgrounded.
+Brightness on Android uses a window override, so it only affects ZX Player and needs no `WRITE_SETTINGS` permission. On iOS brightness is device-wide, so the original level is restored when the player closes or the app is backgrounded.
 
 ## Testing
 

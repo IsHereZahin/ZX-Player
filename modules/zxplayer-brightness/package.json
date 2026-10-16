@@ -1,0 +1,30 @@
+{
+  "name": "zxplayer-brightness",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Screen brightness control for the ZX Player video player (TurboModule).",
+  "license": "UNLICENSED",
+  "author": "ZX Player",
+  "homepage": "https://example.com/zxplayer-brightness",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "react-native": "src/index.ts",
+  "files": [
+    "src",
+    "android",
+    "ios",
+    "ZxplayerBrightness.podspec",
+    "!android/build"
+  ],
+  "peerDependencies": {
+    "react-native": "*"
+  },
+  "codegenConfig": {
+    "name": "ZxplayerBrightnessSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.isherezahin.zxplayer.brightness"
+    }
+  }
+}

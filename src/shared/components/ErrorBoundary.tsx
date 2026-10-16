@@ -38,7 +38,7 @@ export class ErrorBoundary extends Component<
       return (
         <ScreenState
           title="Something went wrong"
-          message="Play-Z hit an unexpected problem."
+          message="ZX Player hit an unexpected problem."
           actionLabel="Try again"
           onAction={this.handleRetry}
         />

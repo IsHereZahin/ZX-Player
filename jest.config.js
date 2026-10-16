@@ -6,7 +6,7 @@ module.exports = {
   ],
   // Native libraries ship untranspiled sources and must go through Babel.
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-native-camera-roll|@react-native-documents|@react-navigation|react-native-.*|playz-brightness)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-native-camera-roll|@react-native-documents|@react-navigation|react-native-.*|zxplayer-brightness)/)',
   ],
   testPathIgnorePatterns: [
     '/node_modules/',

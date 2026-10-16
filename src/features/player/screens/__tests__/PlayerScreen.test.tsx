@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { createGestureController } from 'react-native-gesture-handler/jest-utils';
 import { keepLocalCopy, pick } from '@react-native-documents/picker';
-import { resetBrightness, setBrightness } from 'playz-brightness';
+import { resetBrightness, setBrightness } from 'zxplayer-brightness';
 import { setVolume } from 'react-native-volume-manager';
 
 import { reportError } from '../../../../shared/logger';

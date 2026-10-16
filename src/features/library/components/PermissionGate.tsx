@@ -38,7 +38,7 @@ export function PermissionGate({ children }: { children: ReactNode }) {
     return (
       <ScreenState
         title="Access to videos is off"
-        message="Turn on video access for Play-Z in Settings to browse your library."
+        message="Turn on video access for ZX Player in Settings to browse your library."
         actionLabel="Open Settings"
         onAction={openSettings}
         testID="permission-blocked"
@@ -49,7 +49,7 @@ export function PermissionGate({ children }: { children: ReactNode }) {
   return (
     <ScreenState
       title="See your videos"
-      message="Play-Z reads your device's video library to show your folders. Your videos never leave your device."
+      message="ZX Player reads your device's video library to show your folders. Your videos never leave your device."
       actionLabel="Allow access"
       onAction={request}
       testID="permission-request"

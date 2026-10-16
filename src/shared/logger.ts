@@ -4,6 +4,6 @@
  */
 export function reportError(context: string, error: unknown): void {
   if (__DEV__) {
-    console.warn(`[Play-Z] ${context}`, error);
+    console.warn(`[ZX Player] ${context}`, error);
   }
 }

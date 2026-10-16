@@ -82,7 +82,7 @@ function parseDialogue(value: string, format: string[]): SubtitleCue | null {
 
 /**
  * Parses Advanced SubStation Alpha / SubStation Alpha content. Styling, positioning and
- * effects are dropped; the dialogue text is rendered with Play-Z's own subtitle style.
+ * effects are dropped; the dialogue text is rendered with ZX Player's own subtitle style.
  */
 export function parseAss(content: string): SubtitleCue[] {
   const cues: SubtitleCue[] = [];

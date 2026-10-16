@@ -79,9 +79,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.isherezahin.playz"
+    namespace "com.isherezahin.zxplayer"
     defaultConfig {
-        applicationId "com.isherezahin.playz"
+        applicationId "com.isherezahin.zxplayer"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -121,7 +121,7 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            // Without the Play-Z release key (e.g. on a contributor's machine) the build still
+            // Without the ZX Player release key (e.g. on a contributor's machine) the build still
             // succeeds with the debug key, but that APK cannot update a release-signed install.
             signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds

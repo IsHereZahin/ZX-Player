@@ -40,12 +40,12 @@ describe('on Android', () => {
       url: sampleVideo.uri,
       timeStamp: 1000,
       format: 'jpeg',
-      cacheName: 'playz_101_1700000500',
+      cacheName: 'zxplayer_101_1700000500',
       maxWidth: 320,
       maxHeight: 320,
     });
     expect(path).toBe(
-      'file:///data/cache/thumbnails/playz_101_1700000500.jpeg',
+      'file:///data/cache/thumbnails/zxplayer_101_1700000500.jpeg',
     );
     expect(getCachedThumbnail(sampleVideo)).toBe(path);
 

@@ -23,7 +23,7 @@ export function RootNavigator() {
       <Stack.Screen
         name="Folders"
         component={FoldersScreen}
-        options={{ title: 'Play-Z' }}
+        options={{ title: 'ZX Player' }}
       />
       <Stack.Screen name="VideoList" component={VideoListScreen} />
       <Stack.Screen

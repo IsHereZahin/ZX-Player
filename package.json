@@ -1,5 +1,5 @@
 {
-  "name": "playz",
+  "name": "zxplayer",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -15,7 +15,6 @@
     "@react-native-documents/picker": "12.0.2",
     "@react-navigation/native": "7.5.1",
     "@react-navigation/native-stack": "7.21.0",
-    "playz-brightness": "file:modules/playz-brightness",
     "react": "19.3.0",
     "react-native": "0.88.0",
     "react-native-create-thumbnail": "2.2.0",
@@ -23,7 +22,8 @@
     "react-native-safe-area-context": "5.10.1",
     "react-native-screens": "4.30.0",
     "react-native-video": "6.19.3",
-    "react-native-volume-manager": "2.2.0"
+    "react-native-volume-manager": "2.2.0",
+    "zxplayer-brightness": "file:modules/zxplayer-brightness"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

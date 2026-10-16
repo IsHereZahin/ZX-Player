@@ -5,7 +5,7 @@ import {
   isBrightnessSupported,
   resetBrightness,
   setBrightness,
-} from 'playz-brightness';
+} from 'zxplayer-brightness';
 
 import { reportError } from '../../../shared/logger';
 import { roundLevel, type LevelControl } from './levelControl';
@@ -14,7 +14,7 @@ const FALLBACK_LEVEL = 0.5;
 
 /**
  * Brightness for the lifetime of the player. The user's level is applied only while
- * Play-Z is in the foreground and the system level is restored when the player closes,
+ * ZX Player is in the foreground and the system level is restored when the player closes,
  * because iOS brightness is device-wide.
  */
 export function useBrightnessControl(): LevelControl {
