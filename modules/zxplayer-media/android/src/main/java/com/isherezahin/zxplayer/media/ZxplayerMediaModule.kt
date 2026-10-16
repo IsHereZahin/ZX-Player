@@ -198,6 +198,33 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  override fun shareMedia(uri: String, title: String, promise: Promise) {
+    try {
+      val contentUri = Uri.parse(uri)
+      // Only media-library items: the share must never expose other providers' content.
+      if (contentUri.scheme != "content" || contentUri.authority != MediaStore.AUTHORITY) {
+        throw IllegalArgumentException("Not a media library item")
+      }
+      val send =
+          Intent(Intent.ACTION_SEND).apply {
+            type = resolver.getType(contentUri) ?: "*/*"
+            putExtra(Intent.EXTRA_STREAM, contentUri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+          }
+      val chooser =
+          Intent.createChooser(send, title).apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            if (reactApplicationContext.currentActivity == null) {
+              addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+          }
+      (reactApplicationContext.currentActivity ?: reactApplicationContext).startActivity(chooser)
+      promise.resolve(null)
+    } catch (error: Exception) {
+      promise.reject("E_SHARE", "Could not share this file", error)
+    }
+  }
+
   // Media session (notification and lock-screen controls). The stand-in player lives on
   // the main thread, so every call hops there.
 

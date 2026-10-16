@@ -1,10 +1,19 @@
 import React, { useCallback, useState } from 'react';
+import { Platform } from 'react-native';
+import * as nativeMedia from 'zxplayer-media';
 
 import { useOpenPlayer } from '../../../app/navigation/useOpenPlayer';
 import { useAfterSheetClose } from '../../../shared/components/Sheet';
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
 import type { IconComponent } from '../../../shared/icons';
+import { reportError } from '../../../shared/logger';
+import {
+  AddToPlaylistSheet,
+  PlaylistNameSheet,
+} from '../components/PlaylistSheets';
 import { VideoActionsSheet, VideoInfoSheet } from '../components/VideoSheets';
+import { addToPlaylist, createPlaylist } from '../playlists';
+import { mediaTitle } from '../services/mediaLibrary';
 import type { VideoItem } from '../types';
 
 /** An extra option in an item's menu, e.g. "Remove from Playlist". */
@@ -14,6 +23,16 @@ export interface ExtraAction {
   destructive?: boolean;
   onPress: () => void;
   testID?: string;
+}
+
+/** Sharing hands the library file to Android's share sheet; iOS has no equivalent here. */
+const canShare = () =>
+  Platform.OS === 'android' && nativeMedia.isNativeMediaAvailable;
+
+function share(video: VideoItem) {
+  nativeMedia
+    .shareMedia(video.uri, mediaTitle(video))
+    .catch(error => reportError('Sharing failed', error));
 }
 
 /**
@@ -30,6 +49,8 @@ export function useVideoActions(
   const [selected, setSelected] = useState<VideoItem | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [playlistPickerOpen, setPlaylistPickerOpen] = useState(false);
+  const [newPlaylistOpen, setNewPlaylistOpen] = useState(false);
   // Read through a ref: a list that grows page by page would otherwise hand every row a
   // new `play` callback per page and re-render all of them.
   const videosRef = useLatestRef(videos);
@@ -61,12 +82,28 @@ export function useVideoActions(
         onDismissed={onDismissed}
         onPlay={play}
         onShowInfo={() => schedule(() => setInfoOpen(true))}
+        onAddToPlaylist={() => schedule(() => setPlaylistPickerOpen(true))}
+        onShare={canShare() ? share : undefined}
         extraActions={extraActions?.(selected)}
       />
       <VideoInfoSheet
         video={selected}
         visible={infoOpen}
         onClose={() => setInfoOpen(false)}
+      />
+      <AddToPlaylistSheet
+        visible={playlistPickerOpen}
+        onClose={() => setPlaylistPickerOpen(false)}
+        onDismissed={onDismissed}
+        onPick={playlistId => addToPlaylist(playlistId, [selected])}
+        onNewPlaylist={() => schedule(() => setNewPlaylistOpen(true))}
+      />
+      <PlaylistNameSheet
+        visible={newPlaylistOpen}
+        title="New Playlist"
+        confirmLabel="Create"
+        onSubmit={name => createPlaylist(name, [selected])}
+        onClose={() => setNewPlaylistOpen(false)}
       />
     </>
   ) : null;

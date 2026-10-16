@@ -14,6 +14,7 @@ export const getThumbnail = jest.fn(
     `file:///data/cache/thumbnails/${cacheKey}.jpg`,
 );
 
+export const shareMedia = jest.fn(async () => {});
 export const setNowPlaying = jest.fn();
 export const clearNowPlaying = jest.fn();
 

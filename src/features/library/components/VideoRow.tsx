@@ -49,6 +49,8 @@ export const VideoRow = memo(function VideoRowView({
         video.durationSec,
       )}${status ? `, ${status}` : ''}`}
       onPress={() => onPress(video)}
+      onLongPress={() => onMore(video)}
+      delayLongPress={350}
       android_ripple={{ color: colors.pressed }}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       testID={`video-${video.id}`}

@@ -24,6 +24,7 @@ import {
   CircleAlertIcon,
   FilmIcon,
   HeartIcon,
+  ListMusicIcon,
   MusicIcon,
   SparklesIcon,
 } from '../../../shared/icons';
@@ -39,6 +40,7 @@ import {
 import { MediaShelf } from '../components/MediaShelf';
 import { useFavoriteList } from '../favorites';
 import { useMediaIndex } from '../hooks/useMediaIndex';
+import { usePlaylists } from '../playlists';
 import { addedAt, selectRecentlyAdded } from '../recentlyAdded';
 import { invalidateMediaIndex } from '../services/videoIndex';
 import { FolderRow } from '../components/FolderRow';
@@ -85,6 +87,10 @@ export function LibraryScreen({ navigation, route }: Props) {
     () => navigation.navigate('RecentlyAdded', { scope }),
     [navigation, scope],
   );
+  const openPlaylists = useCallback(
+    () => navigation.navigate('Playlists', { scope }),
+    [navigation, scope],
+  );
 
   const top = (
     <>
@@ -112,6 +118,7 @@ export function LibraryScreen({ navigation, route }: Props) {
               scope={scope}
               onOpenFavorites={openFavorites}
               onOpenRecentlyAdded={openRecentlyAdded}
+              onOpenPlaylists={openPlaylists}
             />
           }
           onScroll={onScroll}
@@ -134,16 +141,19 @@ function Collections({
   scope,
   onOpenFavorites,
   onOpenRecentlyAdded,
+  onOpenPlaylists,
 }: {
   scope: MediaScope;
   onOpenFavorites: () => void;
   onOpenRecentlyAdded: () => void;
+  onOpenPlaylists: () => void;
 }) {
   const styles = useStyles();
   const colors = useColors();
   const kinds = useMemo(() => kindsOf(scope), [scope]);
   const favorites = useFavoriteList(kinds).length;
   const recent = useRecentlyAdded(scope)?.length ?? 0;
+  const playlists = usePlaylists().length;
   return (
     <ListSection style={styles.collections}>
       <ListRow
@@ -163,6 +173,15 @@ function Collections({
         accessory="chevron"
         onPress={onOpenFavorites}
         testID="open-favorites"
+      />
+      <ListRow
+        icon={ListMusicIcon}
+        iconBackground={colors.orange}
+        title="Playlists"
+        value={playlists > 0 ? String(playlists) : undefined}
+        accessory="chevron"
+        onPress={onOpenPlaylists}
+        testID="open-playlists"
       />
     </ListSection>
   );

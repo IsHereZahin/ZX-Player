@@ -6,6 +6,8 @@ import {
   DEFAULT_LIBRARY_PREFS,
   libraryPrefsStore,
 } from '../features/library/libraryPrefs';
+import { playlistsStore } from '../features/library/playlists';
+import { recentSearchesStore } from '../features/library/recentSearches';
 import { resetVideoIndex } from '../features/library/services/videoIndex';
 import { clearThumbnailMemoryCache } from '../features/library/services/thumbnails';
 import {
@@ -20,9 +22,14 @@ import {
 /** Writes pending store changes now, which also cancels their debounce timers. */
 export async function flushPersistedStores(): Promise<void> {
   await Promise.all(
-    [settingsStore, historyStore, libraryPrefsStore, favoritesStore].map(
-      store => store.flush(),
-    ),
+    [
+      settingsStore,
+      historyStore,
+      libraryPrefsStore,
+      favoritesStore,
+      playlistsStore,
+      recentSearchesStore,
+    ].map(store => store.flush()),
   );
 }
 
@@ -33,6 +40,8 @@ export function resetAppState(): void {
   historyStore.setState({});
   libraryPrefsStore.setState(DEFAULT_LIBRARY_PREFS);
   favoritesStore.setState({});
+  playlistsStore.setState([]);
+  recentSearchesStore.setState([]);
   resetVideoIndex();
   clearThumbnailMemoryCache();
   stopPlayback();

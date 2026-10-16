@@ -11,6 +11,7 @@ interface SearchFieldProps {
   value?: string;
   onChangeText?: (text: string) => void;
   onPress?: () => void;
+  onSubmitEditing?: () => void;
   autoFocus?: boolean;
   testID?: string;
 }
@@ -21,6 +22,7 @@ export function SearchField({
   value = '',
   onChangeText,
   onPress,
+  onSubmitEditing,
   autoFocus,
   testID,
 }: SearchFieldProps) {
@@ -59,6 +61,7 @@ export function SearchField({
         autoCorrect={false}
         autoCapitalize="none"
         returnKeyType="search"
+        onSubmitEditing={onSubmitEditing}
         accessibilityLabel={placeholder}
         testID={testID}
       />

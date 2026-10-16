@@ -38,6 +38,10 @@ export function getThumbnail(uri: string, cacheKey: string, maxSize: number) {
   return requireModule().getThumbnail(uri, cacheKey, maxSize);
 }
 
+export function shareMedia(uri: string, title: string) {
+  return requireModule().shareMedia(uri, title);
+}
+
 export function setNowPlaying(info: NowPlayingInfo) {
   requireModule().setNowPlaying(info);
 }

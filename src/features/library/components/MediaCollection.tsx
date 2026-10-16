@@ -9,7 +9,13 @@ import {
   useCollapsingTitle,
 } from '../../../shared/components/NavigationBar';
 import { ListSkeleton } from '../../../shared/components/Skeleton';
-import { PlayIcon, type IconComponent } from '../../../shared/icons';
+import {
+  PlayIcon,
+  ShuffleIcon,
+  type IconComponent,
+} from '../../../shared/icons';
+import { shuffled } from '../../../shared/utils/shuffle';
+import { useOpenPlayer } from '../../../app/navigation/useOpenPlayer';
 import { spacing } from '../../../shared/theme';
 import { makeStyles } from '../../../shared/theming';
 import { MEDIA_LIST_TUNING } from '../../../shared/utils/listTuning';
@@ -52,6 +58,7 @@ export function MediaCollection({
   const styles = useStyles();
   const { scrollY, onScroll } = useCollapsingTitle();
   const { play, openMenu, sheets } = useVideoActions(items, extraActions);
+  const openPlayer = useOpenPlayer();
   const lastPlayedId = useLastPlayedId();
   const lastIndex = items.length - 1;
 
@@ -80,6 +87,14 @@ export function MediaCollection({
             onPress={() => play(items[0])}
             style={styles.action}
             testID="play-all"
+          />
+          <Button
+            label="Shuffle"
+            icon={ShuffleIcon}
+            variant="secondary"
+            onPress={() => openPlayer(shuffled(items), 0)}
+            style={styles.action}
+            testID="shuffle-all"
           />
         </View>
       ) : null}

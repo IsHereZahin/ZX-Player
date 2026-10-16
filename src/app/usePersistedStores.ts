@@ -4,6 +4,8 @@ import { AppState } from 'react-native';
 import { historyStore } from '../features/history/watchHistory';
 import { favoritesStore } from '../features/library/favorites';
 import { libraryPrefsStore } from '../features/library/libraryPrefs';
+import { playlistsStore } from '../features/library/playlists';
+import { recentSearchesStore } from '../features/library/recentSearches';
 import { settingsStore } from '../features/settings/settingsStore';
 
 const PERSISTED_STORES = [
@@ -11,6 +13,8 @@ const PERSISTED_STORES = [
   historyStore,
   libraryPrefsStore,
   favoritesStore,
+  playlistsStore,
+  recentSearchesStore,
 ];
 
 /**

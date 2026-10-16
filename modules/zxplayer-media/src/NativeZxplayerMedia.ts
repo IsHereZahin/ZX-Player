@@ -61,6 +61,8 @@ export interface Spec extends TurboModule {
     cacheKey: string,
     maxSize: number,
   ): Promise<string | null>;
+  /** Opens the system share sheet for a library item. */
+  shareMedia(uri: string, title: string): Promise<void>;
   /** Starts or updates the media session behind the playback notification. */
   setNowPlaying(info: NowPlayingInfo): void;
   /** Ends the media session and removes the notification. */

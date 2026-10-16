@@ -9,6 +9,11 @@ import {
   mockNavigation,
   screenProps,
 } from '../../../../test/navigation';
+import {
+  MAX_RECENT_SEARCHES,
+  recentSearchesStore,
+  rememberSearch,
+} from '../../recentSearches';
 import { SearchScreen } from '../SearchScreen';
 
 jest.mock('@react-navigation/native', () => ({
@@ -73,6 +78,46 @@ describe('SearchScreen', () => {
     expect(await screen.findByText('No matches')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByLabelText('Clear search'));
+    expect(screen.getByText('Search your library')).toBeOnTheScreen();
+  });
+});
+
+describe('recent searches', () => {
+  beforeEach(() => {
+    getPhotos.mockResolvedValue({
+      edges: [makePhotoIdentifier('1', { filename: 'Sylhet trip.mkv' })],
+      page_info: { has_next_page: false },
+    });
+  });
+
+  it('keeps the newest first, once each, up to a limit', () => {
+    rememberSearch('trip');
+    rememberSearch('party');
+    rememberSearch('  TRIP ');
+    expect(recentSearchesStore.getState()).toEqual(['TRIP', 'party']);
+
+    for (let i = 0; i < 20; i += 1) {
+      rememberSearch(`q${i}`);
+    }
+    expect(recentSearchesStore.getState()).toHaveLength(MAX_RECENT_SEARCHES);
+  });
+
+  it('remembers a search once a result is opened, and offers it again', async () => {
+    await renderScreen();
+    await fireEvent.changeText(screen.getByTestId('search-input'), 'sylhet');
+    await fireEvent.press(await screen.findByText('Sylhet trip'));
+    expect(recentSearchesStore.getState()).toEqual(['sylhet']);
+
+    await fireEvent.changeText(screen.getByTestId('search-input'), '');
+    expect(screen.getByText('Recent Searches')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByLabelText('Search for sylhet'));
+    expect(screen.getByTestId('search-input').props.value).toBe('sylhet');
+  });
+
+  it('clears recent searches', async () => {
+    rememberSearch('trip');
+    await renderScreen();
+    await fireEvent.press(screen.getByTestId('clear-recent-searches'));
     expect(screen.getByText('Search your library')).toBeOnTheScreen();
   });
 });

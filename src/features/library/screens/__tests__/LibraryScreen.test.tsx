@@ -98,6 +98,15 @@ describe('LibraryScreen', () => {
     });
   });
 
+  it('opens Playlists from the Library group', async () => {
+    getAlbums.mockResolvedValueOnce(sampleAlbums);
+    await renderScreen();
+    await fireEvent.press(await screen.findByTestId('open-playlists'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Playlists', {
+      scope: 'video',
+    });
+  });
+
   it('opens search from the header', async () => {
     getAlbums.mockResolvedValueOnce(sampleAlbums);
     await renderScreen();

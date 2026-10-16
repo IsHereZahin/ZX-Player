@@ -15,6 +15,8 @@ export type LibraryStackParamList = {
   Search: { scope: MediaScope };
   Favorites: { scope: MediaScope };
   RecentlyAdded: { scope: MediaScope };
+  Playlists: { scope: MediaScope };
+  Playlist: { id: string };
 };
 
 export type MainTabParamList = {

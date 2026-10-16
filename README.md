@@ -19,6 +19,8 @@ Bottom tabs: Videos · Audio · Recent · Settings. With **Settings → Audio an
 - Per-video menu: resume or play from the beginning, mark as watched or unwatched, add to Favorites, video details, remove from history.
 - **Favorites**: heart anything from its menu or the player's More sheet; a Favorites list sits at the top of each library tab and favorited rows show a small heart.
 - **Recently Added**: a shelf and a list of what arrived in the last 30 days. Files added in the last week that haven't been played show a blue dot, as in Podcasts.
+- **Playlists**: create, rename and delete playlists of videos and music; add from any item's menu ("Add to Playlist…") and remove from inside the playlist.
+- **Play and Shuffle** buttons on folders, playlists and collections; **Share** (Android) from an item's menu; a long press opens the menu; Search remembers **recent searches**.
 - **Search** across the whole library by file name (and title, artist or album for audio), including non-Latin titles.
 - **Recent** tab: unfinished and recently played videos, with progress bars and "12 min left".
 - Thumbnails show a watch-progress bar. The most recently played video is highlighted.

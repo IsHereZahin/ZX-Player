@@ -16,6 +16,8 @@ import {
 import { FavoritesScreen } from '../../features/library/screens/FavoritesScreen';
 import { FolderVideosScreen } from '../../features/library/screens/FolderVideosScreen';
 import { LibraryScreen } from '../../features/library/screens/LibraryScreen';
+import { PlaylistScreen } from '../../features/library/screens/PlaylistScreen';
+import { PlaylistsScreen } from '../../features/library/screens/PlaylistsScreen';
 import { RecentlyAddedScreen } from '../../features/library/screens/RecentlyAddedScreen';
 import { isAudioLibrarySupported } from '../../features/library/services/mediaLibrary';
 import { SearchScreen } from '../../features/library/screens/SearchScreen';
@@ -71,6 +73,8 @@ function libraryStack(tab: LibraryTab) {
           name="RecentlyAdded"
           component={RecentlyAddedScreen}
         />
+        <LibraryStack.Screen name="Playlists" component={PlaylistsScreen} />
+        <LibraryStack.Screen name="Playlist" component={PlaylistScreen} />
         <LibraryStack.Screen
           name="Search"
           component={SearchScreen}

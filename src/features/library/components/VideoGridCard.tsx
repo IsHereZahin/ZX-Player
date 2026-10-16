@@ -34,6 +34,8 @@ export const VideoGridCard = memo(function VideoGridCardView({
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={() => onPress(video)}
+      onLongPress={() => onMore(video)}
+      delayLongPress={350}
       style={({ pressed }) => [
         styles.card,
         { width },

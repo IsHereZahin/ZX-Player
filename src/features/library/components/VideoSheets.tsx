@@ -6,8 +6,10 @@ import {
   CircleCheckIcon,
   HeartIcon,
   InfoIcon,
+  ListPlusIcon,
   PlayIcon,
   RotateCcwIcon,
+  Share2Icon,
   Trash2Icon,
 } from '../../../shared/icons';
 import { spacing, typography } from '../../../shared/theme';
@@ -41,6 +43,9 @@ interface VideoActionsSheetProps {
   onDismissed?: () => void;
   onPlay: (video: VideoItem, fromStart: boolean) => void;
   onShowInfo: (video: VideoItem) => void;
+  onAddToPlaylist: (video: VideoItem) => void;
+  /** Absent where sharing isn't available (iOS). */
+  onShare?: (video: VideoItem) => void;
   /** Screen-specific options, listed last. */
   extraActions?: ExtraAction[];
 }
@@ -53,6 +58,8 @@ export function VideoActionsSheet({
   onDismissed,
   onPlay,
   onShowInfo,
+  onAddToPlaylist,
+  onShare,
   extraActions = [],
 }: VideoActionsSheetProps) {
   const entry = useWatchEntry(video.id);
@@ -111,6 +118,20 @@ export function VideoActionsSheet({
         onPress={run(() => toggleFavorite(video))}
         testID="action-favorite"
       />
+      <OptionRow
+        icon={ListPlusIcon}
+        label="Add to Playlist…"
+        onPress={run(() => onAddToPlaylist(video))}
+        testID="action-add-to-playlist"
+      />
+      {onShare ? (
+        <OptionRow
+          icon={Share2Icon}
+          label="Share"
+          onPress={run(() => onShare(video))}
+          testID="action-share"
+        />
+      ) : null}
       <OptionRow
         icon={InfoIcon}
         label={isAudio ? 'Details' : 'Video details'}

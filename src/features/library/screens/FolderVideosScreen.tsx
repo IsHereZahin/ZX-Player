@@ -26,7 +26,10 @@ import {
   ListIcon,
   MusicIcon,
   PlayIcon,
+  ShuffleIcon,
 } from '../../../shared/icons';
+import { shuffled } from '../../../shared/utils/shuffle';
+import { useOpenPlayer } from '../../../app/navigation/useOpenPlayer';
 import { spacing } from '../../../shared/theme';
 import { makeStyles, useColors } from '../../../shared/theming';
 import { MEDIA_LIST_TUNING } from '../../../shared/utils/listTuning';
@@ -68,6 +71,7 @@ export function FolderVideosScreen({ navigation, route }: Props) {
     [videos, sortKey, sortDirection],
   );
   const { play, openMenu, sheets } = useVideoActions(sorted);
+  const openPlayer = useOpenPlayer();
 
   const grid = viewMode === 'grid';
   const columns = gridColumns(width);
@@ -120,6 +124,14 @@ export function FolderVideosScreen({ navigation, route }: Props) {
             onPress={() => play(sorted[0])}
             style={styles.action}
             testID="play-all"
+          />
+          <Button
+            label="Shuffle"
+            icon={ShuffleIcon}
+            variant="secondary"
+            onPress={() => openPlayer(shuffled(sorted), 0)}
+            style={styles.action}
+            testID="shuffle-all"
           />
         </View>
       ) : null}
