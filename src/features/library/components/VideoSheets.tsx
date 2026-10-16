@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 import { OptionRow, Sheet } from '../../../shared/components/Sheet';
 import {
   CircleCheckIcon,
+  HeartIcon,
   InfoIcon,
   PlayIcon,
   RotateCcwIcon,
@@ -25,6 +26,8 @@ import {
   resumePosition,
   useWatchEntry,
 } from '../../history/watchHistory';
+import { toggleFavorite, useIsFavorite } from '../favorites';
+import type { ExtraAction } from '../hooks/useVideoActions';
 import type { SortDirection, SortKey } from '../libraryPrefs';
 import { describeFileName } from '../services/mediaLibrary';
 import type { VideoItem } from '../types';
@@ -38,6 +41,8 @@ interface VideoActionsSheetProps {
   onDismissed?: () => void;
   onPlay: (video: VideoItem, fromStart: boolean) => void;
   onShowInfo: (video: VideoItem) => void;
+  /** Screen-specific options, listed last. */
+  extraActions?: ExtraAction[];
 }
 
 /** Per-video menu opened from the "more" button on rows and cards. */
@@ -48,11 +53,13 @@ export function VideoActionsSheet({
   onDismissed,
   onPlay,
   onShowInfo,
+  extraActions = [],
 }: VideoActionsSheetProps) {
   const entry = useWatchEntry(video.id);
   const { title, details } = describeVideo(video, entry);
   const resumeAt = resumePosition(entry);
   const isAudio = video.kind === 'audio';
+  const favorite = useIsFavorite(video.id);
   const run = (action: () => void) => () => {
     onClose();
     action();
@@ -99,6 +106,12 @@ export function VideoActionsSheet({
         />
       )}
       <OptionRow
+        icon={HeartIcon}
+        label={favorite ? 'Remove from Favorites' : 'Add to Favorites'}
+        onPress={run(() => toggleFavorite(video))}
+        testID="action-favorite"
+      />
+      <OptionRow
         icon={InfoIcon}
         label={isAudio ? 'Details' : 'Video details'}
         onPress={run(() => onShowInfo(video))}
@@ -113,6 +126,16 @@ export function VideoActionsSheet({
           testID="action-remove-history"
         />
       ) : null}
+      {extraActions.map(action => (
+        <OptionRow
+          key={action.label}
+          icon={action.icon}
+          label={action.label}
+          destructive={action.destructive}
+          onPress={run(action.onPress)}
+          testID={action.testID}
+        />
+      ))}
     </Sheet>
   );
 }

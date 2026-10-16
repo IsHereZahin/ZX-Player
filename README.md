@@ -16,7 +16,9 @@ Bottom tabs: Videos · Audio · Recent · Settings. With **Settings → Audio an
 - Folders from the device media library (Android MediaStore buckets, iOS Photos albums) plus "All videos" / "All audio", with a **Continue watching** (or **Continue listening**) rail for unfinished items.
 - **Audio** (Android): music, recordings and other audio files with album art and title / artist / album tags. iOS apps cannot list the device's audio files, so iOS shows videos only.
 - Folder view in **list or grid**, **sorting** by date, name (natural order, so "Episode 2" comes before "Episode 10"), duration or size, and **Play all**.
-- Per-video menu: resume or play from the beginning, mark as watched or unwatched, video details, remove from history.
+- Per-video menu: resume or play from the beginning, mark as watched or unwatched, add to Favorites, video details, remove from history.
+- **Favorites**: heart anything from its menu or the player's More sheet; a Favorites list sits at the top of each library tab and favorited rows show a small heart.
+- **Recently Added**: a shelf and a list of what arrived in the last 30 days. Files added in the last week that haven't been played show a blue dot, as in Podcasts.
 - **Search** across the whole library by file name (and title, artist or album for audio), including non-Latin titles.
 - **Recent** tab: unfinished and recently played videos, with progress bars and "12 min left".
 - Thumbnails show a watch-progress bar. The most recently played video is highlighted.

@@ -35,6 +35,8 @@ export interface VideoItem {
   width: number;
   height: number;
   modifiedAtSec: number;
+  /** When the file joined the library; absent on items saved by older versions. */
+  addedAtSec?: number;
   /** Audio tags, when the file has them. */
   title?: string | null;
   artist?: string | null;

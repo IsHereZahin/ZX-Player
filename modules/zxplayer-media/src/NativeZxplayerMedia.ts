@@ -11,6 +11,8 @@ export type NativeMediaItem = {
   width: number;
   height: number;
   modifiedAtSec: number;
+  /** When the file joined the library. */
+  addedAtSec: number;
   /** Audio tags; null for video or when the file has none. */
   title: string | null;
   artist: string | null;

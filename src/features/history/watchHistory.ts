@@ -6,6 +6,7 @@ import {
 } from '../../shared/storage/persistentStore';
 import { useStore } from '../../shared/storage/store';
 import { clamp } from '../../shared/utils/math';
+import { isNumber, parseMediaItem } from '../library/mediaItemParsing';
 import type { VideoItem } from '../library/types';
 
 export interface WatchEntry {
@@ -51,46 +52,6 @@ export function isInProgress(entry: WatchEntry): boolean {
   return resumePosition(entry) !== null;
 }
 
-const isNumber = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value);
-
-const optionalText = (value: unknown): string | null =>
-  typeof value === 'string' && value.length > 0 ? value : null;
-
-function parseVideo(raw: unknown): VideoItem | null {
-  if (
-    !isRecord(raw) ||
-    typeof raw.id !== 'string' ||
-    typeof raw.uri !== 'string' ||
-    typeof raw.fileName !== 'string' ||
-    !isNumber(raw.durationSec) ||
-    !isNumber(raw.width) ||
-    !isNumber(raw.height) ||
-    !isNumber(raw.modifiedAtSec) ||
-    !(raw.sizeBytes === null || isNumber(raw.sizeBytes))
-  ) {
-    return null;
-  }
-  const item: VideoItem = {
-    id: raw.id,
-    // Entries saved before audio support have no kind; they are all videos.
-    kind: raw.kind === 'audio' ? 'audio' : 'video',
-    uri: raw.uri,
-    fileName: raw.fileName,
-    durationSec: raw.durationSec,
-    sizeBytes: raw.sizeBytes,
-    width: raw.width,
-    height: raw.height,
-    modifiedAtSec: raw.modifiedAtSec,
-  };
-  if (item.kind === 'audio') {
-    item.title = optionalText(raw.title);
-    item.artist = optionalText(raw.artist);
-    item.album = optionalText(raw.album);
-  }
-  return item;
-}
-
 /** Keeps only well-formed entries from stored history. */
 export function parseHistory(raw: unknown): WatchHistory {
   if (!isRecord(raw)) {
@@ -101,7 +62,7 @@ export function parseHistory(raw: unknown): WatchHistory {
     if (!isRecord(value)) {
       continue;
     }
-    const video = parseVideo(value.video);
+    const video = parseMediaItem(value.video);
     if (
       video &&
       video.id === id &&

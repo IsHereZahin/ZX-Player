@@ -6,7 +6,7 @@ import {
   iosReadGalleryPermission,
   iosRequestReadWriteGalleryPermission,
 } from '@react-native-camera-roll/camera-roll';
-import { getFolders } from 'zxplayer-media';
+import { getFolders, getMedia } from 'zxplayer-media';
 
 import type { LibraryStackScreenProps } from '../../../../app/navigation/types';
 import { makeVideo, sampleAlbums, sampleSong } from '../../../../test/fixtures';
@@ -86,6 +86,15 @@ describe('LibraryScreen', () => {
       queue: [lecture],
       startIndex: 0,
       startFromBeginning: false,
+    });
+  });
+
+  it('opens Favorites from the Library group', async () => {
+    getAlbums.mockResolvedValueOnce(sampleAlbums);
+    await renderScreen();
+    await fireEvent.press(await screen.findByTestId('open-favorites'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Favorites', {
+      scope: 'video',
     });
   });
 
@@ -171,6 +180,35 @@ describe('LibraryScreen', () => {
       expect(screen.getByRole('header', { name: 'Library' })).toBeOnTheScreen();
       expect(await screen.findByText('All media')).toBeOnTheScreen();
       expect(screen.getAllByText('3 files')).toHaveLength(2);
+    });
+
+    it('shows what was recently added, with a shelf and a count', async () => {
+      useAndroidLibrary();
+      (getFolders as jest.Mock).mockResolvedValue([
+        { id: '1', name: 'Camera', count: 1 },
+      ]);
+      (getMedia as jest.Mock).mockResolvedValue({
+        items: [
+          {
+            ...makeVideo('9', { fileName: 'Fresh.mp4' }),
+            addedAtSec: Date.now() / 1000 - 3600,
+            title: null,
+            artist: null,
+            album: null,
+          },
+        ],
+        hasMore: false,
+      });
+
+      await renderScreen();
+
+      expect(await screen.findByTestId('recently-added-9')).toBeOnTheScreen();
+      expect(screen.getByLabelText('Fresh, Today')).toBeOnTheScreen();
+      expect(screen.getByLabelText('Recently Added, 1')).toBeOnTheScreen();
+      await fireEvent.press(screen.getByTestId('recently-added-see-all'));
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('RecentlyAdded', {
+        scope: 'video',
+      });
     });
 
     it('rescans when the layout changes', async () => {

@@ -28,6 +28,7 @@ import {
   sampleVideo,
 } from '../../../../test/fixtures';
 import { historyStore, recordProgress } from '../../../history/watchHistory';
+import { favoritesStore } from '../../../library/favorites';
 import type { VideoItem } from '../../../library/types';
 import { updateSettings } from '../../../settings/settingsStore';
 import { PlayerScreen } from '../PlayerScreen';
@@ -482,6 +483,19 @@ describe('queue', () => {
     await fireEvent.press(screen.getByTestId('more-button'));
     await fireEvent.press(screen.getByTestId('more-repeat'));
     expect(video().props.repeat).toBe(true);
+  });
+
+  it('adds the playing item to favorites from More', async () => {
+    useAndroid();
+    await renderPlayer();
+
+    await fireEvent.press(screen.getByTestId('more-button'));
+    await fireEvent.press(screen.getByTestId('more-favorite'));
+
+    expect(favoritesStore.getState()[sampleVideo.id]).toBeDefined();
+    expect(screen.getByTestId('player-toast')).toHaveTextContent(
+      'Added to Favorites',
+    );
   });
 
   it('stops at the end of the video when the sleep timer says so', async () => {

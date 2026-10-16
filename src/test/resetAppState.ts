@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { historyStore } from '../features/history/watchHistory';
+import { favoritesStore } from '../features/library/favorites';
 import {
   DEFAULT_LIBRARY_PREFS,
   libraryPrefsStore,
@@ -19,8 +20,8 @@ import {
 /** Writes pending store changes now, which also cancels their debounce timers. */
 export async function flushPersistedStores(): Promise<void> {
   await Promise.all(
-    [settingsStore, historyStore, libraryPrefsStore].map(store =>
-      store.flush(),
+    [settingsStore, historyStore, libraryPrefsStore, favoritesStore].map(
+      store => store.flush(),
     ),
   );
 }
@@ -31,6 +32,7 @@ export function resetAppState(): void {
   settingsStore.setState(DEFAULT_SETTINGS);
   historyStore.setState({});
   libraryPrefsStore.setState(DEFAULT_LIBRARY_PREFS);
+  favoritesStore.setState({});
   resetVideoIndex();
   clearThumbnailMemoryCache();
   stopPlayback();

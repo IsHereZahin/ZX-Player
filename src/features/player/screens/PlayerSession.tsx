@@ -26,6 +26,7 @@ import { formatDuration } from '../../../shared/utils/format';
 import { clamp } from '../../../shared/utils/math';
 import { historyStore, resumePosition } from '../../history/watchHistory';
 import { VideoInfoSheet } from '../../library/components/VideoSheets';
+import { toggleFavorite, useIsFavorite } from '../../library/favorites';
 import { mediaTitle } from '../../library/services/mediaLibrary';
 import { getCachedThumbnail } from '../../library/services/thumbnails';
 import type { VideoItem } from '../../library/types';
@@ -151,6 +152,7 @@ export function PlayerSession(props: PlayerSessionProps) {
   const insets = useSafeAreaInsets();
   const settings = useSettings();
   const isAudio = video.kind === 'audio';
+  const favorite = useIsFavorite(video.id);
   // Music should not stop when the screen turns off, so audio always plays on.
   const backgroundPlay = settings.backgroundPlay || isAudio;
   // Read once: changing the source's metadata mid-playback could make the player reload.
@@ -651,6 +653,13 @@ export function PlayerSession(props: PlayerSessionProps) {
             onRepeat={cycleRepeat}
             onBackgroundPlay={() => setBackgroundPlay(!settings.backgroundPlay)}
             onInfo={() => openFromMore('info')}
+            favorite={favorite}
+            onFavorite={() => {
+              toggleFavorite(video);
+              showToast(
+                favorite ? 'Removed from Favorites' : 'Added to Favorites',
+              );
+            }}
           />
           <SpeedSheet
             visible={sheet === 'speed'}

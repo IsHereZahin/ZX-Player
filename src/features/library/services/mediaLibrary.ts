@@ -279,6 +279,7 @@ export function fromNativeItem(
     width: finiteOr(item.width, 0),
     height: finiteOr(item.height, 0),
     modifiedAtSec: finiteOr(item.modifiedAtSec, 0),
+    addedAtSec: finiteOr(item.addedAtSec, 0),
   };
   if (kind === 'audio') {
     mapped.title = item.title;
@@ -301,6 +302,7 @@ export function toVideoItem({ node }: PhotoIdentifier): VideoItem {
     width: image.width,
     height: image.height,
     modifiedAtSec: node.modificationTimestamp || node.timestamp,
+    addedAtSec: node.timestamp,
   };
 }
 

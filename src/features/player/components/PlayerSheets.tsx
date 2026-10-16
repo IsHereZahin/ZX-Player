@@ -15,6 +15,7 @@ import {
   FileTextIcon,
   GaugeIcon,
   HeadphonesIcon,
+  HeartIcon,
   InfoIcon,
   MinusIcon,
   PlusIcon,
@@ -123,6 +124,8 @@ interface MoreSheetProps extends BaseSheetProps {
   onRepeat: () => void;
   onBackgroundPlay: () => void;
   onInfo: () => void;
+  favorite: boolean;
+  onFavorite: () => void;
 }
 
 /** Grid of secondary player features. */
@@ -196,6 +199,14 @@ export function MoreSheet(props: MoreSheetProps) {
             testID="more-background"
           />
         )}
+        <Tile
+          icon={HeartIcon}
+          label="Favorite"
+          value={props.favorite ? 'On' : 'Off'}
+          active={props.favorite}
+          onPress={props.onFavorite}
+          testID="more-favorite"
+        />
         <Tile
           icon={InfoIcon}
           label={props.isAudio ? 'Details' : 'Video details'}

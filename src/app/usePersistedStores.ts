@@ -2,10 +2,16 @@ import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { historyStore } from '../features/history/watchHistory';
+import { favoritesStore } from '../features/library/favorites';
 import { libraryPrefsStore } from '../features/library/libraryPrefs';
 import { settingsStore } from '../features/settings/settingsStore';
 
-const PERSISTED_STORES = [settingsStore, historyStore, libraryPrefsStore];
+const PERSISTED_STORES = [
+  settingsStore,
+  historyStore,
+  libraryPrefsStore,
+  favoritesStore,
+];
 
 /**
  * Loads saved state before the first screen renders, and writes pending changes as soon

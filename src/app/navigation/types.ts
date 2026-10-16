@@ -13,6 +13,8 @@ export type LibraryStackParamList = {
   LibraryHome: { tab: LibraryTab };
   FolderVideos: { folder: VideoFolder };
   Search: { scope: MediaScope };
+  Favorites: { scope: MediaScope };
+  RecentlyAdded: { scope: MediaScope };
 };
 
 export type MainTabParamList = {

@@ -2,11 +2,13 @@ import React, { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { IconButton } from '../../../shared/components/IconButton';
-import { EllipsisIcon } from '../../../shared/icons';
+import { EllipsisIcon, HeartIcon } from '../../../shared/icons';
 import { spacing, typography } from '../../../shared/theme';
 import { makeStyles, useColors } from '../../../shared/theming';
 import { formatDuration } from '../../../shared/utils/format';
 import { useWatchEntry, watchProgress } from '../../history/watchHistory';
+import { useIsFavorite } from '../favorites';
+import { isNewItem } from '../recentlyAdded';
 import type { VideoItem } from '../types';
 import { describeVideo } from './videoMeta';
 import { VideoThumbnail } from './VideoThumbnail';
@@ -36,14 +38,16 @@ export const VideoRow = memo(function VideoRowView({
   const styles = useStyles();
   const colors = useColors();
   const entry = useWatchEntry(video.id);
+  const favorite = useIsFavorite(video.id);
+  const isNew = isNewItem(video, entry);
   const { title, details, status } = describeVideo(video, entry);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${formatDuration(video.durationSec)}${
-        status ? `, ${status}` : ''
-      }`}
+      accessibilityLabel={`${isNew ? 'New, ' : ''}${title}, ${formatDuration(
+        video.durationSec,
+      )}${status ? `, ${status}` : ''}`}
       onPress={() => onPress(video)}
       android_ripple={{ color: colors.pressed }}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
@@ -55,16 +59,31 @@ export const VideoRow = memo(function VideoRowView({
         progress={watchProgress(entry)}
       />
       <View style={styles.text}>
-        <Text
-          style={[styles.title, highlighted && styles.titleHighlighted]}
-          numberOfLines={2}
-        >
-          {title}
-        </Text>
-        {details ? (
-          <Text style={styles.details} numberOfLines={1}>
-            {details}
+        <View style={styles.titleRow}>
+          {isNew ? (
+            <View style={styles.newDot} testID={`new-mark-${video.id}`} />
+          ) : null}
+          <Text
+            style={[styles.title, highlighted && styles.titleHighlighted]}
+            numberOfLines={2}
+          >
+            {title}
           </Text>
+        </View>
+        {details || favorite ? (
+          <View style={styles.detailsRow}>
+            {favorite ? (
+              <View
+                accessibilityLabel="Favorite"
+                testID={`favorite-mark-${video.id}`}
+              >
+                <HeartIcon size={11} color={colors.pink} fill={colors.pink} />
+              </View>
+            ) : null}
+            <Text style={styles.details} numberOfLines={1}>
+              {details}
+            </Text>
+          </View>
         ) : null}
         {status ? (
           <Text style={styles.status} numberOfLines={1}>
@@ -111,12 +130,30 @@ const useStyles = makeStyles(colors => ({
   },
   title: {
     ...typography.subheadlineStrong,
+    flexShrink: 1,
     color: colors.textPrimary,
   },
   titleHighlighted: {
     color: colors.primaryText,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+  },
+  newDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   details: {
+    flexShrink: 1,
     ...typography.footnote,
     color: colors.textSecondary,
   },

@@ -103,7 +103,7 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
     queryExecutor.execute {
       try {
         val source = Kind.of(kind)
-        val projection = mutableListOf(ID, NAME, SIZE, DURATION, MODIFIED)
+        val projection = mutableListOf(ID, NAME, SIZE, DURATION, MODIFIED, ADDED)
         if (source == Kind.VIDEO) {
           projection += listOf(WIDTH, HEIGHT)
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) projection += ORIENTATION
@@ -339,6 +339,7 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
     val size = cursor.getColumnIndex(SIZE)
     val duration = cursor.getColumnIndex(DURATION)
     val modified = cursor.getColumnIndex(MODIFIED)
+    val added = cursor.getColumnIndex(ADDED)
     val width = cursor.getColumnIndex(WIDTH)
     val height = cursor.getColumnIndex(HEIGHT)
     val orientation = cursor.getColumnIndex(ORIENTATION)
@@ -369,6 +370,7 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
       putInt("width", width)
       putInt("height", height)
       putDouble("modifiedAtSec", cursor.getLong(columns.modified).toDouble())
+      putDouble("addedAtSec", cursor.getLong(columns.added).toDouble())
       putTag("title", cursor, columns.title)
       putTag("artist", cursor, columns.artist)
       putTag("album", cursor, columns.album)
@@ -388,6 +390,7 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
     const val NAME = MediaStore.MediaColumns.DISPLAY_NAME
     const val SIZE = MediaStore.MediaColumns.SIZE
     const val MODIFIED = MediaStore.MediaColumns.DATE_MODIFIED
+    const val ADDED = MediaStore.MediaColumns.DATE_ADDED
     // Present on both tables (VideoColumns / AudioColumns) on every supported API level.
     const val DURATION = MediaStore.Video.VideoColumns.DURATION
     const val WIDTH = MediaStore.MediaColumns.WIDTH

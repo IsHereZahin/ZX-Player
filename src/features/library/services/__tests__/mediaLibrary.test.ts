@@ -42,6 +42,7 @@ function makeNativeVideo(
     width: 1280,
     height: 720,
     modifiedAtSec: 1_700_000_000,
+    addedAtSec: 1_699_000_000,
     title: null,
     artist: null,
     album: null,
@@ -326,6 +327,7 @@ describe('toVideoItem', () => {
       width: 1920,
       height: 1080,
       modifiedAtSec: 1_700_000_500,
+      addedAtSec: 1_700_000_000,
     });
   });
 
@@ -357,6 +359,7 @@ describe('fromNativeItem', () => {
       width: 1280,
       height: 720,
       modifiedAtSec: 1_700_000_000,
+      addedAtSec: 1_699_000_000,
     });
   });
 

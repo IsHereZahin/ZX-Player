@@ -85,6 +85,29 @@ export function formatDate(epochSeconds: number): string | null {
   });
 }
 
+const startOfDaySec = (epochSeconds: number) =>
+  new Date(epochSeconds * 1000).setHours(0, 0, 0, 0) / 1000;
+
+/** "Today", "Yesterday", "3 days ago", then a date: when something was added. */
+export function formatAddedAgo(
+  epochSeconds: number,
+  nowSeconds: number = Date.now() / 1000,
+): string | null {
+  if (!(epochSeconds > 0)) {
+    return null;
+  }
+  const days = Math.round(
+    (startOfDaySec(nowSeconds) - startOfDaySec(epochSeconds)) / 86400,
+  );
+  if (days <= 0) {
+    return 'Today';
+  }
+  if (days === 1) {
+    return 'Yesterday';
+  }
+  return days < 7 ? `${days} days ago` : formatDate(epochSeconds);
+}
+
 export function formatSpeed(rate: number): string {
   return `${Number(rate.toFixed(2))}×`;
 }

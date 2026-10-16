@@ -10,7 +10,8 @@ const video = () => screen.getByTestId('video-surface');
 
 async function openFirstVideo() {
   (CameraRoll.getAlbums as jest.Mock).mockResolvedValueOnce(sampleAlbums);
-  (CameraRoll.getPhotos as jest.Mock).mockResolvedValueOnce({
+  // The library home and the folder both read the library.
+  (CameraRoll.getPhotos as jest.Mock).mockResolvedValue({
     edges: [makePhotoIdentifier('1'), makePhotoIdentifier('2')],
     page_info: { has_next_page: false },
   });

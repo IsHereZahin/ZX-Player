@@ -13,8 +13,10 @@ import {
   useLibraryScope,
   type LibraryTab,
 } from '../../features/library/scopeCopy';
+import { FavoritesScreen } from '../../features/library/screens/FavoritesScreen';
 import { FolderVideosScreen } from '../../features/library/screens/FolderVideosScreen';
 import { LibraryScreen } from '../../features/library/screens/LibraryScreen';
+import { RecentlyAddedScreen } from '../../features/library/screens/RecentlyAddedScreen';
 import { isAudioLibrarySupported } from '../../features/library/services/mediaLibrary';
 import { SearchScreen } from '../../features/library/screens/SearchScreen';
 import { MiniPlayer } from '../../features/player/components/MiniPlayer';
@@ -63,6 +65,11 @@ function libraryStack(tab: LibraryTab) {
         <LibraryStack.Screen
           name="FolderVideos"
           component={FolderVideosScreen}
+        />
+        <LibraryStack.Screen name="Favorites" component={FavoritesScreen} />
+        <LibraryStack.Screen
+          name="RecentlyAdded"
+          component={RecentlyAddedScreen}
         />
         <LibraryStack.Screen
           name="Search"

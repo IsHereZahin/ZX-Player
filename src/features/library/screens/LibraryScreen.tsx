@@ -12,6 +12,7 @@ import type { LibraryStackScreenProps } from '../../../app/navigation/types';
 import { useOpenPlayer } from '../../../app/navigation/useOpenPlayer';
 import { AppLogo } from '../../../shared/components/AppLogo';
 import { EmptyState } from '../../../shared/components/EmptyState';
+import { ListRow, ListSection } from '../../../shared/components/GroupedList';
 import {
   LargeTitle,
   NavigationBar,
@@ -19,19 +20,43 @@ import {
 } from '../../../shared/components/NavigationBar';
 import { SearchField } from '../../../shared/components/SearchField';
 import { ListSkeleton } from '../../../shared/components/Skeleton';
-import { CircleAlertIcon, FilmIcon, MusicIcon } from '../../../shared/icons';
+import {
+  CircleAlertIcon,
+  FilmIcon,
+  HeartIcon,
+  MusicIcon,
+  SparklesIcon,
+} from '../../../shared/icons';
 import { spacing, typography } from '../../../shared/theme';
+import { formatAddedAgo, formatTimeLeft } from '../../../shared/utils/format';
 import { makeStyles, useColors } from '../../../shared/theming';
-import { isInProgress, useHistoryList } from '../../history/watchHistory';
-import { ContinueWatchingRail } from '../components/ContinueWatchingRail';
+import {
+  historyStore,
+  isInProgress,
+  useHistoryList,
+  watchProgress,
+} from '../../history/watchHistory';
+import { MediaShelf } from '../components/MediaShelf';
+import { useFavoriteList } from '../favorites';
+import { useMediaIndex } from '../hooks/useMediaIndex';
+import { addedAt, selectRecentlyAdded } from '../recentlyAdded';
+import { invalidateMediaIndex } from '../services/videoIndex';
 import { FolderRow } from '../components/FolderRow';
 import { PermissionGate } from '../components/PermissionGate';
 import { useVideoFolders } from '../hooks/useVideoFolders';
 import { libraryTitle, SCOPE_COPY, useLibraryScope } from '../scopeCopy';
 import { kindsOf } from '../services/mediaLibrary';
-import type { MediaScope, VideoFolder } from '../types';
+import type { MediaScope, VideoFolder, VideoItem } from '../types';
 
-const CONTINUE_WATCHING_LIMIT = 12;
+const SHELF_LIMIT = 12;
+
+const timeLeft = (item: VideoItem) => {
+  const entry = historyStore.getState()[item.id];
+  return entry ? formatTimeLeft(entry.durationSec - entry.positionSec) : null;
+};
+const progressOf = (item: VideoItem) =>
+  watchProgress(historyStore.getState()[item.id]);
+const addedAgo = (item: VideoItem) => formatAddedAgo(addedAt(item));
 
 type Props = LibraryStackScreenProps<'LibraryHome'>;
 type ScrollHandler = (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
@@ -50,6 +75,14 @@ export function LibraryScreen({ navigation, route }: Props) {
   );
   const openSearch = useCallback(
     () => navigation.navigate('Search', { scope }),
+    [navigation, scope],
+  );
+  const openFavorites = useCallback(
+    () => navigation.navigate('Favorites', { scope }),
+    [navigation, scope],
+  );
+  const openRecentlyAdded = useCallback(
+    () => navigation.navigate('RecentlyAdded', { scope }),
     [navigation, scope],
   );
 
@@ -74,11 +107,64 @@ export function LibraryScreen({ navigation, route }: Props) {
         <FolderList
           scope={scope}
           header={top}
+          collections={
+            <Collections
+              scope={scope}
+              onOpenFavorites={openFavorites}
+              onOpenRecentlyAdded={openRecentlyAdded}
+            />
+          }
           onScroll={onScroll}
           onOpenFolder={openFolder}
+          onOpenRecentlyAdded={openRecentlyAdded}
         />
       </PermissionGate>
     </View>
+  );
+}
+
+/** Items added in the last month, from the shared media index (null while loading). */
+function useRecentlyAdded(scope: MediaScope): VideoItem[] | null {
+  const { items } = useMediaIndex(scope);
+  return useMemo(() => (items ? selectRecentlyAdded(items) : null), [items]);
+}
+
+/** Favorites and other collections, listed above the shelves. */
+function Collections({
+  scope,
+  onOpenFavorites,
+  onOpenRecentlyAdded,
+}: {
+  scope: MediaScope;
+  onOpenFavorites: () => void;
+  onOpenRecentlyAdded: () => void;
+}) {
+  const styles = useStyles();
+  const colors = useColors();
+  const kinds = useMemo(() => kindsOf(scope), [scope]);
+  const favorites = useFavoriteList(kinds).length;
+  const recent = useRecentlyAdded(scope)?.length ?? 0;
+  return (
+    <ListSection style={styles.collections}>
+      <ListRow
+        icon={SparklesIcon}
+        iconBackground={colors.blue}
+        title="Recently Added"
+        value={recent > 0 ? String(recent) : undefined}
+        accessory="chevron"
+        onPress={onOpenRecentlyAdded}
+        testID="open-recently-added"
+      />
+      <ListRow
+        icon={HeartIcon}
+        iconBackground={colors.pink}
+        title="Favorites"
+        value={favorites > 0 ? String(favorites) : undefined}
+        accessory="chevron"
+        onPress={onOpenFavorites}
+        testID="open-favorites"
+      />
+    </ListSection>
   );
 }
 
@@ -86,15 +172,19 @@ interface FolderListProps {
   scope: MediaScope;
   /** Large title and search field, scrolled with the list. */
   header: ReactNode;
+  collections: ReactNode;
   onScroll: ScrollHandler;
   onOpenFolder: (folder: VideoFolder) => void;
+  onOpenRecentlyAdded: () => void;
 }
 
 function FolderList({
   scope,
   header,
+  collections,
   onScroll,
   onOpenFolder,
+  onOpenRecentlyAdded,
 }: FolderListProps) {
   const styles = useStyles();
   const colors = useColors();
@@ -103,12 +193,22 @@ function FolderList({
     useVideoFolders(scope);
   const history = useHistoryList();
   const openPlayer = useOpenPlayer();
-  const continueEntries = useMemo(() => {
+  const continueItems = useMemo(() => {
     const kinds = kindsOf(scope);
     return history
       .filter(entry => kinds.includes(entry.video.kind) && isInProgress(entry))
-      .slice(0, CONTINUE_WATCHING_LIMIT);
+      .slice(0, SHELF_LIMIT)
+      .map(entry => entry.video);
   }, [history, scope]);
+  const recentlyAdded = useRecentlyAdded(scope);
+  const newest = useMemo(
+    () => (recentlyAdded ?? []).slice(0, SHELF_LIMIT),
+    [recentlyAdded],
+  );
+  const refreshAll = useCallback(() => {
+    invalidateMediaIndex();
+    refresh();
+  }, [refresh]);
 
   const folderCount = folders.length;
   const renderItem = useCallback(
@@ -166,20 +266,30 @@ function FolderList({
   const listHeader = (
     <>
       {header}
-      {continueEntries.length > 0 ? (
-        <ContinueWatchingRail
+      {collections}
+      {continueItems.length > 0 ? (
+        <MediaShelf
           title={copy.continueHeading}
-          entries={continueEntries}
-          onPlay={index =>
-            openPlayer(
-              continueEntries.map(entry => entry.video),
-              index,
-            )
-          }
+          items={continueItems}
+          caption={timeLeft}
+          progress={progressOf}
+          onPlay={index => openPlayer(continueItems, index)}
+          testID="continue"
         />
-      ) : (
+      ) : null}
+      {newest.length > 0 ? (
+        <MediaShelf
+          title="Recently Added"
+          items={newest}
+          caption={addedAgo}
+          onPlay={index => openPlayer(newest, index)}
+          onSeeAll={onOpenRecentlyAdded}
+          testID="recently-added"
+        />
+      ) : null}
+      {continueItems.length === 0 && newest.length === 0 ? (
         <View style={styles.headerGap} />
-      )}
+      ) : null}
       <Text style={styles.sectionTitle} accessibilityRole="header">
         Folders
       </Text>
@@ -198,7 +308,7 @@ function FolderList({
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
-          onRefresh={refresh}
+          onRefresh={refreshAll}
           tintColor={colors.textSecondary}
           colors={[colors.primary]}
           progressBackgroundColor={colors.surface}
@@ -223,6 +333,10 @@ const useStyles = makeStyles(colors => ({
   },
   headerGap: {
     height: spacing.lg,
+  },
+  collections: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
   listContent: {
     paddingBottom: spacing.xxxl,

@@ -3,14 +3,27 @@ import React, { useCallback, useState } from 'react';
 import { useOpenPlayer } from '../../../app/navigation/useOpenPlayer';
 import { useAfterSheetClose } from '../../../shared/components/Sheet';
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
+import type { IconComponent } from '../../../shared/icons';
 import { VideoActionsSheet, VideoInfoSheet } from '../components/VideoSheets';
 import type { VideoItem } from '../types';
+
+/** An extra option in an item's menu, e.g. "Remove from Playlist". */
+export interface ExtraAction {
+  label: string;
+  icon: IconComponent;
+  destructive?: boolean;
+  onPress: () => void;
+  testID?: string;
+}
 
 /**
  * Play / menu / details behaviour shared by every video list. `videos` is the list in
  * display order and becomes the player's queue. Render `sheets` once in the screen.
  */
-export function useVideoActions(videos: VideoItem[]) {
+export function useVideoActions(
+  videos: VideoItem[],
+  extraActions?: (video: VideoItem) => ExtraAction[],
+) {
   const openPlayer = useOpenPlayer();
   const { schedule, onDismissed } = useAfterSheetClose();
   // The selected video is kept after closing so the sheet can animate out with content.
@@ -48,6 +61,7 @@ export function useVideoActions(videos: VideoItem[]) {
         onDismissed={onDismissed}
         onPlay={play}
         onShowInfo={() => schedule(() => setInfoOpen(true))}
+        extraActions={extraActions?.(selected)}
       />
       <VideoInfoSheet
         video={selected}
