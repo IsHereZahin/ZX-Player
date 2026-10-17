@@ -1,20 +1,28 @@
 package com.isherezahin.zxplayer.media
 
+import android.app.Activity
+import android.app.PendingIntent
+import android.content.ContentResolver
 import android.content.ContentUris
+import android.content.ContentValues
 import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.content.Intent
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
 import android.util.Size
+import androidx.annotation.RequiresApi
+import com.facebook.react.bridge.ActivityEventListener
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.WritableMap
 import java.io.File
@@ -53,37 +61,83 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
 
   private data class Bucket(val id: String, val name: String)
 
+  private class FolderInfo(val name: String, val relativePath: String?) {
+    var count = 0
+    val newIds = mutableListOf<String>()
+  }
+
   // Queries and thumbnails get their own threads so a long scan never delays thumbnails.
   private val queryExecutor: ExecutorService = Executors.newSingleThreadExecutor()
   private val thumbnailExecutor: ExecutorService =
       Executors.newFixedThreadPool(THUMBNAIL_THREADS)
+  // Moves and copies can take a while for large files; they never hold up library scans.
+  private val fileExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+
+  /** Answer to the system consent prompt currently on screen, if any. */
+  private var pendingConsent: ((Boolean) -> Unit)? = null
+
+  private val activityListener =
+      object : ActivityEventListener {
+        override fun onActivityResult(
+            activity: Activity,
+            requestCode: Int,
+            resultCode: Int,
+            data: Intent?
+        ) {
+          if (requestCode != CONSENT_REQUEST_CODE) return
+          val answer = pendingConsent ?: return
+          pendingConsent = null
+          answer(resultCode == Activity.RESULT_OK)
+        }
+
+        override fun onNewIntent(intent: Intent) = Unit
+      }
+
+  init {
+    reactContext.addActivityEventListener(activityListener)
+  }
 
   private val resolver
     get() = reactApplicationContext.contentResolver
 
-  override fun getFolders(kind: String, promise: Promise) {
+  override fun getFolders(kind: String, newSinceSec: Double, promise: Promise) {
     queryExecutor.execute {
       try {
         val source = Kind.of(kind)
-        val projection =
-            if (source.hasBucketColumns) arrayOf(BUCKET_ID, BUCKET_NAME) else arrayOf(DATA)
-        val counts = LinkedHashMap<String, Pair<String, Int>>()
-        resolver.query(source.uri, projection, null, null, null)?.use { cursor ->
+        val projection = mutableListOf(ID, ADDED)
+        projection += if (source.hasBucketColumns) listOf(BUCKET_ID, BUCKET_NAME) else listOf(DATA)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) projection += RELATIVE_PATH
+        val newSince = newSinceSec.toLong()
+        val found = LinkedHashMap<String, FolderInfo>()
+        resolver.query(source.uri, projection.toTypedArray(), null, null, null)?.use { cursor ->
           val reader = BucketReader(cursor, source)
+          val idColumn = cursor.getColumnIndex(ID)
+          val addedColumn = cursor.getColumnIndex(ADDED)
+          val pathColumn = cursor.getColumnIndex(RELATIVE_PATH)
           while (cursor.moveToNext()) {
             val bucket = reader.read() ?: continue
-            val previous = counts[bucket.id]
-            counts[bucket.id] = Pair(previous?.first ?: bucket.name, (previous?.second ?: 0) + 1)
+            val folder =
+                found.getOrPut(bucket.id) {
+                  FolderInfo(bucket.name, if (pathColumn >= 0) cursor.getString(pathColumn) else null)
+                }
+            folder.count += 1
+            if (cursor.getLong(addedColumn) >= newSince && folder.newIds.size < MAX_NEW_IDS) {
+              folder.newIds += cursor.getLong(idColumn).toString()
+            }
           }
         }
 
         val folders = Arguments.createArray()
-        for ((id, entry) in counts) {
+        for ((id, folder) in found) {
           folders.pushMap(
               Arguments.createMap().apply {
                 putString("id", id)
-                putString("name", entry.first)
-                putInt("count", entry.second)
+                putString("name", folder.name)
+                putInt("count", folder.count)
+                if (folder.relativePath != null) putString("relativePath", folder.relativePath)
+                else putNull("relativePath")
+                putArray(
+                    "newIds", Arguments.createArray().apply { folder.newIds.forEach(::pushString) })
               })
         }
         promise.resolve(folders)
@@ -160,11 +214,7 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
   override fun getThumbnail(uri: String, cacheKey: String, maxSize: Double, promise: Promise) {
     thumbnailExecutor.execute {
       try {
-        val contentUri = Uri.parse(uri)
-        // Only media-library items: never let JS point this at another app's provider.
-        if (contentUri.scheme != "content" || contentUri.authority != MediaStore.AUTHORITY) {
-          throw IllegalArgumentException("Not a media library item")
-        }
+        val contentUri = mediaItemUri(uri)
         val directory = File(reactApplicationContext.cacheDir, "thumbnails").apply { mkdirs() }
         val safeKey = cacheKey.replace(UNSAFE_FILE_CHARS, "_")
         val target = File(directory, "$safeKey.jpg")
@@ -200,11 +250,7 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
 
   override fun shareMedia(uri: String, title: String, promise: Promise) {
     try {
-      val contentUri = Uri.parse(uri)
-      // Only media-library items: the share must never expose other providers' content.
-      if (contentUri.scheme != "content" || contentUri.authority != MediaStore.AUTHORITY) {
-        throw IllegalArgumentException("Not a media library item")
-      }
+      val contentUri = mediaItemUri(uri)
       val send =
           Intent(Intent.ACTION_SEND).apply {
             type = resolver.getType(contentUri) ?: "*/*"
@@ -224,6 +270,216 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
       promise.reject("E_SHARE", "Could not share this file", error)
     }
   }
+
+  // File management (Android 11+). Each change goes through the system's own consent
+  // prompt, which also tells the user exactly what will happen.
+
+  override fun trashMedia(uris: ReadableArray, trashed: Boolean, promise: Promise) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return rejectUnsupported(promise)
+    requestTrash(uris, trashed, promise)
+  }
+
+  override fun deleteMedia(uris: ReadableArray, promise: Promise) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return rejectUnsupported(promise)
+    requestDelete(uris, promise)
+  }
+
+  override fun getTrashedMedia(kind: String, promise: Promise) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return rejectUnsupported(promise)
+    queryTrashed(kind, promise)
+  }
+
+  override fun moveMedia(uris: ReadableArray, relativePath: String, promise: Promise) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return rejectUnsupported(promise)
+    move(uris, relativePath, promise)
+  }
+
+  override fun copyMedia(uris: ReadableArray, relativePath: String, promise: Promise) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return rejectUnsupported(promise)
+    copy(uris, relativePath, promise)
+  }
+
+  private fun rejectUnsupported(promise: Promise) {
+    promise.reject("E_UNSUPPORTED", "Managing files needs Android 11 or newer")
+  }
+
+  @RequiresApi(Build.VERSION_CODES.R)
+  private fun requestTrash(uris: ReadableArray, trashed: Boolean, promise: Promise) {
+    val items = parseItems(uris, promise) ?: return
+    askConsent(promise, { MediaStore.createTrashRequest(resolver, items, trashed) }) { granted ->
+      promise.resolve(granted)
+    }
+  }
+
+  @RequiresApi(Build.VERSION_CODES.R)
+  private fun requestDelete(uris: ReadableArray, promise: Promise) {
+    val items = parseItems(uris, promise) ?: return
+    askConsent(promise, { MediaStore.createDeleteRequest(resolver, items) }) { granted ->
+      promise.resolve(granted)
+    }
+  }
+
+  @RequiresApi(Build.VERSION_CODES.R)
+  private fun queryTrashed(kind: String, promise: Promise) {
+    queryExecutor.execute {
+      try {
+        val source = Kind.of(kind)
+        val projection = mutableListOf(ID, NAME, SIZE, DURATION, MODIFIED, ADDED, EXPIRES)
+        projection +=
+            if (source == Kind.VIDEO) listOf(WIDTH, HEIGHT, ORIENTATION)
+            else listOf(TITLE, ARTIST, ALBUM)
+        val arguments =
+            Bundle().apply {
+              putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
+              putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, "$EXPIRES ASC")
+            }
+        val items = Arguments.createArray()
+        resolver.query(source.uri, projection.toTypedArray(), arguments, null)?.use { cursor ->
+          val columns = Columns(cursor)
+          val expires = cursor.getColumnIndex(EXPIRES)
+          while (cursor.moveToNext()) {
+            items.pushMap(
+                readItem(cursor, columns, source).apply {
+                  putDouble("expiresAtSec", cursor.getLong(expires).toDouble())
+                })
+          }
+        }
+        promise.resolve(items)
+      } catch (error: Exception) {
+        promise.reject("E_MEDIA_QUERY", "Could not read the recycle bin", error)
+      }
+    }
+  }
+
+  @RequiresApi(Build.VERSION_CODES.R)
+  private fun move(uris: ReadableArray, relativePath: String, promise: Promise) {
+    val items = parseItems(uris, promise) ?: return
+    if (!isValidDestination(relativePath)) {
+      promise.reject("E_ARGS", "Not a valid destination: $relativePath")
+      return
+    }
+    askConsent(promise, { MediaStore.createWriteRequest(resolver, items) }) { granted ->
+      if (!granted) {
+        promise.resolve(operationResult(false, 0, 0))
+        return@askConsent
+      }
+      fileExecutor.execute {
+        var done = 0
+        var failed = 0
+        val values = ContentValues().apply { put(RELATIVE_PATH, relativePath) }
+        for (item in items) {
+          try {
+            if (resolver.update(item, values, null, null) > 0) done += 1 else failed += 1
+          } catch (error: Exception) {
+            Log.w(TAG, "Could not move $item", error)
+            failed += 1
+          }
+        }
+        promise.resolve(operationResult(true, done, failed))
+      }
+    }
+  }
+
+  @RequiresApi(Build.VERSION_CODES.R)
+  private fun copy(uris: ReadableArray, relativePath: String, promise: Promise) {
+    val items = parseItems(uris, promise) ?: return
+    if (!isValidDestination(relativePath)) {
+      promise.reject("E_ARGS", "Not a valid destination: $relativePath")
+      return
+    }
+    fileExecutor.execute {
+      var done = 0
+      for (item in items) {
+        if (copyOne(item, relativePath)) done += 1
+      }
+      promise.resolve(operationResult(true, done, items.size - done))
+    }
+  }
+
+  /** Copies into a new library entry, kept pending (hidden) until the bytes are all there. */
+  @RequiresApi(Build.VERSION_CODES.R)
+  private fun copyOne(source: Uri, relativePath: String): Boolean {
+    val (name, mimeType) =
+        resolver.query(source, arrayOf(NAME, MIME_TYPE), null, null, null)?.use { cursor ->
+          if (cursor.moveToFirst()) Pair(cursor.getString(0), cursor.getString(1)) else null
+        } ?: return false
+    val collection =
+        if (source.pathSegments.contains("audio"))
+            MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        else MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+    val pending =
+        ContentValues().apply {
+          put(NAME, name)
+          put(MIME_TYPE, mimeType)
+          put(RELATIVE_PATH, relativePath)
+          put(IS_PENDING, 1)
+        }
+    val target =
+        try {
+          resolver.insert(collection, pending)
+        } catch (error: Exception) {
+          Log.w(TAG, "Could not create a copy of $source in $relativePath", error)
+          null
+        } ?: return false
+    return try {
+      val input = resolver.openInputStream(source) ?: throw IOException("Cannot read $source")
+      input.use {
+        val output = resolver.openOutputStream(target) ?: throw IOException("Cannot write copy")
+        output.use { input.copyTo(it, COPY_BUFFER_BYTES) }
+      }
+      resolver.update(target, ContentValues().apply { put(IS_PENDING, 0) }, null, null)
+      true
+    } catch (error: Exception) {
+      Log.w(TAG, "Could not copy $source", error)
+      resolver.delete(target, null, null)
+      false
+    }
+  }
+
+  /** Shows a system consent prompt and reports the user's answer. */
+  @RequiresApi(Build.VERSION_CODES.R)
+  private fun askConsent(
+      promise: Promise,
+      buildRequest: () -> PendingIntent,
+      onAnswer: (Boolean) -> Unit
+  ) {
+    mainHandler.post {
+      val activity = reactApplicationContext.currentActivity
+      if (activity == null) {
+        promise.reject("E_NO_ACTIVITY", "ZX Player is not in the foreground")
+        return@post
+      }
+      if (pendingConsent != null) {
+        promise.reject("E_BUSY", "Another request is waiting for an answer")
+        return@post
+      }
+      try {
+        val request = buildRequest()
+        pendingConsent = onAnswer
+        activity.startIntentSenderForResult(
+            request.intentSender, CONSENT_REQUEST_CODE, null, 0, 0, 0, null)
+      } catch (error: Exception) {
+        pendingConsent = null
+        promise.reject("E_CONSENT", "Could not ask for permission", error)
+      }
+    }
+  }
+
+  /** Library items only: never let JS point a change at another app's provider. */
+  private fun parseItems(uris: ReadableArray, promise: Promise): List<Uri>? =
+      try {
+        (0 until uris.size()).map { index -> mediaItemUri(uris.getString(index) ?: "") }
+      } catch (error: IllegalArgumentException) {
+        promise.reject("E_ARGS", "Not a media library item", error)
+        null
+      }
+
+  private fun operationResult(granted: Boolean, done: Int, failed: Int): WritableMap =
+      Arguments.createMap().apply {
+        putBoolean("granted", granted)
+        putInt("done", done)
+        putInt("failed", failed)
+      }
 
   // Media session (notification and lock-screen controls). The stand-in player lives on
   // the main thread, so every call hops there.
@@ -286,13 +542,37 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
   }
 
   override fun invalidate() {
+    reactApplicationContext.removeActivityEventListener(activityListener)
+    pendingConsent = null
     queryExecutor.shutdownNow()
     thumbnailExecutor.shutdownNow()
+    // Lets a copy in progress finish rather than leave a half-written file behind.
+    fileExecutor.shutdown()
     mainHandler.post {
       sessionPlayer.onCommand = null
       stopSession()
     }
     super.invalidate()
+  }
+
+  /** Parses a library item's `content://media/…` URI, rejecting anything else. */
+  private fun mediaItemUri(value: String): Uri {
+    val uri = Uri.parse(value)
+    if (uri.scheme != "content" || uri.authority != MediaStore.AUTHORITY) {
+      throw IllegalArgumentException("Not a media library item")
+    }
+    return uri
+  }
+
+  /**
+   * A folder under one of the shared media directories ("Movies/Trips/"): MediaStore only
+   * accepts those for video and audio, and ".." or empty parts could escape them.
+   */
+  private fun isValidDestination(relativePath: String): Boolean {
+    if (!relativePath.endsWith("/")) return false
+    val parts = relativePath.removeSuffix("/").split('/')
+    return parts.first() in MEDIA_ROOTS &&
+        parts.none { it.isBlank() || it == "." || it == ".." || it.contains('\\') }
   }
 
   /** Video frame or embedded album art; null when there is none (common for audio). */
@@ -418,6 +698,10 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
     const val SIZE = MediaStore.MediaColumns.SIZE
     const val MODIFIED = MediaStore.MediaColumns.DATE_MODIFIED
     const val ADDED = MediaStore.MediaColumns.DATE_ADDED
+    const val EXPIRES = MediaStore.MediaColumns.DATE_EXPIRES
+    const val MIME_TYPE = MediaStore.MediaColumns.MIME_TYPE
+    const val RELATIVE_PATH = MediaStore.MediaColumns.RELATIVE_PATH
+    const val IS_PENDING = MediaStore.MediaColumns.IS_PENDING
     // Present on both tables (VideoColumns / AudioColumns) on every supported API level.
     const val DURATION = MediaStore.Video.VideoColumns.DURATION
     const val WIDTH = MediaStore.MediaColumns.WIDTH
@@ -434,6 +718,12 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
     const val MIN_EDGE = 64
     const val MAX_EDGE = 1024
     const val JPEG_QUALITY = 82
+    /** Enough to tag a folder as new without sending thousands of ids. */
+    const val MAX_NEW_IDS = 500
+    const val CONSENT_REQUEST_CODE = 0x5A11
+    const val COPY_BUFFER_BYTES = 256 * 1024
+    val MEDIA_ROOTS =
+        setOf("Movies", "DCIM", "Pictures", "Music", "Podcasts", "Audiobooks", "Recordings")
     val LEGACY_ALBUM_ART_URI: Uri = Uri.parse("content://media/external/audio/albumart")
     val UNSAFE_FILE_CHARS = Regex("[^A-Za-z0-9_-]")
   }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ZX Player mark: a play button split by a Z-shaped seam. Source artwork: assets/brand/zx-player-icon.svg -->
+<!-- ZX Player mark: a play button split by a Z-shaped seam. Generated with the logo; see README. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -14,18 +14,18 @@
             <group>
                 <clip-path android:pathData="M-200,44.4 L65.28,44.4 L53.28,59.9 L200,59.9 L200,-200 L-200,-200 Z" />
                 <path
-                    android:fillColor="#59172554"
+                    android:fillColor="#33000000"
                     android:pathData="M41,31 L41,77 L80,54 Z"
-                    android:strokeColor="#59172554"
+                    android:strokeColor="#33000000"
                     android:strokeLineJoin="round"
                     android:strokeWidth="7" />
             </group>
             <group>
                 <clip-path android:pathData="M-200,48.6 L56.72,48.6 L44.72,64.1 L200,64.1 L200,200 L-200,200 Z" />
                 <path
-                    android:fillColor="#59172554"
+                    android:fillColor="#33000000"
                     android:pathData="M41,31 L41,77 L80,54 Z"
-                    android:strokeColor="#59172554"
+                    android:strokeColor="#33000000"
                     android:strokeLineJoin="round"
                     android:strokeWidth="7" />
             </group>
@@ -42,9 +42,9 @@
         <group>
             <clip-path android:pathData="M-200,48.6 L56.72,48.6 L44.72,64.1 L200,64.1 L200,200 L-200,200 Z" />
             <path
-                android:fillColor="#BFDBFE"
+                android:fillColor="#DCEBFD"
                 android:pathData="M41,31 L41,77 L80,54 Z"
-                android:strokeColor="#BFDBFE"
+                android:strokeColor="#DCEBFD"
                 android:strokeLineJoin="round"
                 android:strokeWidth="7" />
         </group>

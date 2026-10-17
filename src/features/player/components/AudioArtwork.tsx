@@ -16,7 +16,8 @@ import type { Size } from '../utils/aspectRatio';
 
 /** Room kept free below the artwork for the audio transport and seek bar. */
 const AUDIO_CONTROLS_HEIGHT = 190;
-const TOP_BAR_HEIGHT = 64;
+/** Room kept free above the artwork for the top bar and the quick actions under it. */
+const TOP_BAR_HEIGHT = 112;
 const TEXT_BLOCK_HEIGHT = 72;
 const MAX_ART_SIZE = 340;
 /** Below this the cover is left out (e.g. a phone in landscape) and only text shows. */

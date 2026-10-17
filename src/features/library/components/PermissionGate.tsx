@@ -1,5 +1,11 @@
 import React, { type ReactNode } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import {
+  Linking,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { AppLogo } from '../../../shared/components/AppLogo';
 import { EmptyState } from '../../../shared/components/EmptyState';
@@ -18,15 +24,15 @@ function openSettings() {
 
 interface PermissionGateProps {
   scope: MediaScope;
-  /** Kept above the permission prompts, e.g. the screen's large title. */
-  header?: ReactNode;
+  /** Applied around the permission prompts, e.g. to keep them clear of floating bars. */
+  style?: StyleProp<ViewStyle>;
   children: ReactNode;
 }
 
 /** Renders its children only once the scope's part of the media library is readable. */
 export function PermissionGate({
   scope,
-  header,
+  style,
   children,
 }: PermissionGateProps) {
   const { status, request } = useMediaPermission(scope);
@@ -34,8 +40,7 @@ export function PermissionGate({
     return <>{children}</>;
   }
   return (
-    <View style={styles.fill}>
-      {header}
+    <View style={[styles.fill, style]}>
       <PermissionPrompt scope={scope} status={status} request={request} />
     </View>
   );

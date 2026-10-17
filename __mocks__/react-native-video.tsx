@@ -6,6 +6,7 @@ export const mockVideoRef = {
   seek: jest.fn(),
   pause: jest.fn(),
   resume: jest.fn(),
+  setSource: jest.fn(),
   enterPictureInPicture: jest.fn(),
   exitPictureInPicture: jest.fn(),
 };

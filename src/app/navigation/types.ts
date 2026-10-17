@@ -17,6 +17,7 @@ export type LibraryStackParamList = {
   RecentlyAdded: { scope: MediaScope };
   Playlists: { scope: MediaScope };
   Playlist: { id: string };
+  RecycleBin: { scope: MediaScope };
 };
 
 export type MainTabParamList = {

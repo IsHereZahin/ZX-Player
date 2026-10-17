@@ -3,7 +3,6 @@ import React, { type ReactNode } from 'react';
 import { ListRow, ListSection } from '../../shared/components/GroupedList';
 import { Switch } from '../../shared/components/Switch';
 import type { IconComponent } from '../../shared/icons';
-import { useColors } from '../../shared/theming';
 
 export function SettingsSection({
   title,
@@ -23,8 +22,6 @@ export function SettingsSection({
 
 interface RowBaseProps {
   icon: IconComponent;
-  /** Colour of the icon tile, as in iOS Settings (defaults to blue). */
-  tint?: string;
   title: string;
   description?: string;
   destructive?: boolean;
@@ -38,18 +35,15 @@ interface SwitchRowProps extends RowBaseProps {
 
 export function SettingSwitchRow({
   icon,
-  tint,
   title,
   description,
   value,
   onValueChange,
   testID,
 }: SwitchRowProps) {
-  const colors = useColors();
   return (
     <ListRow
       icon={icon}
-      iconBackground={tint ?? colors.blue}
       title={title}
       subtitle={description}
       accessory={
@@ -73,7 +67,6 @@ interface ActionRowProps extends RowBaseProps {
 /** Row that opens a picker (shows the current value) or performs an action. */
 export function SettingActionRow({
   icon,
-  tint,
   title,
   description,
   destructive,
@@ -81,11 +74,9 @@ export function SettingActionRow({
   onPress,
   testID,
 }: ActionRowProps) {
-  const colors = useColors();
   return (
     <ListRow
       icon={icon}
-      iconBackground={tint ?? (destructive ? colors.red : colors.blue)}
       title={title}
       subtitle={description}
       value={value}

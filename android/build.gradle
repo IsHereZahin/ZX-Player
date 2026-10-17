@@ -19,3 +19,10 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+allprojects {
+    repositories {
+        // BlurView, used by @react-native-community/blur for the frosted tab bar, is only on JitPack.
+        maven { url "https://www.jitpack.io" }
+    }
+}

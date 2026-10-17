@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 108 108">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="108" y2="108" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#4F8EF7"/>
-      <stop offset="0.5" stop-color="#2563EB"/>
-      <stop offset="1" stop-color="#1E3A8A"/>
+      <stop offset="0" stop-color="#8CC6FB"/>
+      <stop offset="0.5" stop-color="#5DA6F5"/>
+      <stop offset="1" stop-color="#2F7FE0"/>
     </linearGradient>
     <radialGradient id="shine" cx="30" cy="20" r="70" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
@@ -14,8 +14,8 @@
   </defs>
   <rect width="108" height="108" rx="24" fill="url(#bg)"/><rect width="108" height="108" rx="24" fill="url(#shine)"/>
   <g transform="translate(54 54) scale(1.04) translate(-54 -54)">
-    <g transform="translate(0 2.4)" opacity="0.35"><path d="M41,31 L41,77 L80,54 Z" fill="#172554" stroke="#172554" stroke-width="7" stroke-linejoin="round" clip-path="url(#upper)"/><path d="M41,31 L41,77 L80,54 Z" fill="#172554" stroke="#172554" stroke-width="7" stroke-linejoin="round" clip-path="url(#lower)"/></g>
+    <g transform="translate(0 2.4)" opacity="0.2"><path d="M41,31 L41,77 L80,54 Z" fill="#000000" stroke="#000000" stroke-width="7" stroke-linejoin="round" clip-path="url(#upper)"/><path d="M41,31 L41,77 L80,54 Z" fill="#000000" stroke="#000000" stroke-width="7" stroke-linejoin="round" clip-path="url(#lower)"/></g>
     <path d="M41,31 L41,77 L80,54 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round" clip-path="url(#upper)"/>
-    <path d="M41,31 L41,77 L80,54 Z" fill="#BFDBFE" stroke="#BFDBFE" stroke-width="7" stroke-linejoin="round" clip-path="url(#lower)"/>
+    <path d="M41,31 L41,77 L80,54 Z" fill="#DCEBFD" stroke="#DCEBFD" stroke-width="7" stroke-linejoin="round" clip-path="url(#lower)"/>
   </g>
 </svg>

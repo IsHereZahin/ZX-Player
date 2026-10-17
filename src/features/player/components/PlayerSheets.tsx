@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { IconButton } from '../../../shared/components/IconButton';
 import { SegmentedControl } from '../../../shared/components/SegmentedControl';
+import { useColors } from '../../../shared/theming';
 import {
   OptionRow,
   Sheet,
@@ -79,6 +80,7 @@ function Tile({
   onPress,
   testID,
 }: TileProps) {
+  const colors = useColors();
   return (
     <Pressable
       accessibilityRole="button"
@@ -88,17 +90,22 @@ function Tile({
       style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
       testID={testID}
     >
-      <View style={[styles.tileIcon, active && styles.tileIconActive]}>
+      <View
+        style={[styles.tileIcon, active && { backgroundColor: colors.accent }]}
+      >
         <Icon
           size={22}
-          color={active ? playerColors.primaryText : playerColors.textPrimary}
+          color={active ? playerColors.onAccent : playerColors.textPrimary}
         />
       </View>
       <Text style={styles.tileLabel} numberOfLines={2}>
         {label}
       </Text>
       {value ? (
-        <Text style={styles.tileValue} numberOfLines={1}>
+        <Text
+          style={[styles.tileValue, { color: colors.accentText }]}
+          numberOfLines={1}
+        >
           {value}
         </Text>
       ) : null}
@@ -540,9 +547,6 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     backgroundColor: playerColors.surfaceHigh,
   },
-  tileIconActive: {
-    backgroundColor: playerColors.primarySoft,
-  },
   tileLabel: {
     ...typography.caption,
     ...font('medium', 12),
@@ -551,7 +555,6 @@ const styles = StyleSheet.create({
   },
   tileValue: {
     ...typography.captionStrong,
-    color: playerColors.primaryText,
   },
   padded: {
     paddingHorizontal: spacing.xl,

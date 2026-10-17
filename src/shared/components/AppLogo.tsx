@@ -10,8 +10,11 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 
-// Geometry and colours match the launcher icons and assets/brand/zx-player-icon.svg, on the
-// same 108-unit canvas: a play button split by a Z-shaped seam.
+import { COLOR_THEME_SPECS, type ColorTheme } from '../theme';
+import { useTheme } from '../theming';
+
+// Geometry matches the launcher icons and assets/brand/zx-player-icon.svg, on the same
+// 108-unit canvas: a play button split by a Z-shaped seam.
 const TRIANGLE = 'M41,31 L41,77 L80,54 Z';
 const UPPER_PIECE =
   'M-200,44.4 L65.28,44.4 L53.28,59.9 L200,59.9 L200,-200 L-200,-200 Z';
@@ -22,6 +25,8 @@ const MARK_TRANSFORM = 'translate(54 54) scale(1.04) translate(-54 -54)';
 
 interface AppLogoProps {
   size: number;
+  /** Draws the logo in this colour theme instead of the active one (theme previews). */
+  colorTheme?: ColorTheme;
   testID?: string;
 }
 
@@ -38,8 +43,13 @@ function Piece({ fill, clip }: { fill: string; clip: string }) {
   );
 }
 
-/** The ZX Player app icon, drawn as vectors so it is sharp at any size. */
-export function AppLogo({ size, testID }: AppLogoProps) {
+/**
+ * The ZX Player logo, drawn as vectors so it is sharp at any size. Its gradient follows
+ * the colour theme; the launcher icon keeps the default (Sky).
+ */
+export function AppLogo({ size, colorTheme, testID }: AppLogoProps) {
+  const active = useTheme().colorTheme;
+  const [start, end] = COLOR_THEME_SPECS[colorTheme ?? active].logo;
   return (
     <Svg
       width={size}
@@ -58,9 +68,8 @@ export function AppLogo({ size, testID }: AppLogoProps) {
           y2="108"
           gradientUnits="userSpaceOnUse"
         >
-          <Stop offset="0" stopColor="#4F8EF7" />
-          <Stop offset="0.5" stopColor="#2563EB" />
-          <Stop offset="1" stopColor="#1E3A8A" />
+          <Stop offset="0" stopColor={start} />
+          <Stop offset="1" stopColor={end} />
         </LinearGradient>
         <RadialGradient
           id="logoShine"
@@ -69,7 +78,7 @@ export function AppLogo({ size, testID }: AppLogoProps) {
           r="70"
           gradientUnits="userSpaceOnUse"
         >
-          <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.22} />
+          <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.25} />
           <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
         </RadialGradient>
         <ClipPath id="logoUpper">
@@ -82,12 +91,14 @@ export function AppLogo({ size, testID }: AppLogoProps) {
       <Rect width="108" height="108" rx="24" fill="url(#logoBackground)" />
       <Rect width="108" height="108" rx="24" fill="url(#logoShine)" />
       <G transform={MARK_TRANSFORM}>
-        <G transform="translate(0 2.4)" opacity={0.35}>
-          <Piece fill="#172554" clip="logoUpper" />
-          <Piece fill="#172554" clip="logoLower" />
+        <G transform="translate(0 2.4)" opacity={0.2}>
+          <Piece fill="#000000" clip="logoUpper" />
+          <Piece fill="#000000" clip="logoLower" />
         </G>
         <Piece fill="#FFFFFF" clip="logoUpper" />
-        <Piece fill="#BFDBFE" clip="logoLower" />
+        <G opacity={0.78}>
+          <Piece fill="#FFFFFF" clip="logoLower" />
+        </G>
       </G>
     </Svg>
   );

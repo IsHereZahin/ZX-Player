@@ -165,6 +165,26 @@ export function removeFromPlaylist(
   }));
 }
 
+/** Drops items that left the library (deleted, or in the recycle bin) from every playlist. */
+export function removeFromAllPlaylists(
+  itemIds: readonly string[],
+  now: number = Date.now(),
+): void {
+  const gone = new Set(itemIds);
+  playlistsStore.setState(previous => {
+    let changed = false;
+    const next = previous.map(playlist => {
+      const items = playlist.items.filter(item => !gone.has(item.id));
+      if (items.length === playlist.items.length) {
+        return playlist;
+      }
+      changed = true;
+      return { ...playlist, items, updatedAt: now };
+    });
+    return changed ? next : previous;
+  });
+}
+
 /** Playlists, most recently changed first. */
 export function usePlaylists(): Playlist[] {
   const playlists = useStore(playlistsStore, state => state);

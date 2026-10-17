@@ -10,7 +10,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 
 import { updateSettings } from '../../features/settings/settingsStore';
-import { darkColors, lightColors } from '../../shared/theme';
+import { darkColors, lightColors, paletteFor } from '../../shared/theme';
 import { sampleAlbums } from '../../test/fixtures';
 import App from '../App';
 
@@ -31,6 +31,9 @@ describe('App', () => {
 
     await fireEvent.press(screen.getByTestId('tab-recent'));
     expect(await screen.findByText('Nothing watched yet')).toBeOnTheScreen();
+    // The tab bar draws only icons, so each tab is named for screen readers.
+    expect(screen.getByRole('tab', { name: 'Recent' })).toBeSelected();
+    expect(screen.getByRole('tab', { name: 'Settings' })).not.toBeSelected();
 
     await fireEvent.press(screen.getByTestId('tab-settings'));
     expect(await screen.findByText('Resume playback')).toBeOnTheScreen();
@@ -55,11 +58,16 @@ describe('App', () => {
     await screen.findByText('Camera');
 
     await act(async () => updateSettings({ appearance: 'light' }));
-    expect(screenBackground('library-screen')).toBe(lightColors.background);
+    expect(screenBackground('library-screen')).toBe(lightColors.canvas);
     expect(setColorScheme).toHaveBeenLastCalledWith('light');
 
     await act(async () => updateSettings({ appearance: 'dark' }));
-    expect(screenBackground('library-screen')).toBe(darkColors.background);
+    expect(screenBackground('library-screen')).toBe(darkColors.canvas);
+
+    await act(async () => updateSettings({ colorTheme: 'forest' }));
+    expect(screenBackground('library-screen')).toBe(
+      paletteFor('dark', 'forest').canvas,
+    );
 
     await act(async () => updateSettings({ appearance: 'system' }));
     expect(setColorScheme).toHaveBeenLastCalledWith('auto');

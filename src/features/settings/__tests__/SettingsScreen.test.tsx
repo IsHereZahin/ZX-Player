@@ -58,6 +58,18 @@ describe('SettingsScreen', () => {
     expect(screen.getByText('Light')).toBeOnTheScreen();
   });
 
+  it('offers five colour themes and remembers the choice', async () => {
+    await renderScreen();
+    expect(screen.getAllByRole('radio')).toHaveLength(5);
+    expect(screen.getByRole('radio', { name: 'Sky' })).toBeSelected();
+
+    await fireEvent.press(screen.getByTestId('color-theme-ocean'));
+
+    expect(settingsStore.getState().colorTheme).toBe('ocean');
+    expect(screen.getByRole('radio', { name: 'Ocean' })).toBeSelected();
+    expect(screen.getByRole('radio', { name: 'Sky' })).not.toBeSelected();
+  });
+
   it('chooses between separate and combined audio and video', async () => {
     jest.replaceProperty(Platform, 'OS', 'android');
     await renderScreen();

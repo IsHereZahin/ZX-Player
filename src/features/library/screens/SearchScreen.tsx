@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { LibraryStackScreenProps } from '../../../app/navigation/types';
+import { useBottomInset } from '../../../app/navigation/useBottomInset';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { SearchField } from '../../../shared/components/SearchField';
 import { ClockIcon, CircleAlertIcon, SearchIcon } from '../../../shared/icons';
@@ -34,6 +35,8 @@ type Props = LibraryStackScreenProps<'Search'>;
 export function SearchScreen({ navigation, route }: Props) {
   const styles = useStyles();
   const insets = useSafeAreaInsets();
+  // Results scroll on beneath the floating tab bar.
+  const bottom = useBottomInset();
   const [query, setQuery] = useState('');
   const { scope } = route.params;
   const copy = SCOPE_COPY[scope];
@@ -53,18 +56,16 @@ export function SearchScreen({ navigation, route }: Props) {
     [play, queryRef],
   );
 
-  const lastIndex = results.length - 1;
   const renderItem = useCallback(
-    ({ item, index }: { item: VideoItem; index: number }) => (
+    ({ item }: { item: VideoItem }) => (
       <VideoRow
         video={item}
         onPress={playResult}
         onMore={openMenu}
         highlighted={item.id === lastPlayedId}
-        separator={index < lastIndex}
       />
     ),
-    [lastIndex, lastPlayedId, openMenu, playResult],
+    [lastPlayedId, openMenu, playResult],
   );
 
   const renderBody = () => {
@@ -82,7 +83,10 @@ export function SearchScreen({ navigation, route }: Props) {
     }
     if (!trimmed && recentSearches.length > 0) {
       return (
-        <ScrollView keyboardShouldPersistTaps="handled">
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: bottom }}
+        >
           <View style={styles.recentHeader}>
             <Text style={styles.recentTitle} accessibilityRole="header">
               Recent Searches
@@ -152,6 +156,7 @@ export function SearchScreen({ navigation, route }: Props) {
         renderItem={renderItem}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        contentContainerStyle={{ paddingBottom: bottom }}
         getItemLayout={(_, index) => ({
           length: VIDEO_ROW_HEIGHT,
           offset: VIDEO_ROW_HEIGHT * index,

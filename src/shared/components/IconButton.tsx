@@ -6,10 +6,17 @@ import { hitSlop, radius, type ColorTokens } from '../theme';
 import { makeStyles, useColors } from '../theming';
 
 /**
- * `plain` is a tinted glyph without a background, as in iOS navigation bars; `glyph`
- * is a white one for the video player's transport.
+ * `plain` is a tinted glyph without a background; `glyph` is a white one for the video
+ * player's transport; `raised` sits in a white circle, as in screen headers.
  */
-type Variant = 'ghost' | 'plain' | 'glyph' | 'tonal' | 'filled' | 'overlay';
+type Variant =
+  | 'ghost'
+  | 'plain'
+  | 'glyph'
+  | 'raised'
+  | 'tonal'
+  | 'filled'
+  | 'overlay';
 type Size = 'sm' | 'md' | 'lg';
 
 interface IconButtonProps {
@@ -35,12 +42,14 @@ function iconColor(
   if (variant === 'filled') {
     return colors.onPrimary;
   }
+  // Over video, "on" is shown in the accent: ink would vanish against the picture.
+  if (variant === 'overlay') {
+    return active ? colors.onAccent : colors.white;
+  }
   if (variant === 'tonal' || variant === 'plain' || active) {
     return colors.primaryText;
   }
-  return variant === 'overlay' || variant === 'glyph'
-    ? colors.white
-    : colors.textPrimary;
+  return variant === 'glyph' ? colors.white : colors.textPrimary;
 }
 
 export function IconButton({
@@ -100,10 +109,11 @@ const useStyles = makeStyles(colors => ({
   ghost: {},
   plain: {},
   glyph: {},
+  raised: { backgroundColor: colors.surface },
   tonal: { backgroundColor: colors.primarySoft },
   filled: { backgroundColor: colors.primary },
   overlay: { backgroundColor: colors.playerButton },
-  overlayActive: { backgroundColor: colors.primarySoft },
+  overlayActive: { backgroundColor: colors.accent },
   disabled: { opacity: 0.35 },
 }));
 
@@ -111,6 +121,7 @@ const usePressedStyles = makeStyles(colors => ({
   ghost: { backgroundColor: colors.pressed },
   plain: { opacity: 0.4 },
   glyph: { opacity: 0.5 },
+  raised: { backgroundColor: colors.surfaceRaised },
   tonal: { backgroundColor: colors.primarySoftPressed },
   filled: { backgroundColor: colors.primaryPressed },
   overlay: { backgroundColor: 'rgba(255, 255, 255, 0.22)' },

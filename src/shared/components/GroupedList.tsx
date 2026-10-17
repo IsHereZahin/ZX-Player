@@ -20,7 +20,7 @@ import { CheckIcon, ChevronRightIcon, type IconComponent } from '../icons';
 import { radius, spacing, typography } from '../theme';
 import { makeStyles, useColors } from '../theming';
 
-const ICON_TILE = 29;
+const ICON_TILE = 32;
 /** Separators start under the text, past the icon tile. */
 const ICON_INSET = spacing.lg + ICON_TILE + spacing.md;
 
@@ -82,9 +82,8 @@ export interface ListRowProps {
   subtitle?: string;
   /** Value at the trailing edge, e.g. the current choice of a picker row. */
   value?: string;
+  /** Drawn in a small neutral circle before the title. */
   icon?: IconComponent;
-  /** Background of the icon tile (iOS Settings style); without it the icon is tinted. */
-  iconBackground?: string;
   accessory?: Accessory;
   destructive?: boolean;
   onPress?: () => void;
@@ -100,7 +99,6 @@ export function ListRow({
   subtitle,
   value,
   icon: Icon,
-  iconBackground,
   accessory = 'none',
   destructive = false,
   onPress,
@@ -116,19 +114,13 @@ export function ListRow({
   const content = (
     <>
       {Icon ? (
-        iconBackground ? (
-          <View style={[styles.iconTile, { backgroundColor: iconBackground }]}>
-            <Icon size={18} color={colors.white} strokeWidth={2} />
-          </View>
-        ) : (
-          <View style={styles.iconPlain}>
-            <Icon
-              size={22}
-              color={destructive ? colors.danger : colors.primaryText}
-              strokeWidth={1.75}
-            />
-          </View>
-        )
+        <View style={[styles.iconTile, destructive && styles.iconTileDanger]}>
+          <Icon
+            size={17}
+            color={destructive ? colors.danger : colors.textPrimary}
+            strokeWidth={1.75}
+          />
+        </View>
       ) : null}
       <View style={styles.text}>
         <Text style={[styles.title, { color: titleColor }]} numberOfLines={2}>
@@ -182,19 +174,6 @@ export function ListRow({
   );
 }
 
-/**
- * Card corners and separators for rows rendered one by one by a virtualised list, which
- * can't be wrapped in a single ListSection card.
- */
-export function useGroupedRowStyle() {
-  const styles = useStyles();
-  return (index: number, count: number): StyleProp<ViewStyle> => [
-    styles.groupedRow,
-    index === 0 && styles.firstRow,
-    index === count - 1 && styles.lastRow,
-  ];
-}
-
 const useStyles = makeStyles(colors => ({
   section: {
     marginHorizontal: spacing.lg,
@@ -208,7 +187,7 @@ const useStyles = makeStyles(colors => ({
   },
   card: {
     overflow: 'hidden',
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
   },
   separator: {
@@ -237,11 +216,11 @@ const useStyles = makeStyles(colors => ({
     height: ICON_TILE,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 7,
+    borderRadius: ICON_TILE / 2,
+    backgroundColor: colors.fill,
   },
-  iconPlain: {
-    width: ICON_TILE,
-    alignItems: 'center',
+  iconTileDanger: {
+    backgroundColor: colors.dangerSoft,
   },
   text: {
     flex: 1,
@@ -258,18 +237,5 @@ const useStyles = makeStyles(colors => ({
     ...typography.body,
     maxWidth: '45%',
     color: colors.textSecondary,
-  },
-  groupedRow: {
-    marginHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
-    overflow: 'hidden',
-  },
-  firstRow: {
-    borderTopLeftRadius: radius.md,
-    borderTopRightRadius: radius.md,
-  },
-  lastRow: {
-    borderBottomLeftRadius: radius.md,
-    borderBottomRightRadius: radius.md,
   },
 }));

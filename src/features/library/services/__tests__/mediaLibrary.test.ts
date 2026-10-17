@@ -4,6 +4,7 @@ import * as nativeMedia from 'zxplayer-media';
 import type { NativeMediaItem } from 'zxplayer-media';
 
 import {
+  makeBucket,
   makePhotoIdentifier,
   sampleAlbums,
   sampleFolder,
@@ -125,9 +126,9 @@ describe('buildFolderList', () => {
 describe('buildFolderListFromBuckets', () => {
   it('drops empty buckets, sorts by title and totals the library', () => {
     const folders = buildFolderListFromBuckets([
-      { id: '3', name: 'zoo', count: 1 },
-      { id: '1', name: 'Camera', count: 3 },
-      { id: '2', name: 'Empty', count: 0 },
+      makeBucket('3', 'zoo', 1),
+      makeBucket('1', 'Camera', 3),
+      makeBucket('2', 'Empty', 0),
     ]);
     expect(folders.map(folder => folder.title)).toEqual([
       'All videos',
@@ -141,14 +142,35 @@ describe('buildFolderListFromBuckets', () => {
       count: 3,
       album: { name: 'Camera', kind: 'Album' },
       bucketId: '1',
+      relativePath: null,
+      newIds: [],
       scope: 'video',
+    });
+  });
+
+  it('collects new items per folder and for the whole library', () => {
+    const folders = buildFolderListFromBuckets(
+      [
+        makeBucket('1', 'Camera', 3, {
+          relativePath: 'DCIM/Camera/',
+          newIds: ['10'],
+        }),
+        makeBucket('1', 'Camera', 1, { newIds: ['11'] }),
+        makeBucket('2', 'Movies', 2, { newIds: ['12'] }),
+      ],
+      'all',
+    );
+    expect(folders[0].newIds).toEqual(['10', '11', '12']);
+    expect(folders[1]).toMatchObject({
+      relativePath: 'DCIM/Camera/',
+      newIds: ['10', '11'],
     });
   });
 
   it('keeps same-named folders apart by bucket id', () => {
     const folders = buildFolderListFromBuckets([
-      { id: '1', name: 'Movies', count: 2 },
-      { id: '2', name: 'Movies', count: 5 },
+      makeBucket('1', 'Movies', 2),
+      makeBucket('2', 'Movies', 5),
     ]);
     expect(folders.slice(1).map(folder => folder.id)).toEqual([
       'bucket:1',
@@ -170,9 +192,7 @@ describe('fetchFolders', () => {
 
   it('reads MediaStore buckets natively on Android', async () => {
     jest.replaceProperty(Platform, 'OS', 'android');
-    getNativeFolders.mockResolvedValueOnce([
-      { id: '1', name: 'Camera', count: 3 },
-    ]);
+    getNativeFolders.mockResolvedValueOnce([makeBucket('1', 'Camera', 3)]);
 
     const folders = await fetchFolders();
 
@@ -394,13 +414,11 @@ describe('audio', () => {
   });
 
   it('lists audio folders from MediaStore', async () => {
-    getNativeFolders.mockResolvedValueOnce([
-      { id: '7', name: 'Music', count: 12 },
-    ]);
+    getNativeFolders.mockResolvedValueOnce([makeBucket('7', 'Music', 12)]);
 
     const folders = await fetchFolders('audio');
 
-    expect(getNativeFolders).toHaveBeenCalledWith('audio');
+    expect(getNativeFolders).toHaveBeenCalledWith('audio', expect.any(Number));
     expect(folders.map(folder => [folder.title, folder.count])).toEqual([
       ['All audio', 12],
       ['Music', 12],
@@ -410,10 +428,10 @@ describe('audio', () => {
 
   it('shows each directory once when video and audio are combined', async () => {
     getNativeFolders
-      .mockResolvedValueOnce([{ id: '1', name: 'Downloads', count: 2 }])
+      .mockResolvedValueOnce([makeBucket('1', 'Downloads', 2)])
       .mockResolvedValueOnce([
-        { id: '1', name: 'Downloads', count: 3 },
-        { id: '7', name: 'Music', count: 4 },
+        makeBucket('1', 'Downloads', 3),
+        makeBucket('7', 'Music', 4),
       ]);
 
     const folders = await fetchFolders('all');

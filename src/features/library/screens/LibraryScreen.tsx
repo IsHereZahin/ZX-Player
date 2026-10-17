@@ -1,210 +1,119 @@
 import React, { useCallback, useMemo, type ReactNode } from 'react';
-import {
-  Animated,
-  RefreshControl,
-  Text,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native';
+import { Animated, RefreshControl, Text, View } from 'react-native';
 
 import type { LibraryStackScreenProps } from '../../../app/navigation/types';
+import { useBottomInset } from '../../../app/navigation/useBottomInset';
 import { useOpenPlayer } from '../../../app/navigation/useOpenPlayer';
 import { AppLogo } from '../../../shared/components/AppLogo';
 import { EmptyState } from '../../../shared/components/EmptyState';
-import { ListRow, ListSection } from '../../../shared/components/GroupedList';
+import { IconButton } from '../../../shared/components/IconButton';
 import {
-  LargeTitle,
-  NavigationBar,
-  useCollapsingTitle,
-} from '../../../shared/components/NavigationBar';
-import { SearchField } from '../../../shared/components/SearchField';
+  HeaderGlow,
+  ScreenHeader,
+  useHidingHeader,
+  type HidingHeader,
+} from '../../../shared/components/ScreenHeader';
 import { ListSkeleton } from '../../../shared/components/Skeleton';
 import {
   CircleAlertIcon,
   FilmIcon,
-  HeartIcon,
-  ListMusicIcon,
   MusicIcon,
-  SparklesIcon,
+  SearchIcon,
 } from '../../../shared/icons';
 import { spacing, typography } from '../../../shared/theme';
-import { formatAddedAgo, formatTimeLeft } from '../../../shared/utils/format';
 import { makeStyles, useColors } from '../../../shared/theming';
-import {
-  historyStore,
-  isInProgress,
-  useHistoryList,
-  watchProgress,
-} from '../../history/watchHistory';
-import { MediaShelf } from '../components/MediaShelf';
-import { useFavoriteList } from '../favorites';
-import { useMediaIndex } from '../hooks/useMediaIndex';
-import { usePlaylists } from '../playlists';
-import { addedAt, selectRecentlyAdded } from '../recentlyAdded';
-import { invalidateMediaIndex } from '../services/videoIndex';
+import { NO_CLIPPING } from '../../../shared/utils/listTuning';
+import { isInProgress, useHistoryList } from '../../history/watchHistory';
+import { ContinueWatchingRail } from '../components/ContinueWatchingRail';
 import { FolderRow } from '../components/FolderRow';
+import { LibraryShortcuts } from '../components/LibraryShortcuts';
 import { PermissionGate } from '../components/PermissionGate';
 import { useVideoFolders } from '../hooks/useVideoFolders';
 import { libraryTitle, SCOPE_COPY, useLibraryScope } from '../scopeCopy';
+import { canManageFiles } from '../services/fileOperations';
 import { kindsOf } from '../services/mediaLibrary';
-import type { MediaScope, VideoFolder, VideoItem } from '../types';
+import type { MediaScope, VideoFolder } from '../types';
 
-const SHELF_LIMIT = 12;
-
-const timeLeft = (item: VideoItem) => {
-  const entry = historyStore.getState()[item.id];
-  return entry ? formatTimeLeft(entry.durationSec - entry.positionSec) : null;
-};
-const progressOf = (item: VideoItem) =>
-  watchProgress(historyStore.getState()[item.id]);
-const addedAgo = (item: VideoItem) => formatAddedAgo(addedAt(item));
+const CONTINUE_WATCHING_LIMIT = 12;
 
 type Props = LibraryStackScreenProps<'LibraryHome'>;
-type ScrollHandler = (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 
 /** Folders of one library tab: videos, audio, or both (see `useLibraryScope`). */
 export function LibraryScreen({ navigation, route }: Props) {
   const styles = useStyles();
   const scope = useLibraryScope(route.params.tab);
   const copy = SCOPE_COPY[scope];
-  const title = libraryTitle(scope);
-  const { scrollY, onScroll } = useCollapsingTitle();
-
+  const header = useHidingHeader();
+  const bottom = useBottomInset();
   const openFolder = useCallback(
     (folder: VideoFolder) => navigation.navigate('FolderVideos', { folder }),
     [navigation],
   );
-  const openSearch = useCallback(
-    () => navigation.navigate('Search', { scope }),
-    [navigation, scope],
-  );
-  const openFavorites = useCallback(
-    () => navigation.navigate('Favorites', { scope }),
-    [navigation, scope],
-  );
-  const openRecentlyAdded = useCallback(
-    () => navigation.navigate('RecentlyAdded', { scope }),
-    [navigation, scope],
-  );
-  const openPlaylists = useCallback(
-    () => navigation.navigate('Playlists', { scope }),
-    [navigation, scope],
-  );
 
-  const top = (
-    <>
-      <LargeTitle title={title} accessory={<AppLogo size={34} />} />
-      <View style={styles.search}>
-        <SearchField
-          placeholder={copy.searchLabel}
-          onPress={openSearch}
-          testID="open-search"
-        />
-      </View>
-    </>
+  const shortcuts = (
+    <LibraryShortcuts
+      onOpenFavorites={() => navigation.navigate('Favorites', { scope })}
+      onOpenRecentlyAdded={() =>
+        navigation.navigate('RecentlyAdded', { scope })
+      }
+      onOpenPlaylists={() => navigation.navigate('Playlists', { scope })}
+      onOpenRecycleBin={
+        canManageFiles()
+          ? () => navigation.navigate('RecycleBin', { scope })
+          : undefined
+      }
+    />
   );
 
   return (
     <View style={styles.screen} testID="library-screen">
-      <NavigationBar title={title} scrollY={scrollY} />
+      <HeaderGlow scrollY={header.scrollY} />
       {/* Keyed so switching the scope starts its permission check and scan afresh. */}
-      <PermissionGate key={scope} scope={scope} header={top}>
+      <PermissionGate
+        key={scope}
+        scope={scope}
+        style={{ paddingTop: header.height, paddingBottom: bottom }}
+      >
         <FolderList
           scope={scope}
-          header={top}
-          collections={
-            <Collections
-              scope={scope}
-              onOpenFavorites={openFavorites}
-              onOpenRecentlyAdded={openRecentlyAdded}
-              onOpenPlaylists={openPlaylists}
-            />
-          }
-          onScroll={onScroll}
+          shortcuts={shortcuts}
+          header={header}
+          bottomInset={bottom}
           onOpenFolder={openFolder}
-          onOpenRecentlyAdded={openRecentlyAdded}
         />
       </PermissionGate>
+      <ScreenHeader
+        title={libraryTitle(scope)}
+        leading={<AppLogo size={34} />}
+        actions={
+          <IconButton
+            icon={SearchIcon}
+            variant="raised"
+            accessibilityLabel={copy.searchLabel}
+            onPress={() => navigation.navigate('Search', { scope })}
+            testID="open-search"
+          />
+        }
+        hiding={header}
+      />
     </View>
   );
 }
 
-/** Items added in the last month, from the shared media index (null while loading). */
-function useRecentlyAdded(scope: MediaScope): VideoItem[] | null {
-  const { items } = useMediaIndex(scope);
-  return useMemo(() => (items ? selectRecentlyAdded(items) : null), [items]);
-}
-
-/** Favorites and other collections, listed above the shelves. */
-function Collections({
-  scope,
-  onOpenFavorites,
-  onOpenRecentlyAdded,
-  onOpenPlaylists,
-}: {
-  scope: MediaScope;
-  onOpenFavorites: () => void;
-  onOpenRecentlyAdded: () => void;
-  onOpenPlaylists: () => void;
-}) {
-  const styles = useStyles();
-  const colors = useColors();
-  const kinds = useMemo(() => kindsOf(scope), [scope]);
-  const favorites = useFavoriteList(kinds).length;
-  const recent = useRecentlyAdded(scope)?.length ?? 0;
-  const playlists = usePlaylists().length;
-  return (
-    <ListSection style={styles.collections}>
-      <ListRow
-        icon={SparklesIcon}
-        iconBackground={colors.blue}
-        title="Recently Added"
-        value={recent > 0 ? String(recent) : undefined}
-        accessory="chevron"
-        onPress={onOpenRecentlyAdded}
-        testID="open-recently-added"
-      />
-      <ListRow
-        icon={HeartIcon}
-        iconBackground={colors.pink}
-        title="Favorites"
-        value={favorites > 0 ? String(favorites) : undefined}
-        accessory="chevron"
-        onPress={onOpenFavorites}
-        testID="open-favorites"
-      />
-      <ListRow
-        icon={ListMusicIcon}
-        iconBackground={colors.orange}
-        title="Playlists"
-        value={playlists > 0 ? String(playlists) : undefined}
-        accessory="chevron"
-        onPress={onOpenPlaylists}
-        testID="open-playlists"
-      />
-    </ListSection>
-  );
-}
-
-interface FolderListProps {
-  scope: MediaScope;
-  /** Large title and search field, scrolled with the list. */
-  header: ReactNode;
-  collections: ReactNode;
-  onScroll: ScrollHandler;
-  onOpenFolder: (folder: VideoFolder) => void;
-  onOpenRecentlyAdded: () => void;
-}
-
 function FolderList({
   scope,
+  shortcuts,
   header,
-  collections,
-  onScroll,
+  bottomInset,
   onOpenFolder,
-  onOpenRecentlyAdded,
-}: FolderListProps) {
+}: {
+  scope: MediaScope;
+  /** Favorites, Recently Added and Playlists, above the rail and the folders. */
+  shortcuts: ReactNode;
+  header: HidingHeader;
+  bottomInset: number;
+  onOpenFolder: (folder: VideoFolder) => void;
+}) {
   const styles = useStyles();
   const colors = useColors();
   const copy = SCOPE_COPY[scope];
@@ -212,51 +121,38 @@ function FolderList({
     useVideoFolders(scope);
   const history = useHistoryList();
   const openPlayer = useOpenPlayer();
-  const continueItems = useMemo(() => {
+  const continueEntries = useMemo(() => {
     const kinds = kindsOf(scope);
     return history
       .filter(entry => kinds.includes(entry.video.kind) && isInProgress(entry))
-      .slice(0, SHELF_LIMIT)
-      .map(entry => entry.video);
+      .slice(0, CONTINUE_WATCHING_LIMIT);
   }, [history, scope]);
-  const recentlyAdded = useRecentlyAdded(scope);
-  const newest = useMemo(
-    () => (recentlyAdded ?? []).slice(0, SHELF_LIMIT),
-    [recentlyAdded],
-  );
-  const refreshAll = useCallback(() => {
-    invalidateMediaIndex();
-    refresh();
-  }, [refresh]);
 
-  const folderCount = folders.length;
   const renderItem = useCallback(
-    ({ item, index }: { item: VideoFolder; index: number }) => (
-      <FolderRow
-        folder={item}
-        onPress={onOpenFolder}
-        index={index}
-        count={folderCount}
-      />
+    ({ item }: { item: VideoFolder }) => (
+      <FolderRow folder={item} onPress={onOpenFolder} />
     ),
-    [folderCount, onOpenFolder],
+    [onOpenFolder],
   );
 
-  const withHeader = (content: ReactNode) => (
-    <View style={styles.fill}>
-      {header}
+  // Loading, error and empty states sit between the floating header and tab bar.
+  const padded = (content: ReactNode) => (
+    <View
+      style={[
+        styles.fill,
+        { paddingTop: header.height, paddingBottom: bottomInset },
+      ]}
+    >
       {content}
     </View>
   );
 
   if (loadState === 'loading') {
-    return withHeader(
-      <ListSkeleton thumbnail={false} testID="folders-loading" />,
-    );
+    return padded(<ListSkeleton thumbnail={false} testID="folders-loading" />);
   }
 
   if (loadState === 'error') {
-    return withHeader(
+    return padded(
       <EmptyState
         icon={CircleAlertIcon}
         title="Couldn't read your library"
@@ -270,7 +166,7 @@ function FolderList({
 
   // Only the synthetic "All …" entry means no real folders were found.
   if (folders.length <= 1) {
-    return withHeader(
+    return padded(
       <EmptyState
         icon={scope === 'audio' ? MusicIcon : FilmIcon}
         title={copy.emptyTitle}
@@ -284,30 +180,19 @@ function FolderList({
 
   const listHeader = (
     <>
-      {header}
-      {collections}
-      {continueItems.length > 0 ? (
-        <MediaShelf
+      <View style={{ height: header.height }} />
+      {shortcuts}
+      {continueEntries.length > 0 ? (
+        <ContinueWatchingRail
           title={copy.continueHeading}
-          items={continueItems}
-          caption={timeLeft}
-          progress={progressOf}
-          onPlay={index => openPlayer(continueItems, index)}
-          testID="continue"
+          entries={continueEntries}
+          onPlay={index =>
+            openPlayer(
+              continueEntries.map(entry => entry.video),
+              index,
+            )
+          }
         />
-      ) : null}
-      {newest.length > 0 ? (
-        <MediaShelf
-          title="Recently Added"
-          items={newest}
-          caption={addedAgo}
-          onPlay={index => openPlayer(newest, index)}
-          onSeeAll={onOpenRecentlyAdded}
-          testID="recently-added"
-        />
-      ) : null}
-      {continueItems.length === 0 && newest.length === 0 ? (
-        <View style={styles.headerGap} />
       ) : null}
       <Text style={styles.sectionTitle} accessibilityRole="header">
         Folders
@@ -317,19 +202,21 @@ function FolderList({
 
   return (
     <Animated.FlatList
+      {...NO_CLIPPING}
       data={folders}
       keyExtractor={folder => folder.id}
       renderItem={renderItem}
       ListHeaderComponent={listHeader}
-      contentContainerStyle={styles.listContent}
-      onScroll={onScroll}
+      contentContainerStyle={{ paddingBottom: bottomInset + spacing.lg }}
+      onScroll={header.onScroll}
       scrollEventThrottle={16}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
-          onRefresh={refreshAll}
-          tintColor={colors.textSecondary}
-          colors={[colors.primary]}
+          onRefresh={refresh}
+          progressViewOffset={header.height}
+          tintColor={colors.accent}
+          colors={[colors.accent]}
           progressBackgroundColor={colors.surface}
         />
       }
@@ -341,29 +228,16 @@ function FolderList({
 const useStyles = makeStyles(colors => ({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.canvas,
   },
   fill: {
     flex: 1,
   },
-  search: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
-  headerGap: {
-    height: spacing.lg,
-  },
-  collections: {
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  listContent: {
-    paddingBottom: spacing.xxxl,
-  },
   sectionTitle: {
-    ...typography.title3,
-    paddingHorizontal: spacing.lg,
+    ...typography.overline,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.sm + 2,
-    color: colors.textPrimary,
+    color: colors.textSecondary,
   },
 }));

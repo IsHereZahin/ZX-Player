@@ -69,6 +69,19 @@ export function setFavorite(
   });
 }
 
+/** Drops items that left the library (deleted, or in the recycle bin). */
+export function removeFavorites(ids: readonly string[]): void {
+  favoritesStore.setState(previous => {
+    const gone = ids.filter(id => id in previous);
+    if (gone.length === 0) {
+      return previous;
+    }
+    const rest = { ...previous };
+    gone.forEach(id => delete rest[id]);
+    return rest;
+  });
+}
+
 export function toggleFavorite(item: VideoItem): void {
   setFavorite(item, !(item.id in favoritesStore.getState()));
 }

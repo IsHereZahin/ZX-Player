@@ -36,7 +36,7 @@ export function EmptyState({
       {loading ? (
         <ActivityIndicator
           size="large"
-          color={colors.primaryBright}
+          color={colors.accent}
           accessibilityLabel="Loading"
         />
       ) : null}
@@ -75,7 +75,6 @@ const useStyles = makeStyles(colors => ({
     gap: spacing.sm,
     paddingHorizontal: spacing.xxxl,
     paddingVertical: spacing.xxxl,
-    backgroundColor: colors.background,
   },
   illustration: {
     marginBottom: spacing.sm,

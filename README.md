@@ -7,20 +7,21 @@ Offline local video and audio player for Android and iOS, built with React Nativ
 
 ## Features
 
-The UI follows Apple's design language: system colours with blue as the tint, grouped backgrounds and hairline separators, in light and dark themes. Text uses Apple's type scale, set in the system font (SF Pro) on iOS and in [Inter](https://rsms.me/inter/) on Android (`android/app/src/main/assets/fonts`, SIL Open Font License, see `assets/fonts/Inter-LICENSE.txt`). The theme follows the device by default and can be fixed to Light or Dark in Settings. The player always stays dark. Colour tokens for both themes live in `src/shared/theme.ts`. Components read the active palette through `useColors` / `makeStyles` (`src/shared/theming.tsx`), which build each style sheet once per theme. Icons come from Lucide, and screens share the components in `src/shared/components`.
+The UI is calm and card-based: a softly tinted background with white rounded cards, ink (near-black, or white when dark) for buttons, icons and the current tab, and one accent colour for what is live or new (progress, the playing item, unplayed dots, switches). Five colour themes are offered in **Settings → Appearance → Color**: Sky (the default), Forest, Crimson, Ocean and Racing. Each sets the accent, the background tint, a soft glow at the top of the screens and the in-app logo, in both light and dark. Navigation is a floating, frosted capsule of round icon buttons that content scrolls beneath (real blur on iOS and Android 12+, a translucent fill on older Android). Screen headers float too: they slide away while scrolling down and come back when scrolling up, and their buttons sit in white circles. Library screens stay deliberately plain: a compact header, one row of shortcuts, folder cards and simple video rows; grouped lists are kept for Settings and sheets. Text uses Apple's type scale, set in the system font (SF Pro) on iOS and in [Inter](https://rsms.me/inter/) on Android (`android/app/src/main/assets/fonts`, SIL Open Font License, see `assets/fonts/Inter-LICENSE.txt`). The theme follows the device by default and can be fixed to Light or Dark in Settings. The player always stays dark. Colour tokens for both themes live in `src/shared/theme.ts`. Components read the active palette through `useColors` / `makeStyles` (`src/shared/theming.tsx`), which build each style sheet once per theme. Icons come from Lucide, and screens share the components in `src/shared/components`.
 
 ### Library
 
 Bottom tabs: Videos · Audio · Recent · Settings. With **Settings → Audio and video → Together**, the tabs become Library · Recent · Settings, and each folder lists its videos and audio side by side.
 
-- Folders from the device media library (Android MediaStore buckets, iOS Photos albums) plus "All videos" / "All audio", with a **Continue watching** (or **Continue listening**) rail for unfinished items.
+- Folders from the device media library (Android MediaStore buckets, iOS Photos albums) plus "All videos" / "All audio", with a **Continue watching** (or **Continue listening**) rail for unfinished items. Under the header, small shortcuts open Favorites, Recently Added, Playlists and (Android 11+) the Recycle Bin. A folder holding new, unplayed files shows a "NEW" tag with their count.
 - **Audio** (Android): music, recordings and other audio files with album art and title / artist / album tags. iOS apps cannot list the device's audio files, so iOS shows videos only.
-- Folder view in **list or grid**, **sorting** by date, name (natural order, so "Episode 2" comes before "Episode 10"), duration or size, and **Play all**.
-- Per-video menu: resume or play from the beginning, mark as watched or unwatched, add to Favorites, video details, remove from history.
-- **Favorites**: heart anything from its menu or the player's More sheet; a Favorites list sits at the top of each library tab and favorited rows show a small heart.
-- **Recently Added**: a shelf and a list of what arrived in the last 30 days. Files added in the last week that haven't been played show a blue dot, as in Podcasts.
+- Folder view in **list or grid**, **sorting** by date, name (natural order, so "Episode 2" comes before "Episode 10"), duration or size, a floating **Play all** button and **Shuffle** in the header.
+- Per-video menu: resume or play from the beginning, mark as watched or unwatched, add to Favorites, video details, remove from history, and (Android 11+) move, copy or delete.
+- **File management** (Android 11+): in a folder, a long press starts selecting; then add the selection to a playlist, copy or move it to another folder (or a new one), or delete it. Deleting moves files to Android's recycle bin for 30 days; the **Recycle Bin** screen restores them or deletes them for good. Every change goes through Android's own confirmation, so the app needs no all-files permission. Android keeps video under Movies / DCIM / Pictures and audio under Music / Podcasts / Audiobooks / Recordings, so only folders there are offered, and new folders are made in Movies or Music.
+- **Favorites**: add anything from its menu or the player's More sheet, and find it under the Favorites shortcut.
+- **Recently Added**: a list of what arrived in the last 30 days. Files added in the last week that haven't been played carry a "NEW" tag.
 - **Playlists**: create, rename and delete playlists of videos and music; add from any item's menu ("Add to Playlist…") and remove from inside the playlist.
-- **Play and Shuffle** buttons on folders, playlists and collections; **Share** (Android) from an item's menu; a long press opens the menu; Search remembers **recent searches**.
+- Playlists and collections play and shuffle like folders; **Share** (Android) from an item's menu; Search remembers **recent searches**.
 - **Search** across the whole library by file name (and title, artist or album for audio), including non-Latin titles.
 - **Recent** tab: unfinished and recently played videos, with progress bars and "12 min left".
 - Thumbnails show a watch-progress bar. The most recently played video is highlighted.
@@ -32,8 +33,9 @@ Bottom tabs: Videos · Audio · Recent · Settings. With **Settings → Audio an
 - **Queue**: previous/next, auto-play next, repeat (off / all / one). "Previous" restarts the current video after 5 s.
 - **Playback speed** 0.5×–3×, **press and hold for 2×**.
 - **Audio track** and **embedded subtitle track** selection. **External subtitles** (`.srt`, `.ass`, `.ssa`) with delay adjustment.
-- **Lock screen** controls, **sleep timer** (timed or end of video), **picture-in-picture**, **background play** with notification controls (optional).
-- **Mini player**: with background play on (always for audio), leaving the player keeps it playing behind a mini player above the tab bar, with play/pause, next and stop. Tap it to return to the full player.
+- **Quick actions**: round buttons under the title for speed, repeat, sleep timer, rotate and background play; they take the accent colour while on, and a chevron opens every option.
+- **Lock screen** controls, **sleep timer** (timed or end of video), **picture-in-picture**, **background play** with notification controls (optional). In the background, the queue keeps playing from one item to the next.
+- **Mini player**: with background play on (always for audio), leaving the player keeps it playing behind a floating mini player above the tab bar, with play/pause, next and stop. Tap it to return to the full player.
 - Each video opens in its own orientation (landscape for wide, portrait for tall), decided from the library before the file loads, so the screen doesn't turn after playback starts. The rotate button overrides it for the rest of the session. The video's thumbnail shows until the first frame is drawn.
 - **Audio mode**: album art on a blurred backdrop with title and artist. Controls stay on screen, and playback always continues in the background with notification controls.
 - Aspect modes, auto-hiding controls, buffering and error states (retry, or skip to the next video).
@@ -76,11 +78,11 @@ Picked through the system file picker and parsed by ZX Player itself, so they re
 
 ## Logo
 
-The ZX Player mark is a rounded play button split by a Z-shaped seam, in white and pale blue on the brand-blue gradient. The master artwork is `assets/brand/zx-player-icon.svg` (with a 512 px PNG for stores).
+The ZX Player mark is a rounded play button split by a Z-shaped seam, in white on a sky-blue gradient. The master artwork is `assets/brand/zx-player-icon.svg` (with a 512 px PNG for stores).
 
 - **Android:** adaptive icon (`res/drawable/ic_launcher_{background,foreground,monochrome}.xml`), including a monochrome layer for Android 13+ themed icons. PNG launcher icons cover Android 7.
 - **iOS:** a single 1024 px `AppIcon` (Xcode generates the other sizes).
-- **In the app:** `src/shared/components/AppLogo.tsx` draws the same geometry with react-native-svg. It appears in the Library header, the first-run permission screen and Settings.
+- **In the app:** `src/shared/components/AppLogo.tsx` draws the same geometry with react-native-svg. It appears in the Library header, on the first-run permission screen and in Settings, and takes the gradient of the chosen colour theme (the launcher icon stays Sky). The colour picker in Settings shows the logo in each theme.
 
 ## Requirements
 
@@ -174,7 +176,8 @@ __mocks__/                    Jest mocks for every native module
 | `react-native-volume-manager`                 | Media volume without the system HUD                     |
 | `@react-native-documents/picker`              | Picking subtitle files                                  |
 | `@react-native-async-storage/async-storage`   | Saved settings, watch history, library preferences      |
-| `react-native-svg` + `lucide-react-native`    | Icons and gradient scrims                               |
+| `react-native-svg` + `lucide-react-native`    | Icons, the logo and gradients                           |
+| `@react-native-community/blur`                | Frosted tab bar and mini player                         |
 | `@react-navigation/bottom-tabs`               | Library / Recent / Settings tabs                        |
 | `zxplayer-brightness` (local)                 | Window brightness (Android) / screen brightness (iOS)   |
 | `zxplayer-media` (local)                      | Android video / audio library and thumbnails, album art |

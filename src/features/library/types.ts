@@ -18,6 +18,10 @@ export interface VideoFolder {
    * album names, bucket ids keep two same-named folders apart.
    */
   bucketId?: string;
+  /** Where the folder sits in shared storage, e.g. "Movies/Trips/" (Android 10+). */
+  relativePath?: string | null;
+  /** Items added recently; the unplayed ones make the folder show a "new" tag. */
+  newIds?: readonly string[];
   /** Media listed in this folder. */
   scope: MediaScope;
 }

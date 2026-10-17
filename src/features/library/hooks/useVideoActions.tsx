@@ -7,14 +7,11 @@ import { useAfterSheetClose } from '../../../shared/components/Sheet';
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
 import type { IconComponent } from '../../../shared/icons';
 import { reportError } from '../../../shared/logger';
-import {
-  AddToPlaylistSheet,
-  PlaylistNameSheet,
-} from '../components/PlaylistSheets';
 import { VideoActionsSheet, VideoInfoSheet } from '../components/VideoSheets';
-import { addToPlaylist, createPlaylist } from '../playlists';
 import { mediaTitle } from '../services/mediaLibrary';
 import type { VideoItem } from '../types';
+import { useFileActions } from './useFileActions';
+import { usePlaylistAdder } from './usePlaylistAdder';
 
 /** An extra option in an item's menu, e.g. "Remove from Playlist". */
 export interface ExtraAction {
@@ -35,13 +32,21 @@ function share(video: VideoItem) {
     .catch(error => reportError('Sharing failed', error));
 }
 
+interface VideoActionsOptions {
+  /** Screen-specific options added to each item's menu. */
+  extraActions?: (video: VideoItem) => ExtraAction[];
+  /** After files were deleted, moved or copied (e.g. to end a selection). */
+  onFilesChanged?: () => void;
+}
+
 /**
- * Play / menu / details behaviour shared by every video list. `videos` is the list in
- * display order and becomes the player's queue. Render `sheets` once in the screen.
+ * Play / menu / details / file actions shared by every video list. `videos` is the list
+ * in display order and becomes the player's queue. Render `sheets` once in the screen;
+ * `files` and `addToPlaylist` also serve a multi-item selection.
  */
 export function useVideoActions(
   videos: VideoItem[],
-  extraActions?: (video: VideoItem) => ExtraAction[],
+  { extraActions, onFilesChanged }: VideoActionsOptions = {},
 ) {
   const openPlayer = useOpenPlayer();
   const { schedule, onDismissed } = useAfterSheetClose();
@@ -49,8 +54,8 @@ export function useVideoActions(
   const [selected, setSelected] = useState<VideoItem | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const [playlistPickerOpen, setPlaylistPickerOpen] = useState(false);
-  const [newPlaylistOpen, setNewPlaylistOpen] = useState(false);
+  const playlists = usePlaylistAdder();
+  const files = useFileActions({ onComplete: onFilesChanged });
   // Read through a ref: a list that grows page by page would otherwise hand every row a
   // new `play` callback per page and re-render all of them.
   const videosRef = useLatestRef(videos);
@@ -82,8 +87,19 @@ export function useVideoActions(
         onDismissed={onDismissed}
         onPlay={play}
         onShowInfo={() => schedule(() => setInfoOpen(true))}
-        onAddToPlaylist={() => schedule(() => setPlaylistPickerOpen(true))}
+        onAddToPlaylist={video => schedule(() => playlists.open([video]))}
         onShare={canShare() ? share : undefined}
+        onMove={
+          files.available
+            ? video => schedule(() => files.move([video]))
+            : undefined
+        }
+        onCopy={
+          files.available
+            ? video => schedule(() => files.copy([video]))
+            : undefined
+        }
+        onDelete={files.available ? video => files.remove([video]) : undefined}
         extraActions={extraActions?.(selected)}
       />
       <VideoInfoSheet
@@ -91,22 +107,20 @@ export function useVideoActions(
         visible={infoOpen}
         onClose={() => setInfoOpen(false)}
       />
-      <AddToPlaylistSheet
-        visible={playlistPickerOpen}
-        onClose={() => setPlaylistPickerOpen(false)}
-        onDismissed={onDismissed}
-        onPick={playlistId => addToPlaylist(playlistId, [selected])}
-        onNewPlaylist={() => schedule(() => setNewPlaylistOpen(true))}
-      />
-      <PlaylistNameSheet
-        visible={newPlaylistOpen}
-        title="New Playlist"
-        confirmLabel="Create"
-        onSubmit={name => createPlaylist(name, [selected])}
-        onClose={() => setNewPlaylistOpen(false)}
-      />
     </>
   ) : null;
 
-  return { play, openMenu, sheets };
+  return {
+    play,
+    openMenu,
+    files,
+    addToPlaylist: playlists.open,
+    sheets: (
+      <>
+        {sheets}
+        {playlists.sheets}
+        {files.sheets}
+      </>
+    ),
+  };
 }

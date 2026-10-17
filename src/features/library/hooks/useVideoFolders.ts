@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { reportError } from '../../../shared/logger';
 import { fetchFolders } from '../services/mediaLibrary';
+import { invalidateMediaIndex } from '../services/videoIndex';
+import { useLibraryChanges } from './useLibraryChanges';
 import type { MediaScope, VideoFolder } from '../types';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -49,8 +51,12 @@ export function useVideoFolders(scope: MediaScope) {
     };
   }, [load]);
 
+  // Any change to the library (a rescan, files deleted, moved or copied) reloads the list.
+  useLibraryChanges(() => load('refresh'));
+
   const reload = useCallback(() => load('initial'), [load]);
-  const refresh = useCallback(() => load('refresh'), [load]);
+  /** Pull to refresh: rescans the library, so search and Recently Added update too. */
+  const refresh = useCallback(() => invalidateMediaIndex(), []);
 
   return { folders, loadState, refreshing, reload, refresh };
 }

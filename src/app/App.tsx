@@ -10,7 +10,12 @@ import {
 } from '@react-navigation/native';
 
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
-import { palettes, type ColorScheme } from '../shared/theme';
+import { useSettings } from '../features/settings/settingsStore';
+import {
+  paletteFor,
+  type ColorScheme,
+  type ColorTokens,
+} from '../shared/theme';
 import { ThemeProvider } from '../shared/theming';
 import { navigationRef } from './navigation/navigationRef';
 import { RootNavigator } from './navigation/RootNavigator';
@@ -18,9 +23,8 @@ import { PlayerHost } from './PlayerHost';
 import { useAppColorScheme } from './useAppColorScheme';
 import { usePersistedStores } from './usePersistedStores';
 
-function navigationTheme(scheme: ColorScheme): Theme {
+function navigationTheme(scheme: ColorScheme, colors: ColorTokens): Theme {
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
-  const colors = palettes[scheme];
   return {
     ...base,
     colors: {
@@ -30,7 +34,7 @@ function navigationTheme(scheme: ColorScheme): Theme {
       card: colors.surface,
       text: colors.textPrimary,
       border: colors.border,
-      notification: colors.primary,
+      notification: colors.accent,
     },
   };
 }
@@ -38,8 +42,13 @@ function navigationTheme(scheme: ColorScheme): Theme {
 export default function App() {
   const storesReady = usePersistedStores();
   const scheme = useAppColorScheme();
-  const theme = useMemo(() => navigationTheme(scheme), [scheme]);
-  const background = { backgroundColor: palettes[scheme].background };
+  const { colorTheme } = useSettings();
+  const colors = paletteFor(scheme, colorTheme);
+  const theme = useMemo(
+    () => navigationTheme(scheme, colors),
+    [colors, scheme],
+  );
+  const background = { backgroundColor: colors.background };
 
   return (
     <GestureHandlerRootView style={[styles.root, background]}>
@@ -47,7 +56,7 @@ export default function App() {
         <StatusBar
           barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'}
         />
-        <ThemeProvider scheme={scheme}>
+        <ThemeProvider scheme={scheme} colorTheme={colorTheme}>
           <ErrorBoundary>
             {storesReady ? (
               <NavigationContainer ref={navigationRef} theme={theme}>

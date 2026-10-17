@@ -2,30 +2,30 @@ import React, { useState } from 'react';
 import { Animated, View } from 'react-native';
 
 import type { LibraryStackScreenProps } from '../../../app/navigation/types';
+import { useBottomInset } from '../../../app/navigation/useBottomInset';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { ListRow, ListSection } from '../../../shared/components/GroupedList';
 import { IconButton } from '../../../shared/components/IconButton';
 import {
-  LargeTitle,
-  NavigationBar,
-  useCollapsingTitle,
-} from '../../../shared/components/NavigationBar';
+  HeaderGlow,
+  ScreenHeader,
+  useHidingHeader,
+} from '../../../shared/components/ScreenHeader';
 import { ListMusicIcon, PlusIcon } from '../../../shared/icons';
 import { spacing } from '../../../shared/theme';
-import { makeStyles, useColors } from '../../../shared/theming';
+import { makeStyles } from '../../../shared/theming';
 import { PlaylistNameSheet } from '../components/PlaylistSheets';
 import { createPlaylist, usePlaylists } from '../playlists';
-import { formatMediaCount, libraryTitle } from '../scopeCopy';
+import { formatMediaCount } from '../scopeCopy';
 
 type Props = LibraryStackScreenProps<'Playlists'>;
 
-export function PlaylistsScreen({ navigation, route }: Props) {
+export function PlaylistsScreen({ navigation }: Props) {
   const styles = useStyles();
-  const colors = useColors();
-  const { scope } = route.params;
   const playlists = usePlaylists();
   const [creating, setCreating] = useState(false);
-  const { scrollY, onScroll } = useCollapsingTitle();
+  const header = useHidingHeader();
+  const bottom = useBottomInset();
 
   const create = (name: string) => {
     const id = createPlaylist(name);
@@ -36,24 +36,14 @@ export function PlaylistsScreen({ navigation, route }: Props) {
 
   return (
     <View style={styles.screen}>
-      <NavigationBar
-        title="Playlists"
-        scrollY={scrollY}
-        onBack={navigation.goBack}
-        backLabel={libraryTitle(scope)}
-        right={
-          <IconButton
-            icon={PlusIcon}
-            variant="plain"
-            accessibilityLabel="New playlist"
-            onPress={() => setCreating(true)}
-            testID="new-playlist"
-          />
-        }
-      />
+      <HeaderGlow scrollY={header.scrollY} />
       {playlists.length === 0 ? (
-        <View style={styles.fill}>
-          <LargeTitle title="Playlists" />
+        <View
+          style={[
+            styles.fill,
+            { paddingTop: header.height, paddingBottom: bottom },
+          ]}
+        >
           <EmptyState
             icon={ListMusicIcon}
             title="No playlists yet"
@@ -64,14 +54,19 @@ export function PlaylistsScreen({ navigation, route }: Props) {
           />
         </View>
       ) : (
-        <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16}>
-          <LargeTitle title="Playlists" />
+        <Animated.ScrollView
+          contentContainerStyle={{
+            paddingTop: header.height,
+            paddingBottom: bottom,
+          }}
+          onScroll={header.onScroll}
+          scrollEventThrottle={16}
+        >
           <ListSection style={styles.list}>
             {playlists.map(playlist => (
               <ListRow
                 key={playlist.id}
                 icon={ListMusicIcon}
-                iconBackground={colors.orange}
                 title={playlist.name}
                 subtitle={formatMediaCount(playlist.items.length, 'all')}
                 accessory="chevron"
@@ -84,6 +79,20 @@ export function PlaylistsScreen({ navigation, route }: Props) {
           </ListSection>
         </Animated.ScrollView>
       )}
+      <ScreenHeader
+        title="Playlists"
+        onBack={navigation.goBack}
+        actions={
+          <IconButton
+            icon={PlusIcon}
+            variant="raised"
+            accessibilityLabel="New playlist"
+            onPress={() => setCreating(true)}
+            testID="new-playlist"
+          />
+        }
+        hiding={header}
+      />
       <PlaylistNameSheet
         visible={creating}
         title="New Playlist"

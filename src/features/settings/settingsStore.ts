@@ -3,6 +3,11 @@ import {
   isRecord,
 } from '../../shared/storage/persistentStore';
 import { useStore } from '../../shared/storage/store';
+import {
+  COLOR_THEMES,
+  DEFAULT_COLOR_THEME,
+  type ColorTheme,
+} from '../../shared/theme';
 import { ASPECT_MODES, type AspectMode } from '../player/utils/aspectRatio';
 
 export const SKIP_INTERVALS = [5, 10, 15, 30] as const;
@@ -21,6 +26,7 @@ export type LibraryLayout = (typeof LIBRARY_LAYOUTS)[number];
 
 export interface Settings {
   appearance: Appearance;
+  colorTheme: ColorTheme;
   libraryLayout: LibraryLayout;
   resumePlayback: boolean;
   autoPlayNext: boolean;
@@ -39,6 +45,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   appearance: 'system',
+  colorTheme: DEFAULT_COLOR_THEME,
   libraryLayout: 'separate',
   resumePlayback: true,
   autoPlayNext: true,
@@ -78,6 +85,7 @@ export function parseSettings(raw: unknown): Settings {
 
   return {
     appearance: oneOf('appearance', APPEARANCES),
+    colorTheme: oneOf('colorTheme', COLOR_THEMES),
     libraryLayout: oneOf('libraryLayout', LIBRARY_LAYOUTS),
     resumePlayback: bool('resumePlayback'),
     autoPlayNext: bool('autoPlayNext'),

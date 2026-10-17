@@ -2,48 +2,165 @@ import { Platform, type TextStyle } from 'react-native';
 
 export type ColorScheme = 'light' | 'dark';
 
+/** The colour themes offered in Settings. Sky is the default and the app icon's. */
+export const COLOR_THEMES = [
+  'sky',
+  'forest',
+  'crimson',
+  'ocean',
+  'racing',
+] as const;
+export type ColorTheme = (typeof COLOR_THEMES)[number];
+export const DEFAULT_COLOR_THEME: ColorTheme = 'sky';
+
+/** What a colour theme changes in one scheme; everything else stays neutral. */
+interface Tint {
+  /** Progress, the playing item, unplayed dots, switches, active player shortcuts. */
+  accent: string;
+  /** The accent as text: darker on light screens, lighter on dark, to keep AA contrast. */
+  accentText: string;
+  /** Screen background, faintly tinted with the theme's colour. */
+  background: string;
+  /** Top colour of the soft gradient behind screen headers. */
+  glow: string;
+}
+
+export interface ColorThemeSpec {
+  name: string;
+  light: Tint;
+  dark: Tint;
+  /** App logo gradient, from the top-left corner to the bottom-right. */
+  logo: readonly [string, string];
+}
+
+export const COLOR_THEME_SPECS: Record<ColorTheme, ColorThemeSpec> = {
+  sky: {
+    name: 'Sky',
+    light: {
+      accent: '#3D8EF0',
+      accentText: '#1E6BCB',
+      background: '#F4F7FB',
+      glow: '#A9D1FB',
+    },
+    dark: {
+      accent: '#5AA8F8',
+      accentText: '#7DBBFA',
+      background: '#0B0F15',
+      glow: '#1C4F86',
+    },
+    logo: ['#8CC6FB', '#2F7FE0'],
+  },
+  forest: {
+    name: 'Forest',
+    light: {
+      accent: '#1F8A5B',
+      accentText: '#17694A',
+      background: '#F2F6F3',
+      glow: '#BFE3C9',
+    },
+    dark: {
+      accent: '#8FD46B',
+      accentText: '#A6E08A',
+      background: '#0A110D',
+      glow: '#1E5A43',
+    },
+    logo: ['#4FBF7E', '#145A3F'],
+  },
+  crimson: {
+    name: 'Crimson',
+    light: {
+      accent: '#E5173F',
+      accentText: '#C0102F',
+      background: '#EFEFEF',
+      glow: '#F6C9D2',
+    },
+    dark: {
+      accent: '#FF3B5C',
+      accentText: '#FF6B82',
+      background: '#0E0E10',
+      glow: '#5A1222',
+    },
+    logo: ['#FF5470', '#B30E2C'],
+  },
+  ocean: {
+    name: 'Ocean',
+    light: {
+      accent: '#1565A8',
+      accentText: '#0F5C9E',
+      background: '#F1F5F9',
+      glow: '#B6CFE6',
+    },
+    dark: {
+      accent: '#4FA3E0',
+      accentText: '#7CC0F0',
+      background: '#07111C',
+      glow: '#0F3A63',
+    },
+    logo: ['#3B8FD6', '#0A3A6B'],
+  },
+  racing: {
+    name: 'Racing',
+    light: {
+      accent: '#C8302C',
+      accentText: '#B02A26',
+      background: '#F6F3F2',
+      glow: '#F0C5C3',
+    },
+    dark: {
+      accent: '#F0524D',
+      accentText: '#FF7A75',
+      background: '#120D0D',
+      glow: '#5C1614',
+    },
+    logo: ['#E85A54', '#9A1F1C'],
+  },
+};
+
+/** `#RRGGBB` with an alpha, as `rgba(…)`. */
+export function withAlpha(hex: string, alpha: number): string {
+  const [red, green, blue] = [1, 3, 5].map(index =>
+    parseInt(hex.slice(index, index + 2), 16),
+  );
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
 /**
- * ZX Player design tokens, modelled on Apple's system colours. Blue is the tint: filled
- * buttons and active states use `primary`, progress/selection marks use `primaryBright`,
- * and tinted text or icons use `primaryText`. Screens with grouped lists sit on
- * `background` with `surface` cells; plain lists sit on `canvas`.
- * Components read the active palette through `useColors` / `makeStyles` (theming.tsx).
+ * ZX Player design tokens: a calm, neutral base in light and dark, plus one colour theme.
+ * Ink (near-black, white in dark) is the tint: filled buttons, the current tab and icons
+ * use `primary` / `primaryText`. The theme's `accent` marks what is live or new, and
+ * `accentText` is its readable text form. Screens sit on `background` / `canvas` with
+ * white `surface` cards. Components read the active palette through `useColors` /
+ * `makeStyles` (theming.tsx).
  */
-export const darkColors = {
-  primary: '#0A84FF',
-  primaryPressed: '#3D9BFF',
-  primaryBright: '#0A84FF',
-  primaryText: '#0A84FF',
-  primarySoft: 'rgba(10, 132, 255, 0.18)',
-  primarySoftPressed: 'rgba(10, 132, 255, 0.28)',
-  onPrimary: '#FFFFFF',
+const darkNeutral = {
+  primary: '#F2F4F7',
+  primaryPressed: '#D3D7DE',
+  primaryText: '#F2F4F7',
+  primarySoft: 'rgba(255, 255, 255, 0.08)',
+  primarySoftPressed: 'rgba(255, 255, 255, 0.14)',
+  onPrimary: '#0E1014',
 
-  background: '#000000',
-  canvas: '#000000',
-  surface: '#1C1C1E',
-  surfaceRaised: '#2C2C2E',
-  surfaceHigh: '#3A3A3C',
-  border: '#38383A',
-  divider: 'rgba(84, 84, 88, 0.6)',
-  pressed: 'rgba(255, 255, 255, 0.1)',
-  /** Navigation and tab bars. */
-  chrome: 'rgba(22, 22, 24, 0.94)',
-  /** Search fields, segmented-control tracks, switch tracks. */
-  fill: 'rgba(118, 118, 128, 0.24)',
-  fillStrong: 'rgba(118, 118, 128, 0.36)',
-  /** Sheets, and the grouped cards inside them. */
-  sheet: '#1C1C1E',
-  sheetCell: '#2C2C2E',
+  surface: '#17191D',
+  surfaceRaised: '#22252B',
+  surfaceHigh: '#2E323A',
+  border: '#2A2E35',
+  divider: 'rgba(255, 255, 255, 0.08)',
+  pressed: 'rgba(255, 255, 255, 0.08)',
+  /** Segmented-control and switch tracks, icon tiles. */
+  fill: 'rgba(255, 255, 255, 0.08)',
+  fillStrong: 'rgba(255, 255, 255, 0.14)',
+  /** The grouped cards inside sheets. */
+  sheetCell: '#22252B',
 
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(235, 235, 245, 0.6)',
-  textMuted: 'rgba(235, 235, 245, 0.3)',
+  textPrimary: '#F2F4F7',
+  textSecondary: '#9AA1AC',
+  textMuted: '#5B616B',
 
   danger: '#FF453A',
   dangerSoft: 'rgba(255, 69, 58, 0.18)',
   success: '#30D158',
 
-  // System accents, e.g. for settings icons and badges.
+  // System colours, e.g. for badges.
   blue: '#0A84FF',
   green: '#30D158',
   orange: '#FF9F0A',
@@ -65,34 +182,27 @@ export const darkColors = {
   trackBuffered: 'rgba(255, 255, 255, 0.42)',
 };
 
-export type ColorTokens = { readonly [K in keyof typeof darkColors]: string };
-
-export const lightColors: ColorTokens = {
-  primary: '#007AFF',
-  primaryPressed: '#0062CC',
-  primaryBright: '#007AFF',
-  primaryText: '#007AFF',
-  primarySoft: 'rgba(0, 122, 255, 0.12)',
-  primarySoftPressed: 'rgba(0, 122, 255, 0.2)',
+const lightNeutral: typeof darkNeutral = {
+  primary: '#111318',
+  primaryPressed: '#363A42',
+  primaryText: '#111318',
+  primarySoft: 'rgba(17, 19, 24, 0.06)',
+  primarySoftPressed: 'rgba(17, 19, 24, 0.12)',
   onPrimary: '#FFFFFF',
 
-  background: '#F2F2F7',
-  canvas: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceRaised: '#E5E5EA',
-  surfaceHigh: '#D1D1D6',
-  border: '#C6C6C8',
-  divider: 'rgba(60, 60, 67, 0.29)',
-  pressed: 'rgba(0, 0, 0, 0.08)',
-  chrome: 'rgba(249, 249, 249, 0.94)',
-  fill: 'rgba(118, 118, 128, 0.12)',
-  fillStrong: 'rgba(118, 118, 128, 0.2)',
-  sheet: '#F2F2F7',
+  surfaceRaised: '#ECEEF1',
+  surfaceHigh: '#DFE2E7',
+  border: '#E4E7EB',
+  divider: 'rgba(17, 19, 24, 0.08)',
+  pressed: 'rgba(17, 19, 24, 0.06)',
+  fill: 'rgba(17, 19, 24, 0.06)',
+  fillStrong: 'rgba(17, 19, 24, 0.12)',
   sheetCell: '#FFFFFF',
 
-  textPrimary: '#000000',
-  textSecondary: 'rgba(60, 60, 67, 0.6)',
-  textMuted: 'rgba(60, 60, 67, 0.3)',
+  textPrimary: '#111318',
+  textSecondary: '#5F6673',
+  textMuted: '#A3AAB5',
 
   danger: '#FF3B30',
   dangerSoft: 'rgba(255, 59, 48, 0.12)',
@@ -119,12 +229,63 @@ export const lightColors: ColorTokens = {
   trackBuffered: 'rgba(60, 60, 67, 0.3)',
 };
 
-export const palettes: Record<ColorScheme, ColorTokens> = {
-  dark: darkColors,
-  light: lightColors,
-};
+type ThemedKey =
+  | 'accent'
+  | 'accentText'
+  | 'accentSoft'
+  | 'onAccent'
+  | 'background'
+  | 'canvas'
+  | 'sheet'
+  | 'chrome'
+  | 'glow';
 
-/** The player is always dark, whatever the app appearance: video reads best on black. */
+export type ColorTokens = Readonly<
+  Record<keyof typeof darkNeutral | ThemedKey, string>
+>;
+
+function buildPalette(scheme: ColorScheme, theme: ColorTheme): ColorTokens {
+  const base = scheme === 'light' ? lightNeutral : darkNeutral;
+  const tint = COLOR_THEME_SPECS[theme][scheme];
+  return {
+    ...base,
+    accent: tint.accent,
+    accentText: tint.accentText,
+    accentSoft: withAlpha(tint.accent, scheme === 'light' ? 0.12 : 0.18),
+    onAccent: '#FFFFFF',
+    background: tint.background,
+    canvas: tint.background,
+    // Sheets take the screen colour when light and a raised card colour when dark.
+    sheet: scheme === 'light' ? tint.background : base.surface,
+    // Headers and bars once content scrolls under them.
+    chrome: withAlpha(tint.background, 0.92),
+    glow: tint.glow,
+  };
+}
+
+const paletteCache = new Map<string, ColorTokens>();
+
+/** The palette for a scheme and colour theme, built once and then reused. */
+export function paletteFor(
+  scheme: ColorScheme,
+  theme: ColorTheme = DEFAULT_COLOR_THEME,
+): ColorTokens {
+  const key = `${scheme}:${theme}`;
+  let palette = paletteCache.get(key);
+  if (!palette) {
+    palette = buildPalette(scheme, theme);
+    paletteCache.set(key, palette);
+  }
+  return palette;
+}
+
+export const lightColors = paletteFor('light');
+export const darkColors = paletteFor('dark');
+
+/**
+ * The player is always dark, whatever the app appearance: video reads best on black.
+ * Its neutral styles use this; accents come from `useColors`, so they follow the theme.
+ */
 export const playerColors: ColorTokens = darkColors;
 
 export const spacing = {
@@ -138,15 +299,13 @@ export const spacing = {
   xxxl: 32,
 } as const;
 
+/** Generous, soft corners: cards and large artwork use `lg`, sheets `xl`. */
 export const radius = {
-  xs: 4,
-  sm: 8,
-  /** Grouped list sections, search fields. */
-  md: 10,
-  /** Artwork and cards. */
-  lg: 12,
-  /** Sheets. */
-  xl: 14,
+  xs: 6,
+  sm: 10,
+  md: 14,
+  lg: 20,
+  xl: 28,
   pill: 999,
 } as const;
 
@@ -207,9 +366,10 @@ export const typography = {
   caption: textStyle(12, 16, 'regular'),
   captionStrong: textStyle(12, 16, 'semibold'),
   caption2: textStyle(11, 13, 'medium'),
-  /** Grouped-list section headers. */
+  /** Small spaced capitals for section labels ("FOLDERS") and grouped-list headers. */
   overline: {
-    ...textStyle(13, 18, 'regular'),
+    ...textStyle(12, 16, 'semibold'),
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
 } satisfies Record<string, TextStyle>;

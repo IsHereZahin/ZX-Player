@@ -129,10 +129,21 @@ describe('adding to a playlist from a menu', () => {
     ]);
   });
 
-  it('opens the menu with a long press', async () => {
+  it('adds a selection to a playlist', async () => {
+    const id = createPlaylist('Mix')!;
     await renderFolder();
+
+    // In a folder, a long press starts selecting instead of opening the menu.
     await fireEvent(screen.getByTestId('video-1'), 'longPress');
-    expect(screen.getByTestId('video-actions')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('video-2'));
+    expect(screen.getByText('2 selected')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('selection-playlist'));
+    await fireEvent.press(screen.getByTestId(`add-to-playlist-${id}`));
+    expect(playlistsStore.getState()[0].items.map(item => item.id)).toEqual([
+      '1',
+      '2',
+    ]);
   });
 });
 

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { Text } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { SunIcon } from '../../icons';
 import { ListRow, ListSection } from '../GroupedList';
-import { LargeTitle, NavigationBar } from '../NavigationBar';
+import { ScreenHeader, useHidingHeader } from '../ScreenHeader';
 import { SearchField } from '../SearchField';
 import { SegmentedControl } from '../SegmentedControl';
 import { Switch } from '../Switch';
@@ -58,7 +59,6 @@ describe('ListSection', () => {
       <ListSection header="Display" footer="Changes apply right away.">
         <ListRow
           icon={SunIcon}
-          iconBackground="#007AFF"
           title="Theme"
           value="Dark"
           accessory="chevron"
@@ -78,13 +78,6 @@ describe('ListSection', () => {
 });
 
 describe('SearchField', () => {
-  it('works as a button that opens search', async () => {
-    const onPress = jest.fn();
-    await render(<SearchField placeholder="Search videos" onPress={onPress} />);
-    await fireEvent.press(screen.getByLabelText('Search videos'));
-    expect(onPress).toHaveBeenCalled();
-  });
-
   it('edits and clears the query', async () => {
     const onChangeText = jest.fn();
     await render(
@@ -99,21 +92,40 @@ describe('SearchField', () => {
   });
 });
 
-describe('NavigationBar', () => {
-  it('goes back to the named previous screen', async () => {
+describe('ScreenHeader', () => {
+  it('shows the title, subtitle, back button and actions', async () => {
     const onBack = jest.fn();
     await render(
-      <NavigationBar title="Camera" onBack={onBack} backLabel="Videos" />,
+      <ScreenHeader
+        title="Camera"
+        subtitle="3 videos"
+        onBack={onBack}
+        actions={<Text>Sort</Text>}
+      />,
     );
     expect(screen.getByRole('header', { name: 'Camera' })).toBeOnTheScreen();
+    expect(screen.getByText('3 videos')).toBeOnTheScreen();
+    expect(screen.getByText('Sort')).toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByLabelText('Back to Videos'));
+    await fireEvent.press(screen.getByLabelText('Back'));
     expect(onBack).toHaveBeenCalled();
   });
 
-  it('leaves the heading to the large title when there is one', async () => {
-    await render(<LargeTitle title="Library" subtitle="12 folders" />);
-    expect(screen.getByRole('header', { name: 'Library' })).toBeOnTheScreen();
-    expect(screen.getByText('12 folders')).toBeOnTheScreen();
+  it('tells the content how much room a hiding header takes', async () => {
+    function Harness() {
+      const header = useHidingHeader();
+      return (
+        <>
+          <Text testID="content-top">{header.height}</Text>
+          <ScreenHeader title="Videos" hiding={header} />
+        </>
+      );
+    }
+    await render(<Harness />);
+
+    await fireEvent(screen.getByTestId('screen-header'), 'layout', {
+      nativeEvent: { layout: { height: 120 } },
+    });
+    expect(screen.getByTestId('content-top')).toHaveTextContent('120');
   });
 });

@@ -16,6 +16,7 @@ import {
 } from 'react-native-gesture-handler';
 
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
+import { useColors } from '../../../shared/theming';
 import {
   playerColors,
   radius,
@@ -47,6 +48,7 @@ export function SeekBar({
   onSeek,
   onScrubbingChange,
 }: SeekBarProps) {
+  const colors = useColors();
   const { currentTime, bufferedTime } = usePlaybackClock(clock);
   const [trackWidth, setTrackWidth] = useState(0);
   const [scrubTime, setScrubTime] = useState<number | null>(null);
@@ -168,7 +170,7 @@ export function SeekBar({
             <View
               style={[
                 styles.fill,
-                styles.played,
+                { backgroundColor: colors.accent },
                 { width: `${progress * 100}%` },
               ]}
             />
@@ -212,9 +214,6 @@ const styles = StyleSheet.create({
   },
   buffered: {
     backgroundColor: playerColors.trackBuffered,
-  },
-  played: {
-    backgroundColor: playerColors.white,
   },
   times: {
     flexDirection: 'row',

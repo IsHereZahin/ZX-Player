@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
-  BottomTabBar,
+  BottomTabBarHeightCallbackContext,
   createBottomTabNavigator,
   type BottomTabBarProps,
 } from '@react-navigation/bottom-tabs';
@@ -19,6 +19,7 @@ import { LibraryScreen } from '../../features/library/screens/LibraryScreen';
 import { PlaylistScreen } from '../../features/library/screens/PlaylistScreen';
 import { PlaylistsScreen } from '../../features/library/screens/PlaylistsScreen';
 import { RecentlyAddedScreen } from '../../features/library/screens/RecentlyAddedScreen';
+import { RecycleBinScreen } from '../../features/library/screens/RecycleBinScreen';
 import { isAudioLibrarySupported } from '../../features/library/services/mediaLibrary';
 import { SearchScreen } from '../../features/library/screens/SearchScreen';
 import { MiniPlayer } from '../../features/player/components/MiniPlayer';
@@ -32,8 +33,8 @@ import {
   SettingsIcon,
   type IconComponent,
 } from '../../shared/icons';
-import { typography } from '../../shared/theme';
 import { useColors } from '../../shared/theming';
+import { FloatingTabBar } from './FloatingTabBar';
 import { PlayerRoute } from './PlayerRoute';
 import type {
   LibraryStackParamList,
@@ -75,6 +76,7 @@ function libraryStack(tab: LibraryTab) {
         />
         <LibraryStack.Screen name="Playlists" component={PlaylistsScreen} />
         <LibraryStack.Screen name="Playlist" component={PlaylistScreen} />
+        <LibraryStack.Screen name="RecycleBin" component={RecycleBinScreen} />
         <LibraryStack.Screen
           name="Search"
           component={SearchScreen}
@@ -87,16 +89,25 @@ function libraryStack(tab: LibraryTab) {
 const VideosStack = libraryStack('Library');
 const AudioStack = libraryStack('Audio');
 
-/** The tab bar, topped by the mini player while something plays in the background. */
+/**
+ * The floating tab bar, topped by the mini player while something plays in the
+ * background. Both float over the screens, which read the height through
+ * useBottomInset so their lists scroll on beneath and stop just above.
+ */
 function TabBarWithMiniPlayer(props: BottomTabBarProps) {
+  const reportHeight = useContext(BottomTabBarHeightCallbackContext);
   const openPlayer = () => {
     showFullPlayer();
     props.navigation.navigate('Player');
   };
   return (
-    <View>
+    <View
+      style={styles.tabBarOverlay}
+      pointerEvents="box-none"
+      onLayout={event => reportHeight?.(event.nativeEvent.layout.height)}
+    >
       <MiniPlayer onOpen={openPlayer} />
-      <BottomTabBar {...props} />
+      <FloatingTabBar {...props} />
     </View>
   );
 }
@@ -116,27 +127,11 @@ const RecentTabIcon = tabIcon(HistoryIcon);
 const SettingsTabIcon = tabIcon(SettingsIcon);
 
 function MainTabs() {
-  const colors = useColors();
   const libraryScope = useLibraryScope('Library');
   // Audio gets its own tab only while the Library tab lists just videos (and audio exists).
   const separateAudio = libraryScope === 'video' && isAudioLibrarySupported();
   return (
-    <Tab.Navigator
-      tabBar={renderTabBar}
-      screenOptions={{
-        headerShown: false,
-        // iOS tab bar: bar material, hairline top edge, small labels, grey when idle.
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.gray,
-        tabBarStyle: {
-          backgroundColor: colors.chrome,
-          borderTopColor: colors.divider,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          elevation: 0,
-        },
-        tabBarLabelStyle: typography.caption2,
-      }}
-    >
+    <Tab.Navigator tabBar={renderTabBar} screenOptions={{ headerShown: false }}>
       <Tab.Screen
         name="Library"
         component={VideosStack}
@@ -201,3 +196,12 @@ export function RootNavigator() {
     </Stack.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBarOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+});

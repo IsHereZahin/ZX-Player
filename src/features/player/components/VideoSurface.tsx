@@ -1,5 +1,5 @@
-import React, { memo, useMemo, type RefObject } from 'react';
-import { PixelRatio, StyleSheet, View } from 'react-native';
+import React, { memo, useEffect, useMemo, useRef, type RefObject } from 'react';
+import { AppState, PixelRatio, Platform, StyleSheet, View } from 'react-native';
 import Video, {
   SelectedTrackType,
   type OnAudioTracksData,
@@ -11,6 +11,7 @@ import Video, {
   type OnTextTrackDataChangedData,
   type OnTextTracksData,
   type OnVideoErrorData,
+  type ReactVideoSource,
   type SelectedTrack,
   type VideoRef,
 } from 'react-native-video';
@@ -82,6 +83,44 @@ export function forwardVideoEvents(
   return forwarded as VideoEvents;
 }
 
+/**
+ * While the app is in the background, Android's renderer (Fabric) stops applying view
+ * updates until the app returns, so a new source or a play/pause change (the next item
+ * after one ends, a notification button) would never reach the player. The player's own
+ * commands go straight to the native view, so they are sent too; when the queued props
+ * land on return they match what is already playing, and nothing reloads.
+ */
+function useCommandsInBackground(
+  videoRef: RefObject<VideoRef | null>,
+  source: ReactVideoSource,
+  paused: boolean,
+) {
+  const applied = useRef({ source, paused });
+  useEffect(() => {
+    const previous = applied.current;
+    applied.current = { source, paused };
+    const video = videoRef.current;
+    if (
+      !video ||
+      Platform.OS !== 'android' ||
+      AppState.currentState !== 'background'
+    ) {
+      return;
+    }
+    // The source first: resuming would otherwise restart the item that just ended.
+    if (source !== previous.source) {
+      video.setSource(source);
+    }
+    if (paused !== previous.paused) {
+      if (paused) {
+        video.pause();
+      } else {
+        video.resume();
+      }
+    }
+  }, [paused, source, videoRef]);
+}
+
 /** Which subtitle the player itself should render (external files are drawn by the app). */
 export type NativeTextTrack =
   | { kind: 'off' }
@@ -151,6 +190,7 @@ export const VideoSurface = memo(function VideoSurfaceView({
     }),
     [artist, artworkUri, startPositionSec, title, uri],
   );
+  useCommandsInBackground(videoRef, source, paused);
   const layout = resolveVideoLayout(
     aspectMode,
     container,

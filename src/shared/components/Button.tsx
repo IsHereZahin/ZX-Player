@@ -78,7 +78,7 @@ const useStyles = makeStyles(colors => ({
   regular: {
     minHeight: 50,
     paddingHorizontal: spacing.xl,
-    borderRadius: radius.lg,
+    borderRadius: radius.pill,
   },
   small: {
     minHeight: 34,

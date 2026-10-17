@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { reportError } from '../../../shared/logger';
 import { fetchAllFolderMedia } from '../services/mediaLibrary';
 import type { VideoFolder, VideoItem } from '../types';
+import { useLibraryChanges } from './useLibraryChanges';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -19,32 +20,42 @@ export function useFolderVideos(folder: VideoFolder) {
   const requestId = useRef(0);
 
   const load = useCallback(
-    async (mode: 'initial' | 'refresh') => {
+    // `quiet` reloads in place after a change: the list swaps once, with no spinner.
+    async (mode: 'initial' | 'refresh' | 'quiet') => {
       const id = ++requestId.current;
       const isStale = () => id !== requestId.current;
+      const quiet = mode === 'quiet';
       let received = false;
-      setComplete(false);
       if (mode === 'refresh') {
         setRefreshing(true);
-      } else {
+      } else if (mode === 'initial') {
         setLoadState('loading');
+      }
+      if (!quiet) {
+        setComplete(false);
       }
 
       try {
-        await fetchAllFolderMedia(
+        const all = await fetchAllFolderMedia(
           folder,
-          soFar => {
-            if (isStale()) {
-              return;
-            }
-            received = true;
-            setVideos(soFar);
-            setLoadState('ready');
-            setRefreshing(false);
-          },
+          quiet
+            ? undefined
+            : soFar => {
+                if (isStale()) {
+                  return;
+                }
+                received = true;
+                setVideos(soFar);
+                setLoadState('ready');
+                setRefreshing(false);
+              },
           isStale,
         );
         if (!isStale()) {
+          if (quiet) {
+            setVideos(all);
+            setLoadState('ready');
+          }
           setComplete(true);
         }
       } catch (error) {
@@ -70,6 +81,8 @@ export function useFolderVideos(folder: VideoFolder) {
       requestId.current += 1;
     };
   }, [load]);
+
+  useLibraryChanges(() => load('quiet'));
 
   const reload = useCallback(() => load('initial'), [load]);
   const refresh = useCallback(() => load('refresh'), [load]);

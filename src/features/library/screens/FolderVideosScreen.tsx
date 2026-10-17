@@ -1,46 +1,53 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Animated,
   RefreshControl,
   useWindowDimensions,
   View,
-  type LayoutChangeEvent,
 } from 'react-native';
 
 import type { LibraryStackScreenProps } from '../../../app/navigation/types';
-import { Button } from '../../../shared/components/Button';
+import { useBottomInset } from '../../../app/navigation/useBottomInset';
+import { useOpenPlayer } from '../../../app/navigation/useOpenPlayer';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { IconButton } from '../../../shared/components/IconButton';
 import {
-  LargeTitle,
-  NavigationBar,
-  useCollapsingTitle,
-} from '../../../shared/components/NavigationBar';
+  HeaderGlow,
+  ScreenHeader,
+  useHidingHeader,
+} from '../../../shared/components/ScreenHeader';
 import { ListSkeleton } from '../../../shared/components/Skeleton';
 import {
   ArrowDownUpIcon,
   CircleAlertIcon,
+  CircleCheckIcon,
+  CopyIcon,
+  FolderInputIcon,
+  ListChecksIcon,
+  ListPlusIcon,
+  Trash2Icon,
   FilmIcon,
   LayoutGridIcon,
   ListIcon,
   MusicIcon,
-  PlayIcon,
   ShuffleIcon,
 } from '../../../shared/icons';
-import { shuffled } from '../../../shared/utils/shuffle';
-import { useOpenPlayer } from '../../../app/navigation/useOpenPlayer';
 import { spacing } from '../../../shared/theme';
 import { makeStyles, useColors } from '../../../shared/theming';
 import { MEDIA_LIST_TUNING } from '../../../shared/utils/listTuning';
+import { shuffled } from '../../../shared/utils/shuffle';
 import { useLastPlayedId } from '../../history/watchHistory';
+import { FAB_CLEARANCE, PlayAllButton } from '../components/PlayAllButton';
+import { SelectionBar, type SelectionAction } from '../components/SelectionBar';
 import { VideoGridCard } from '../components/VideoGridCard';
 import { VIDEO_ROW_HEIGHT, VideoRow } from '../components/VideoRow';
 import { SortSheet } from '../components/VideoSheets';
 import { useFolderVideos } from '../hooks/useFolderVideos';
-import { useVideoActions } from '../hooks/useVideoActions';
+import { useSelection } from '../hooks/useSelection';
+import { useVideoActions, type ExtraAction } from '../hooks/useVideoActions';
+import { formatMediaCount, SCOPE_COPY } from '../scopeCopy';
 import { updateLibraryPrefs, useLibraryPrefs } from '../libraryPrefs';
-import { formatMediaCount, libraryTitle, SCOPE_COPY } from '../scopeCopy';
 import type { VideoItem } from '../types';
 import { sortVideos } from '../utils/sortVideos';
 
@@ -62,93 +69,129 @@ export function FolderVideosScreen({ navigation, route }: Props) {
   const { sortKey, sortDirection, viewMode } = useLibraryPrefs();
   const lastPlayedId = useLastPlayedId();
   const [sortOpen, setSortOpen] = useState(false);
-  const [headerHeight, setHeaderHeight] = useState(0);
   const { width } = useWindowDimensions();
-  const { scrollY, onScroll } = useCollapsingTitle();
+  const header = useHidingHeader();
+  const bottom = useBottomInset();
 
   const sorted = useMemo(
     () => sortVideos(videos, sortKey, sortDirection),
     [videos, sortKey, sortDirection],
   );
-  const { play, openMenu, sheets } = useVideoActions(sorted);
+  const selection = useSelection(sorted);
+  const { toggle: toggleSelected, clear: clearSelection } = selection;
+  const selectAction = useCallback(
+    (video: VideoItem): ExtraAction[] => [
+      {
+        label: 'Select',
+        icon: CircleCheckIcon,
+        onPress: () => toggleSelected(video),
+        testID: 'action-select',
+      },
+    ],
+    [toggleSelected],
+  );
+  const { play, openMenu, files, addToPlaylist, sheets } = useVideoActions(
+    sorted,
+    { extraActions: selectAction, onFilesChanged: clearSelection },
+  );
   const openPlayer = useOpenPlayer();
+  const { selecting, selectedIds, selectedItems } = selection;
 
   const grid = viewMode === 'grid';
   const columns = gridColumns(width);
   const cardWidth =
     (width - spacing.lg * 2 - spacing.md * (columns - 1)) / columns;
-  const lastIndex = sorted.length - 1;
 
+  // While selecting, a press toggles an item instead of playing it.
+  const onItemPress = selecting ? toggleSelected : play;
   const renderItem = useCallback(
-    ({ item, index }: { item: VideoItem; index: number }) =>
+    ({ item }: { item: VideoItem }) =>
       grid ? (
         <VideoGridCard
           video={item}
           width={cardWidth}
-          onPress={play}
+          onPress={onItemPress}
           onMore={openMenu}
+          onLongPress={toggleSelected}
           highlighted={item.id === lastPlayedId}
+          selecting={selecting}
+          selected={selectedIds.has(item.id)}
         />
       ) : (
         <VideoRow
           video={item}
-          onPress={play}
+          onPress={onItemPress}
           onMore={openMenu}
+          onLongPress={toggleSelected}
           highlighted={item.id === lastPlayedId}
-          separator={index < lastIndex}
+          selecting={selecting}
+          selected={selectedIds.has(item.id)}
         />
       ),
-    [cardWidth, grid, lastIndex, lastPlayedId, openMenu, play],
+    [
+      cardWidth,
+      grid,
+      lastPlayedId,
+      onItemPress,
+      openMenu,
+      selectedIds,
+      selecting,
+      toggleSelected,
+    ],
   );
+
+  const selectionActions: SelectionAction[] = [
+    {
+      label: 'Playlist',
+      icon: ListPlusIcon,
+      onPress: () => addToPlaylist(selectedItems),
+      testID: 'selection-playlist',
+    },
+  ];
+  if (files.available) {
+    selectionActions.push(
+      {
+        label: 'Copy',
+        icon: CopyIcon,
+        onPress: () => files.copy(selectedItems),
+        testID: 'selection-copy',
+      },
+      {
+        label: 'Move',
+        icon: FolderInputIcon,
+        onPress: () => files.move(selectedItems, folder.relativePath),
+        testID: 'selection-move',
+      },
+      {
+        label: 'Delete',
+        icon: Trash2Icon,
+        destructive: true,
+        onPress: () => files.remove(selectedItems),
+        testID: 'selection-delete',
+      },
+    );
+  }
 
   const subtitle =
     loadState === 'ready'
       ? `${formatMediaCount(videos.length, folder.scope)}${complete ? '' : '…'}`
       : undefined;
 
-  const onHeaderLayout = useCallback(
-    (event: LayoutChangeEvent) =>
-      setHeaderHeight(event.nativeEvent.layout.height),
-    [],
-  );
-
-  const header = (
-    <View onLayout={onHeaderLayout}>
-      <LargeTitle title={folder.title} subtitle={subtitle} />
-      {sorted.length > 0 ? (
-        <View style={styles.actions}>
-          <Button
-            label="Play"
-            icon={PlayIcon}
-            variant="secondary"
-            onPress={() => play(sorted[0])}
-            style={styles.action}
-            testID="play-all"
-          />
-          <Button
-            label="Shuffle"
-            icon={ShuffleIcon}
-            variant="secondary"
-            onPress={() => openPlayer(shuffled(sorted), 0)}
-            style={styles.action}
-            testID="shuffle-all"
-          />
-        </View>
-      ) : null}
-    </View>
-  );
-
-  // The title stays above loading, empty and error states too.
-  const withHeader = (content: React.ReactNode) => (
-    <View style={styles.fill}>
-      {header}
+  // Loading, error and empty states sit between the floating header and tab bar.
+  const padded = (content: ReactNode) => (
+    <View
+      style={[
+        styles.fill,
+        { paddingTop: header.height, paddingBottom: bottom },
+      ]}
+    >
       {content}
     </View>
   );
 
   const renderBody = () => {
     if (loadState === 'error') {
-      return withHeader(
+      return padded(
         <EmptyState
           icon={CircleAlertIcon}
           title="Couldn't load this folder"
@@ -160,10 +203,10 @@ export function FolderVideosScreen({ navigation, route }: Props) {
       );
     }
     if (loadState === 'loading' || (videos.length === 0 && !complete)) {
-      return withHeader(<ListSkeleton testID="videos-loading" />);
+      return padded(<ListSkeleton testID="videos-loading" />);
     }
     if (videos.length === 0) {
-      return withHeader(
+      return padded(
         <EmptyState
           icon={folder.scope === 'audio' ? MusicIcon : FilmIcon}
           title="This folder is empty"
@@ -175,80 +218,117 @@ export function FolderVideosScreen({ navigation, route }: Props) {
       );
     }
     return (
-      <Animated.FlatList
-        // Changing columns requires a fresh list instance.
-        key={grid ? `grid-${columns}` : 'list'}
-        {...MEDIA_LIST_TUNING}
-        data={sorted}
-        keyExtractor={video => video.id}
-        renderItem={renderItem}
-        numColumns={grid ? columns : 1}
-        columnWrapperStyle={grid ? styles.gridRow : undefined}
-        ListHeaderComponent={header}
-        getItemLayout={
-          grid
-            ? undefined
-            : (_, index) => ({
-                length: VIDEO_ROW_HEIGHT,
-                offset: headerHeight + VIDEO_ROW_HEIGHT * index,
-                index,
-              })
-        }
-        contentContainerStyle={[styles.listContent, grid && styles.gridContent]}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        ListFooterComponent={
-          complete ? undefined : (
-            <ActivityIndicator
-              color={colors.textSecondary}
-              style={styles.footer}
+      <>
+        <Animated.FlatList
+          // Changing columns requires a fresh list instance.
+          key={grid ? `grid-${columns}` : 'list'}
+          {...MEDIA_LIST_TUNING}
+          data={sorted}
+          keyExtractor={video => video.id}
+          renderItem={renderItem}
+          numColumns={grid ? columns : 1}
+          columnWrapperStyle={grid ? styles.gridRow : undefined}
+          ListHeaderComponent={<View style={{ height: header.height }} />}
+          getItemLayout={
+            grid
+              ? undefined
+              : (_, index) => ({
+                  length: VIDEO_ROW_HEIGHT,
+                  offset: header.height + VIDEO_ROW_HEIGHT * index,
+                  index,
+                })
+          }
+          contentContainerStyle={[
+            grid && styles.gridContent,
+            { paddingBottom: bottom + FAB_CLEARANCE },
+          ]}
+          onScroll={header.onScroll}
+          scrollEventThrottle={16}
+          ListFooterComponent={
+            complete ? undefined : (
+              <ActivityIndicator color={colors.accent} style={styles.footer} />
+            )
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refresh}
+              progressViewOffset={header.height}
+              tintColor={colors.accent}
+              colors={[colors.accent]}
+              progressBackgroundColor={colors.surfaceRaised}
             />
-          )
-        }
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={refresh}
-            tintColor={colors.textSecondary}
-            colors={[colors.primary]}
-            progressBackgroundColor={colors.surface}
-          />
-        }
-        testID="videos-list"
-      />
+          }
+          testID="videos-list"
+        />
+        {selecting ? (
+          <SelectionBar actions={selectionActions} />
+        ) : (
+          <PlayAllButton onPress={() => play(sorted[0])} />
+        )}
+      </>
     );
   };
 
   return (
     <View style={styles.screen}>
-      <NavigationBar
-        title={folder.title}
-        scrollY={scrollY}
-        tone="plain"
-        onBack={navigation.goBack}
-        backLabel={libraryTitle(folder.scope)}
-        right={
-          <>
-            <IconButton
-              icon={ArrowDownUpIcon}
-              variant="plain"
-              accessibilityLabel="Sort"
-              onPress={() => setSortOpen(true)}
-              testID="open-sort"
-            />
-            <IconButton
-              icon={grid ? ListIcon : LayoutGridIcon}
-              variant="plain"
-              accessibilityLabel={grid ? 'Show as list' : 'Show as grid'}
-              onPress={() =>
-                updateLibraryPrefs({ viewMode: grid ? 'list' : 'grid' })
-              }
-              testID="toggle-view"
-            />
-          </>
-        }
-      />
+      <HeaderGlow scrollY={header.scrollY} />
       {renderBody()}
+      {selecting ? (
+        <ScreenHeader
+          title={`${selectedItems.length} selected`}
+          onBack={clearSelection}
+          actions={
+            <IconButton
+              icon={ListChecksIcon}
+              variant="raised"
+              active={selection.allSelected}
+              accessibilityLabel={
+                selection.allSelected ? 'Deselect all' : 'Select all'
+              }
+              onPress={selection.toggleAll}
+              testID="select-all"
+            />
+          }
+          hiding={header}
+        />
+      ) : (
+        <ScreenHeader
+          title={folder.title}
+          subtitle={subtitle}
+          onBack={navigation.goBack}
+          actions={
+            <>
+              {sorted.length > 0 ? (
+                <IconButton
+                  icon={ShuffleIcon}
+                  variant="raised"
+                  accessibilityLabel="Shuffle"
+                  onPress={() => openPlayer(shuffled(sorted), 0)}
+                  testID="shuffle-all"
+                />
+              ) : null}
+              <IconButton
+                icon={ArrowDownUpIcon}
+                variant="raised"
+                accessibilityLabel="Sort"
+                onPress={() => setSortOpen(true)}
+                testID="open-sort"
+              />
+              <IconButton
+                icon={grid ? ListIcon : LayoutGridIcon}
+                variant="raised"
+                accessibilityLabel={grid ? 'Show as list' : 'Show as grid'}
+                onPress={() =>
+                  updateLibraryPrefs({ viewMode: grid ? 'list' : 'grid' })
+                }
+                testID="toggle-view"
+              />
+            </>
+          }
+          hiding={header}
+        />
+      )}
       <SortSheet
         visible={sortOpen}
         sortKey={sortKey}
@@ -271,25 +351,12 @@ const useStyles = makeStyles(colors => ({
   fill: {
     flex: 1,
   },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.lg,
-  },
-  action: {
-    flex: 1,
-  },
-  listContent: {
-    paddingBottom: spacing.xxxl,
-  },
   gridContent: {
+    paddingHorizontal: spacing.lg,
     gap: spacing.lg,
   },
   gridRow: {
     gap: spacing.md,
-    paddingHorizontal: spacing.lg,
   },
   footer: {
     paddingVertical: spacing.lg,

@@ -4,7 +4,7 @@ import type { LibraryStackScreenProps } from '../../../app/navigation/types';
 import { HeartIcon } from '../../../shared/icons';
 import { MediaCollection } from '../components/MediaCollection';
 import { useFavoriteList } from '../favorites';
-import { formatMediaCount, libraryTitle } from '../scopeCopy';
+import { formatMediaCount } from '../scopeCopy';
 import { kindsOf } from '../services/mediaLibrary';
 
 type Props = LibraryStackScreenProps<'Favorites'>;
@@ -22,14 +22,13 @@ export function FavoritesScreen({ navigation, route }: Props) {
           ? formatMediaCount(favorites.length, scope)
           : undefined
       }
-      backLabel={libraryTitle(scope)}
       onBack={navigation.goBack}
       items={favorites}
       empty={{
         icon: HeartIcon,
         title: 'No favorites yet',
         message:
-          'Add favorites from the ••• menu or the player to find them here.',
+          'Add favorites from the ⋮ menu or the player to find them here.',
       }}
       testID="favorites-screen"
     />

@@ -30,11 +30,14 @@ import {
 import { historyStore, recordProgress } from '../../../history/watchHistory';
 import { favoritesStore } from '../../../library/favorites';
 import type { VideoItem } from '../../../library/types';
-import { updateSettings } from '../../../settings/settingsStore';
+import { settingsStore, updateSettings } from '../../../settings/settingsStore';
 import { PlayerScreen } from '../PlayerScreen';
 
 const { mockVideoRef } = jest.requireMock<{
-  mockVideoRef: { seek: jest.Mock; enterPictureInPicture: jest.Mock };
+  mockVideoRef: Record<
+    'seek' | 'pause' | 'resume' | 'setSource' | 'enterPictureInPicture',
+    jest.Mock
+  >;
 }>('react-native-video');
 
 const SCREEN = { width: 800, height: 400 };
@@ -273,6 +276,28 @@ describe('controls', () => {
 
     expect(video().props.rate).toBe(1.5);
     expect(screen.getByLabelText('Playback speed 1.5×')).toBeOnTheScreen();
+  });
+
+  it('offers round quick actions under the top bar', async () => {
+    updateSettings({ backgroundPlay: false });
+    await renderPlayer();
+    const quick = screen.getByTestId('quick-actions');
+    expect(within(quick).getByLabelText('Playback speed 1×')).toBeOnTheScreen();
+    expect(within(quick).getByTestId('rotate-button')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('repeat-button'));
+    expect(screen.getByLabelText('Repeat all')).toBeSelected();
+    expect(screen.getByTestId('player-toast')).toHaveTextContent('Repeat all');
+
+    await fireEvent.press(screen.getByTestId('background-play-button'));
+    expect(settingsStore.getState().backgroundPlay).toBe(true);
+    expect(screen.getByTestId('background-play-button')).toBeSelected();
+    expect(screen.getByTestId('player-toast')).toHaveTextContent(
+      'Background play on',
+    );
+
+    await fireEvent.press(screen.getByTestId('sleep-button'));
+    expect(screen.getByTestId('sleep-sheet')).toBeOnTheScreen();
   });
 
   it('locks the controls until the unlock button is pressed', async () => {
@@ -976,6 +1001,59 @@ describe('notification and lock-screen controls', () => {
 
     await act(async () => press('seek', 30000));
     expect(mockVideoRef.seek).toHaveBeenLastCalledWith(30);
+  });
+
+  describe('with the app in the background', () => {
+    // Android's renderer holds view updates until the app returns, so the player has to
+    // be driven by its commands.
+    // The Jest preset mocks `currentState` as a function, so it is set directly.
+    let foregroundState: unknown;
+    beforeEach(() => {
+      foregroundState = AppState.currentState;
+      Object.assign(AppState, { currentState: 'background' });
+    });
+    afterEach(() => {
+      Object.assign(AppState, { currentState: foregroundState });
+    });
+
+    it('starts the next item as soon as one ends', async () => {
+      await renderPlayer({ queue: queueOf(2) });
+      await loadVideo();
+      await fireEvent(video(), 'end');
+
+      expect(mockVideoRef.setSource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          uri: 'content://media/external/video/media/2',
+        }),
+      );
+      expect(mockVideoRef.pause).not.toHaveBeenCalled();
+      // No pause is reported in between, so the media session keeps its service.
+      expect(setNowPlaying).not.toHaveBeenCalledWith(
+        expect.objectContaining({ playing: false }),
+      );
+      expect(setNowPlaying).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: '2', playing: true }),
+      );
+    });
+
+    it('pauses and resumes from the notification', async () => {
+      await renderPlayer();
+
+      await act(async () => press('pause'));
+      expect(mockVideoRef.pause).toHaveBeenCalledTimes(1);
+
+      await act(async () => press('play'));
+      expect(mockVideoRef.resume).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('leaves the source to the view props in the foreground', async () => {
+    await renderPlayer({ queue: queueOf(2) });
+    await loadVideo();
+    await fireEvent(video(), 'end');
+
+    expect(screen.getByText('Video 2')).toBeOnTheScreen();
+    expect(mockVideoRef.setSource).not.toHaveBeenCalled();
   });
 
   it('stays out of the notification without background play', async () => {

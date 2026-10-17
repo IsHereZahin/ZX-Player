@@ -5,7 +5,7 @@ import { SparklesIcon } from '../../../shared/icons';
 import { MediaCollection } from '../components/MediaCollection';
 import { useMediaIndex } from '../hooks/useMediaIndex';
 import { RECENTLY_ADDED_DAYS, selectRecentlyAdded } from '../recentlyAdded';
-import { formatMediaCount, libraryTitle } from '../scopeCopy';
+import { formatMediaCount } from '../scopeCopy';
 
 type Props = LibraryStackScreenProps<'RecentlyAdded'>;
 
@@ -23,7 +23,6 @@ export function RecentlyAddedScreen({ navigation, route }: Props) {
       subtitle={
         recent.length > 0 ? formatMediaCount(recent.length, scope) : undefined
       }
-      backLabel={libraryTitle(scope)}
       onBack={navigation.goBack}
       items={recent}
       loading={loading}

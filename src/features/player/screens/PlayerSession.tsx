@@ -21,7 +21,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAfterSheetClose } from '../../../shared/components/Sheet';
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
 import { useStateWithRef } from '../../../shared/hooks/useStateWithRef';
-import { playerColors, spacing } from '../../../shared/theme';
+import { useColors } from '../../../shared/theming';
+import { spacing } from '../../../shared/theme';
 import { formatDuration } from '../../../shared/utils/format';
 import { clamp } from '../../../shared/utils/math';
 import { historyStore, resumePosition } from '../../history/watchHistory';
@@ -150,6 +151,7 @@ export interface PlayerSessionProps {
 export function PlayerSession(props: PlayerSessionProps) {
   const { video, locked, layout } = props;
   const insets = useSafeAreaInsets();
+  const colors = useColors();
   const settings = useSettings();
   const isAudio = video.kind === 'audio';
   const favorite = useIsFavorite(video.id);
@@ -168,9 +170,7 @@ export function PlayerSession(props: PlayerSessionProps) {
       : resumePosition(historyStore.getState()[video.id]),
   );
 
-  const handleEnded = useCallback(() => {
-    latest.current.onEnded();
-  }, [latest]);
+  const handleEnded = useCallback(() => latest.current.onEnded(), [latest]);
 
   const playback = usePlayback({
     videoRef: props.videoRef,
@@ -365,6 +365,12 @@ export function PlayerSession(props: PlayerSessionProps) {
     latest.current.onRepeatModeChange(next);
     showToast(REPEAT_TOASTS[next]);
   }, [latest, showToast]);
+
+  const toggleBackgroundPlay = useCallback(() => {
+    const enabled = !settings.backgroundPlay;
+    setBackgroundPlay(enabled);
+    showToast(enabled ? 'Background play on' : 'Background play off');
+  }, [settings.backgroundPlay, showToast]);
 
   const nativeTextTrack = useMemo<NativeTextTrack>(
     () =>
@@ -568,10 +574,7 @@ export function PlayerSession(props: PlayerSessionProps) {
 
           {showSpinner ? (
             <View style={styles.centerLayer} pointerEvents="none">
-              <ActivityIndicator
-                size="large"
-                color={playerColors.primaryBright}
-              />
+              <ActivityIndicator size="large" color={colors.accent} />
             </View>
           ) : null}
 
@@ -587,6 +590,9 @@ export function PlayerSession(props: PlayerSessionProps) {
               duration={playback.duration}
               skipSeconds={settings.skipSeconds}
               speed={props.speed}
+              repeatMode={props.repeatMode}
+              sleepActive={props.sleepTimer !== null}
+              backgroundPlay={settings.backgroundPlay}
               hasPrevious
               hasNext={props.hasNext}
               subtitlesActive={subtitleChoice.kind !== 'off'}
@@ -602,6 +608,15 @@ export function PlayerSession(props: PlayerSessionProps) {
               onPrevious={handlePrevious}
               onNext={props.onNext}
               onOpenSpeed={() => openSheet('speed')}
+              onCycleRepeat={() => {
+                keepAlive();
+                cycleRepeat();
+              }}
+              onOpenSleep={() => openSheet('sleep')}
+              onToggleBackgroundPlay={() => {
+                keepAlive();
+                toggleBackgroundPlay();
+              }}
               onOpenSubtitles={() => openSheet('subtitles')}
               onOpenAudio={() => openSheet('audio')}
               onOpenMore={() => openSheet('more')}
@@ -651,7 +666,7 @@ export function PlayerSession(props: PlayerSessionProps) {
             onAspect={() => openFromMore('aspect')}
             onSleep={() => openFromMore('sleep')}
             onRepeat={cycleRepeat}
-            onBackgroundPlay={() => setBackgroundPlay(!settings.backgroundPlay)}
+            onBackgroundPlay={toggleBackgroundPlay}
             onInfo={() => openFromMore('info')}
             favorite={favorite}
             onFavorite={() => {

@@ -4,6 +4,8 @@ import { Text, View } from 'react-native';
 import { OptionRow, Sheet } from '../../../shared/components/Sheet';
 import {
   CircleCheckIcon,
+  CopyIcon,
+  FolderInputIcon,
   HeartIcon,
   InfoIcon,
   ListPlusIcon,
@@ -46,6 +48,10 @@ interface VideoActionsSheetProps {
   onAddToPlaylist: (video: VideoItem) => void;
   /** Absent where sharing isn't available (iOS). */
   onShare?: (video: VideoItem) => void;
+  /** File actions; absent where the platform can't manage files (iOS, Android < 11). */
+  onMove?: (video: VideoItem) => void;
+  onCopy?: (video: VideoItem) => void;
+  onDelete?: (video: VideoItem) => void;
   /** Screen-specific options, listed last. */
   extraActions?: ExtraAction[];
 }
@@ -60,6 +66,9 @@ export function VideoActionsSheet({
   onShowInfo,
   onAddToPlaylist,
   onShare,
+  onMove,
+  onCopy,
+  onDelete,
   extraActions = [],
 }: VideoActionsSheetProps) {
   const entry = useWatchEntry(video.id);
@@ -138,6 +147,32 @@ export function VideoActionsSheet({
         onPress={run(() => onShowInfo(video))}
         testID="action-info"
       />
+      {onMove ? (
+        <OptionRow
+          icon={FolderInputIcon}
+          label="Move to…"
+          onPress={run(() => onMove(video))}
+          testID="action-move"
+        />
+      ) : null}
+      {onCopy ? (
+        <OptionRow
+          icon={CopyIcon}
+          label="Copy to…"
+          onPress={run(() => onCopy(video))}
+          testID="action-copy"
+        />
+      ) : null}
+      {onDelete ? (
+        <OptionRow
+          icon={Trash2Icon}
+          label="Delete"
+          description="Moves it to the Recycle Bin"
+          destructive
+          onPress={run(() => onDelete(video))}
+          testID="action-delete"
+        />
+      ) : null}
       {entry ? (
         <OptionRow
           icon={Trash2Icon}

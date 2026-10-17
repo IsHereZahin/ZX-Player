@@ -21,7 +21,41 @@ export type NativeMediaItem = {
 
 export type NativeMediaPage = { items: NativeMediaItem[]; hasMore: boolean };
 
-export type NativeMediaFolder = { id: string; name: string; count: number };
+export type NativeMediaFolder = {
+  id: string;
+  name: string;
+  count: number;
+  /** Where the folder sits in shared storage, e.g. "Movies/Trips/"; null before Android 10. */
+  relativePath: string | null;
+  /** Ids of its items added since `newSinceSec` (capped), for "new" tags. */
+  newIds: string[];
+};
+
+/** A file in the system recycle bin (Android 11+). */
+export type NativeTrashedItem = {
+  id: string;
+  uri: string;
+  fileName: string;
+  sizeBytes: number | null;
+  durationSec: number;
+  width: number;
+  height: number;
+  modifiedAtSec: number;
+  addedAtSec: number;
+  title: string | null;
+  artist: string | null;
+  album: string | null;
+  /** When the system deletes it for good. */
+  expiresAtSec: number;
+};
+
+/** Outcome of a move or copy. */
+export type FileOperationResult = {
+  /** False when the user declined the system's permission prompt. */
+  granted: boolean;
+  done: number;
+  failed: number;
+};
 
 /** What the notification and lock screen show (Android media session). */
 export type NowPlayingInfo = {
@@ -46,8 +80,8 @@ export type RemoteCommand = {
 };
 
 export interface Spec extends TurboModule {
-  /** `kind` is "video" or "audio". */
-  getFolders(kind: string): Promise<NativeMediaFolder[]>;
+  /** `kind` is "video" or "audio"; items added since `newSinceSec` are listed as new. */
+  getFolders(kind: string, newSinceSec: number): Promise<NativeMediaFolder[]>;
   /** Newest first; `bucketId` null means every folder. */
   getMedia(
     kind: string,
@@ -67,6 +101,27 @@ export interface Spec extends TurboModule {
   setNowPlaying(info: NowPlayingInfo): void;
   /** Ends the media session and removes the notification. */
   clearNowPlaying(): void;
+
+  // File management, Android 11+. Each change shows the system's own confirmation, so the
+  // app needs no broad storage permission. Promises resolve false / granted: false when
+  // the user declines.
+
+  /** Moves items to the system recycle bin, or (trashed = false) restores them. */
+  trashMedia(uris: ReadonlyArray<string>, trashed: boolean): Promise<boolean>;
+  /** Deletes items for good. */
+  deleteMedia(uris: ReadonlyArray<string>): Promise<boolean>;
+  /** The recycle bin's items of one kind, soonest to expire first. */
+  getTrashedMedia(kind: string): Promise<NativeTrashedItem[]>;
+  /** Moves items into a folder such as "Movies/Trips/", creating it if needed. */
+  moveMedia(
+    uris: ReadonlyArray<string>,
+    relativePath: string,
+  ): Promise<FileOperationResult>;
+  /** Copies items into a folder such as "Movies/Trips/", creating it if needed. */
+  copyMedia(
+    uris: ReadonlyArray<string>,
+    relativePath: string,
+  ): Promise<FileOperationResult>;
   readonly onRemoteCommand: CodegenTypes.EventEmitter<RemoteCommand>;
 }
 

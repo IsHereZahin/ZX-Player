@@ -89,7 +89,7 @@ describe('FavoritesScreen', () => {
 });
 
 describe('favoriting from a list', () => {
-  it('adds and removes through the item menu, marking the row', async () => {
+  it('adds and removes through the item menu', async () => {
     (CameraRoll.getPhotos as jest.Mock).mockResolvedValueOnce({
       edges: [makePhotoIdentifier('1')],
       page_info: { has_next_page: false },
@@ -105,10 +105,10 @@ describe('favoriting from a list', () => {
 
     await fireEvent.press(await screen.findByTestId('video-more-1'));
     await fireEvent.press(screen.getByText('Add to Favorites'));
-    expect(screen.getByTestId('favorite-mark-1')).toBeOnTheScreen();
+    expect(favoritesStore.getState()['1']).toBeDefined();
 
     await fireEvent.press(screen.getByTestId('video-more-1'));
     await fireEvent.press(screen.getByText('Remove from Favorites'));
-    expect(screen.queryByTestId('favorite-mark-1')).toBeNull();
+    expect(favoritesStore.getState()['1']).toBeUndefined();
   });
 });

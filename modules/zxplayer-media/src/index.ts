@@ -3,9 +3,11 @@ import NativeZxplayerMedia from './NativeZxplayerMedia';
 import type { NowPlayingInfo, RemoteCommand } from './NativeZxplayerMedia';
 
 export type {
+  FileOperationResult,
   NativeMediaFolder,
   NativeMediaItem,
   NativeMediaPage,
+  NativeTrashedItem,
   NowPlayingInfo,
   RemoteCommand,
 } from './NativeZxplayerMedia';
@@ -21,8 +23,8 @@ function requireModule() {
   return NativeZxplayerMedia;
 }
 
-export function getFolders(kind: MediaKind) {
-  return requireModule().getFolders(kind);
+export function getFolders(kind: MediaKind, newSinceSec: number) {
+  return requireModule().getFolders(kind, newSinceSec);
 }
 
 export function getMedia(
@@ -48,6 +50,26 @@ export function setNowPlaying(info: NowPlayingInfo) {
 
 export function clearNowPlaying() {
   requireModule().clearNowPlaying();
+}
+
+export function trashMedia(uris: readonly string[], trashed: boolean) {
+  return requireModule().trashMedia(uris, trashed);
+}
+
+export function deleteMedia(uris: readonly string[]) {
+  return requireModule().deleteMedia(uris);
+}
+
+export function getTrashedMedia(kind: MediaKind) {
+  return requireModule().getTrashedMedia(kind);
+}
+
+export function moveMedia(uris: readonly string[], relativePath: string) {
+  return requireModule().moveMedia(uris, relativePath);
+}
+
+export function copyMedia(uris: readonly string[], relativePath: string) {
+  return requireModule().copyMedia(uris, relativePath);
 }
 
 export function addRemoteCommandListener(

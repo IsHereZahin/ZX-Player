@@ -50,7 +50,8 @@ interface PlaybackOptions {
   startAtSec?: number | null;
   /** Keep playing when the app moves to the background. */
   backgroundPlay: boolean;
-  onEnded?: () => void;
+  /** Returns true when playback moves on to another item. */
+  onEnded?: () => boolean;
 }
 
 /** Playback state for one video plus the event handlers to wire into `<Video>`. */
@@ -175,9 +176,14 @@ export function usePlayback({
 
   const onEnd = useCallback(() => {
     setEnded(true);
-    setPaused(true);
     setCurrentTime(durationRef.current);
-    latest.current.onEnded?.();
+    // When the queue moves on, stay "playing" until the next item takes over: a pause in
+    // between would let the media session drop the foreground service that keeps
+    // background playback alive, and Android may not allow it to start again.
+    if (latest.current.onEnded?.()) {
+      return;
+    }
+    setPaused(true);
   }, [durationRef, latest, setCurrentTime, setEnded, setPaused]);
 
   const onError = useCallback(

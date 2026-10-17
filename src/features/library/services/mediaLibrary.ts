@@ -8,6 +8,7 @@ import {
 import * as nativeMedia from 'zxplayer-media';
 import type { NativeMediaFolder, NativeMediaItem } from 'zxplayer-media';
 
+import { newSinceSec } from '../recentlyAdded';
 import type {
   AlbumKind,
   MediaKind,
@@ -53,8 +54,9 @@ const ALL_FOLDER: Record<MediaScope, { id: string; title: string }> = {
 export function allMediaFolder(
   scope: MediaScope,
   count: number | null = null,
+  newIds?: readonly string[],
 ): VideoFolder {
-  return { ...ALL_FOLDER[scope], count, album: null, scope };
+  return { ...ALL_FOLDER[scope], count, album: null, newIds, scope };
 }
 
 export const ALL_VIDEOS_FOLDER = allMediaFolder('video');
@@ -71,8 +73,9 @@ export async function fetchFolders(
   scope: MediaScope = 'video',
 ): Promise<VideoFolder[]> {
   if (nativeMediaEnabled()) {
+    const since = newSinceSec();
     const lists = await Promise.all(
-      kindsOf(scope).map(kind => nativeMedia.getFolders(kind)),
+      kindsOf(scope).map(kind => nativeMedia.getFolders(kind, since)),
     );
     return buildFolderListFromBuckets(lists.flat(), scope);
   }
@@ -122,7 +125,13 @@ export function buildFolderListFromBuckets(
     const previous = merged.get(bucket.id);
     merged.set(
       bucket.id,
-      previous ? { ...previous, count: previous.count + bucket.count } : bucket,
+      previous
+        ? {
+            ...previous,
+            count: previous.count + bucket.count,
+            newIds: [...previous.newIds, ...bucket.newIds],
+          }
+        : bucket,
     );
   }
 
@@ -135,12 +144,15 @@ export function buildFolderListFromBuckets(
         count: bucket.count,
         album: { name: bucket.name, kind: 'Album' },
         bucketId: bucket.id,
+        relativePath: bucket.relativePath,
+        newIds: bucket.newIds,
         scope,
       }),
     )
     .sort(byTitle);
 
-  return [allMediaFolder(scope, sumCounts(folders)), ...folders];
+  const allNew = folders.flatMap(folder => folder.newIds ?? []);
+  return [allMediaFolder(scope, sumCounts(folders), allNew), ...folders];
 }
 
 function toVideoFolder(album: Album, scope: MediaScope): VideoFolder {

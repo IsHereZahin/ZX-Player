@@ -1,22 +1,21 @@
 import React, { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { IconButton } from '../../../shared/components/IconButton';
-import { EllipsisIcon, HeartIcon } from '../../../shared/icons';
+import { EllipsisVerticalIcon } from '../../../shared/icons';
 import { spacing, typography } from '../../../shared/theme';
 import { makeStyles, useColors } from '../../../shared/theming';
 import { formatDuration } from '../../../shared/utils/format';
 import { useWatchEntry, watchProgress } from '../../history/watchHistory';
-import { useIsFavorite } from '../favorites';
 import { isNewItem } from '../recentlyAdded';
 import type { VideoItem } from '../types';
+import { NewTag } from './NewTag';
+import { SelectionMark } from './SelectionMark';
 import { describeVideo } from './videoMeta';
 import { VideoThumbnail } from './VideoThumbnail';
 
-const THUMBNAIL_WIDTH = 120;
-export const VIDEO_ROW_HEIGHT = 92;
-/** Separators start under the text, as in iOS lists. */
-const SEPARATOR_INSET = spacing.lg + THUMBNAIL_WIDTH + spacing.md;
+const THUMBNAIL_WIDTH = 136;
+export const VIDEO_ROW_HEIGHT = 100;
 
 interface VideoRowProps {
   video: VideoItem;
@@ -24,8 +23,13 @@ interface VideoRowProps {
   onMore: (video: VideoItem) => void;
   /** Marks the most recently played video. */
   highlighted?: boolean;
-  /** Draws the hairline under the row (all but the last of a list). */
-  separator?: boolean;
+  /** Defaults to opening the menu; lists that can select use it to start selecting. */
+  onLongPress?: (video: VideoItem) => void;
+  /** While selecting, a check replaces the menu button and a press toggles the item. */
+  selecting?: boolean;
+  selected?: boolean;
+  /** Replaces the watch status line, e.g. when a file in the recycle bin expires. */
+  note?: string;
 }
 
 export const VideoRow = memo(function VideoRowView({
@@ -33,12 +37,14 @@ export const VideoRow = memo(function VideoRowView({
   onPress,
   onMore,
   highlighted = false,
-  separator = false,
+  onLongPress = onMore,
+  selecting = false,
+  selected = false,
+  note,
 }: VideoRowProps) {
   const styles = useStyles();
   const colors = useColors();
   const entry = useWatchEntry(video.id);
-  const favorite = useIsFavorite(video.id);
   const isNew = isNewItem(video, entry);
   const { title, details, status } = describeVideo(video, entry);
 
@@ -48,11 +54,16 @@ export const VideoRow = memo(function VideoRowView({
       accessibilityLabel={`${isNew ? 'New, ' : ''}${title}, ${formatDuration(
         video.durationSec,
       )}${status ? `, ${status}` : ''}`}
+      accessibilityState={selecting ? { selected } : undefined}
       onPress={() => onPress(video)}
-      onLongPress={() => onMore(video)}
+      onLongPress={() => onLongPress(video)}
       delayLongPress={350}
       android_ripple={{ color: colors.pressed }}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        selected && styles.selected,
+        pressed && styles.pressed,
+      ]}
       testID={`video-${video.id}`}
     >
       <VideoThumbnail
@@ -62,9 +73,7 @@ export const VideoRow = memo(function VideoRowView({
       />
       <View style={styles.text}>
         <View style={styles.titleRow}>
-          {isNew ? (
-            <View style={styles.newDot} testID={`new-mark-${video.id}`} />
-          ) : null}
+          {isNew ? <NewTag testID={`new-mark-${video.id}`} /> : null}
           <Text
             style={[styles.title, highlighted && styles.titleHighlighted]}
             numberOfLines={2}
@@ -72,36 +81,34 @@ export const VideoRow = memo(function VideoRowView({
             {title}
           </Text>
         </View>
-        {details || favorite ? (
-          <View style={styles.detailsRow}>
-            {favorite ? (
-              <View
-                accessibilityLabel="Favorite"
-                testID={`favorite-mark-${video.id}`}
-              >
-                <HeartIcon size={11} color={colors.pink} fill={colors.pink} />
-              </View>
-            ) : null}
-            <Text style={styles.details} numberOfLines={1}>
-              {details}
-            </Text>
-          </View>
+        {details ? (
+          <Text style={styles.details} numberOfLines={1}>
+            {details}
+          </Text>
         ) : null}
-        {status ? (
+        {note ? (
+          <Text style={styles.note} numberOfLines={1}>
+            {note}
+          </Text>
+        ) : status ? (
           <Text style={styles.status} numberOfLines={1}>
             {status}
           </Text>
         ) : null}
       </View>
-      <IconButton
-        icon={EllipsisIcon}
-        size="sm"
-        variant="plain"
-        accessibilityLabel={`More options for ${title}`}
-        onPress={() => onMore(video)}
-        testID={`video-more-${video.id}`}
-      />
-      {separator ? <View style={styles.separator} /> : null}
+      {selecting ? (
+        <View style={styles.mark}>
+          <SelectionMark selected={selected} />
+        </View>
+      ) : (
+        <IconButton
+          icon={EllipsisVerticalIcon}
+          size="sm"
+          accessibilityLabel={`More options for ${title}`}
+          onPress={() => onMore(video)}
+          testID={`video-more-${video.id}`}
+        />
+      )}
     </Pressable>
   );
 });
@@ -115,52 +122,43 @@ const useStyles = makeStyles(colors => ({
     paddingLeft: spacing.lg,
     paddingRight: spacing.xs,
   },
-  separator: {
-    position: 'absolute',
-    left: SEPARATOR_INSET,
-    right: 0,
-    bottom: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.divider,
-  },
   pressed: {
     backgroundColor: colors.pressed,
+  },
+  selected: {
+    backgroundColor: colors.accentSoft,
+  },
+  mark: {
+    width: 36,
+    alignItems: 'center',
   },
   text: {
     flex: 1,
     gap: spacing.xxs,
   },
   title: {
-    ...typography.subheadlineStrong,
+    ...typography.bodyStrong,
     flexShrink: 1,
     color: colors.textPrimary,
   },
   titleHighlighted: {
-    color: colors.primaryText,
+    color: colors.accentText,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs + 2,
   },
-  newDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-  detailsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
   details: {
-    flexShrink: 1,
     ...typography.footnote,
     color: colors.textSecondary,
   },
   status: {
     ...typography.captionStrong,
-    color: colors.primaryText,
+    color: colors.accentText,
+  },
+  note: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
 }));

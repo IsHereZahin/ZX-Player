@@ -4,7 +4,6 @@ import { act, render, screen } from '@testing-library/react-native';
 import { getMedia } from 'zxplayer-media';
 
 import type { LibraryStackScreenProps } from '../../../app/navigation/types';
-import { formatAddedAgo } from '../../../shared/utils/format';
 import { makeVideo } from '../../../test/fixtures';
 import { screenProps } from '../../../test/navigation';
 import { recordProgress } from '../../history/watchHistory';
@@ -53,16 +52,6 @@ describe('selectRecentlyAdded', () => {
       'legacy',
       'week',
     ]);
-  });
-});
-
-describe('formatAddedAgo', () => {
-  it('reads like the Photos app', () => {
-    const noon = new Date(2027, 0, 15, 12).getTime() / 1000;
-    expect(formatAddedAgo(noon - 3600, noon)).toBe('Today');
-    expect(formatAddedAgo(noon - DAY, noon)).toBe('Yesterday');
-    expect(formatAddedAgo(noon - 3 * DAY, noon)).toBe('3 days ago');
-    expect(formatAddedAgo(noon - 30 * DAY, noon)).not.toMatch(/ago/);
   });
 });
 

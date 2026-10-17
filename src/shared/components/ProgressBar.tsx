@@ -51,6 +51,6 @@ const useStyles = makeStyles(colors => ({
   },
   fill: {
     height: '100%',
-    backgroundColor: colors.primaryBright,
+    backgroundColor: colors.accent,
   },
 }));

@@ -26,7 +26,10 @@ export function loadMediaIndex(
   return index;
 }
 
-/** Forgets the loaded indexes (e.g. after pull-to-refresh) and tells users to reload. */
+/**
+ * Forgets the loaded indexes and tells every list to reload (see useLibraryChanges): after
+ * pull-to-refresh, or when files are deleted, restored, moved or copied.
+ */
 export function invalidateMediaIndex(): void {
   cache.clear();
   mediaIndexVersion.setState(version => version + 1);

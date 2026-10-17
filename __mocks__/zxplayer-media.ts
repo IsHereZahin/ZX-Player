@@ -1,6 +1,8 @@
 import type {
+  FileOperationResult,
   NativeMediaFolder,
   NativeMediaPage,
+  NativeTrashedItem,
   RemoteCommand,
 } from 'zxplayer-media';
 
@@ -15,6 +17,27 @@ export const getThumbnail = jest.fn(
 );
 
 export const shareMedia = jest.fn(async () => {});
+
+// File management: the user accepts every system prompt unless a test says otherwise.
+export const trashMedia = jest.fn(async (): Promise<boolean> => true);
+export const deleteMedia = jest.fn(async (): Promise<boolean> => true);
+export const getTrashedMedia = jest.fn(
+  async (): Promise<NativeTrashedItem[]> => [],
+);
+export const moveMedia = jest.fn(
+  async (uris: readonly string[]): Promise<FileOperationResult> => ({
+    granted: true,
+    done: uris.length,
+    failed: 0,
+  }),
+);
+export const copyMedia = jest.fn(
+  async (uris: readonly string[]): Promise<FileOperationResult> => ({
+    granted: true,
+    done: uris.length,
+    failed: 0,
+  }),
+);
 export const setNowPlaying = jest.fn();
 export const clearNowPlaying = jest.fn();
 

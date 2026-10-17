@@ -3,6 +3,8 @@ import type {
   PhotoIdentifier,
 } from '@react-native-camera-roll/camera-roll';
 
+import type { NativeMediaFolder } from 'zxplayer-media';
+
 import type { VideoFolder, VideoItem } from '../features/library/types';
 
 /** Mock media library used by unit and integration tests. */
@@ -129,3 +131,13 @@ Comment: 0,0:00:02.00,0:00:03.00,Default,,0,0,0,,Not shown
 Dialogue: 0,0:00:04.00,0:00:05.00,Default,,0,0,0,,{\\p1}m 0 0 l 100 0 100 100{\\p0}
 Dialogue: 0,0:00:06.00,0:00:08.00,Default,,0,0,0,,Soft\\nbreak and\\hspace
 `;
+
+/** A MediaStore bucket as the native module reports it. */
+export function makeBucket(
+  id: string,
+  name: string,
+  count: number,
+  overrides: Partial<NativeMediaFolder> = {},
+): NativeMediaFolder {
+  return { id, name, count, relativePath: null, newIds: [], ...overrides };
+}

@@ -7,7 +7,6 @@ import {
   ArrowLeftIcon,
   AudioLinesIcon,
   CaptionsIcon,
-  EllipsisVerticalIcon,
   LockIcon,
   PauseIcon,
   PictureInPictureIcon,
@@ -15,7 +14,6 @@ import {
   RatioIcon,
   RotateCcwIcon,
   RotateCwIcon,
-  ScreenRotationIcon,
   SkipBackIcon,
   SkipForwardIcon,
 } from '../../../shared/icons';
@@ -25,8 +23,9 @@ import {
   spacing,
   typography,
 } from '../../../shared/theme';
-import { formatSpeed } from '../../../shared/utils/format';
 import type { PlaybackClock } from '../playbackClock';
+import type { RepeatMode } from './PlayerSheets';
+import { QuickActions } from './QuickActions';
 import { Scrim } from './Scrim';
 import { SeekBar } from './SeekBar';
 
@@ -44,6 +43,9 @@ export interface PlayerControlsProps {
   duration: number;
   skipSeconds: number;
   speed: number;
+  repeatMode: RepeatMode;
+  sleepActive: boolean;
+  backgroundPlay: boolean;
   hasPrevious: boolean;
   hasNext: boolean;
   subtitlesActive: boolean;
@@ -56,6 +58,9 @@ export interface PlayerControlsProps {
   onPrevious: () => void;
   onNext: () => void;
   onOpenSpeed: () => void;
+  onCycleRepeat: () => void;
+  onOpenSleep: () => void;
+  onToggleBackgroundPlay: () => void;
   onOpenSubtitles: () => void;
   onOpenAudio: () => void;
   onOpenMore: () => void;
@@ -84,7 +89,7 @@ export function PlayerControls(props: PlayerControlsProps) {
       pointerEvents="box-none"
       testID="player-controls"
     >
-      <Scrim edge="top" height={insets.top + 120} />
+      <Scrim edge="top" height={insets.top + 160} />
       <Scrim edge="bottom" height={insets.bottom + 180} />
 
       <View
@@ -128,32 +133,21 @@ export function PlayerControls(props: PlayerControlsProps) {
             testID="audio-button"
           />
         ) : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Playback speed ${formatSpeed(props.speed)}`}
-          onPress={props.onOpenSpeed}
-          style={({ pressed }) => [
-            styles.speedPill,
-            props.speed !== 1 && styles.speedPillActive,
-            pressed && styles.speedPillPressed,
-          ]}
-          testID="speed-button"
-        >
-          <Text
-            style={[
-              styles.speedText,
-              props.speed !== 1 && styles.speedTextActive,
-            ]}
-          >
-            {formatSpeed(props.speed)}
-          </Text>
-        </Pressable>
-        <IconButton
-          icon={EllipsisVerticalIcon}
-          variant="overlay"
-          accessibilityLabel="More options"
-          onPress={props.onOpenMore}
-          testID="more-button"
+      </View>
+
+      <View style={[styles.quickRow, sidePadding]} pointerEvents="box-none">
+        <QuickActions
+          mode={props.mode}
+          speed={props.speed}
+          repeatMode={props.repeatMode}
+          sleepActive={props.sleepActive}
+          backgroundPlay={props.backgroundPlay}
+          onOpenSpeed={props.onOpenSpeed}
+          onCycleRepeat={props.onCycleRepeat}
+          onOpenSleep={props.onOpenSleep}
+          onRotate={props.onRotate}
+          onToggleBackgroundPlay={props.onToggleBackgroundPlay}
+          onOpenMore={props.onOpenMore}
         />
       </View>
 
@@ -167,11 +161,11 @@ export function PlayerControls(props: PlayerControlsProps) {
             onPress={props.onResetZoom}
             style={({ pressed }) => [
               styles.zoomPill,
-              pressed && styles.speedPillPressed,
+              pressed && styles.zoomPillPressed,
             ]}
             testID="reset-zoom"
           >
-            <Text style={styles.speedText}>
+            <Text style={styles.zoomText}>
               {props.zoom.toFixed(1)}× · Reset
             </Text>
           </Pressable>
@@ -253,12 +247,6 @@ export function PlayerControls(props: PlayerControlsProps) {
                 testID="aspect-button"
               />
               <IconButton
-                icon={ScreenRotationIcon}
-                accessibilityLabel="Rotate screen"
-                onPress={props.onRotate}
-                testID="rotate-button"
-              />
-              <IconButton
                 icon={PictureInPictureIcon}
                 accessibilityLabel="Picture in picture"
                 onPress={props.onPictureInPicture}
@@ -291,32 +279,12 @@ const styles = StyleSheet.create({
     ...typography.captionStrong,
     color: playerColors.textSecondary,
   },
-  speedPill: {
-    minWidth: 52,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: playerColors.playerButton,
-  },
-  speedPillActive: {
-    backgroundColor: playerColors.primarySoft,
-  },
-  speedPillPressed: {
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-  },
-  speedText: {
-    ...typography.captionStrong,
-    fontSize: 13,
-    color: playerColors.white,
-  },
-  speedTextActive: {
-    color: playerColors.primaryText,
+  quickRow: {
+    paddingTop: spacing.xs,
   },
   zoomRow: {
     alignItems: 'center',
+    paddingTop: spacing.sm,
   },
   zoomPill: {
     height: 32,
@@ -324,6 +292,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radius.pill,
     backgroundColor: playerColors.playerButton,
+  },
+  zoomPillPressed: {
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+  },
+  zoomText: {
+    ...typography.captionStrong,
+    fontSize: 13,
+    color: playerColors.white,
   },
   center: {
     flex: 1,

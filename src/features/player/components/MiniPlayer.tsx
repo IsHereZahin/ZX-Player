@@ -1,6 +1,7 @@
 import React from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Platform, Pressable, Text, View } from 'react-native';
 
+import { FrostedBackground } from '../../../shared/components/FrostedBackground';
 import { IconButton } from '../../../shared/components/IconButton';
 import {
   FilmIcon,
@@ -31,7 +32,7 @@ interface MiniPlayerProps {
   onOpen: () => void;
 }
 
-/** Bar above the tab bar while the player is minimised and still playing. */
+/** Frosted bar above the tab bar while the player is minimised and still playing. */
 export function MiniPlayer({ onOpen }: MiniPlayerProps) {
   const styles = useStyles();
   const minimised = useStore(
@@ -61,6 +62,7 @@ export function MiniPlayer({ onOpen }: MiniPlayerProps) {
         style={({ pressed }) => [styles.bar, pressed && styles.pressed]}
         testID="mini-player"
       >
+        <FrostedBackground />
         <Artwork item={item} />
         <View style={styles.text}>
           <Text style={styles.title} numberOfLines={1}>
@@ -136,7 +138,7 @@ function Progress({
 
 const useStyles = makeStyles(colors => ({
   wrap: {
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
     backgroundColor: 'transparent',
   },
@@ -149,17 +151,20 @@ const useStyles = makeStyles(colors => ({
     paddingRight: spacing.xs,
     overflow: 'hidden',
     borderRadius: radius.xl,
-    backgroundColor: colors.surface,
     borderWidth: 0.5,
     borderColor: colors.divider,
-    shadowColor: colors.black,
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
+    // A translucent view casts its elevation shadow through itself on Android.
+    ...(Platform.OS === 'ios'
+      ? {
+          shadowColor: colors.black,
+          shadowOpacity: 0.15,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: 6 },
+        }
+      : null),
   },
   pressed: {
-    backgroundColor: colors.surfaceRaised,
+    opacity: 0.85,
   },
   artwork: {
     width: ARTWORK_SIZE,
@@ -192,6 +197,6 @@ const useStyles = makeStyles(colors => ({
   },
   fill: {
     height: '100%',
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
   },
 }));

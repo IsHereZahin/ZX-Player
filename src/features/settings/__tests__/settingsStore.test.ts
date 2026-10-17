@@ -30,6 +30,11 @@ describe('parseSettings', () => {
     expect(parseSettings({ appearance: 'sepia' }).appearance).toBe('system');
   });
 
+  it('keeps a known colour theme and falls back to Sky', () => {
+    expect(parseSettings({ colorTheme: 'forest' }).colorTheme).toBe('forest');
+    expect(parseSettings({ colorTheme: 'neon' }).colorTheme).toBe('sky');
+  });
+
   it('rejects skip intervals outside the offered choices', () => {
     expect(parseSettings({ skipSeconds: 7 }).skipSeconds).toBe(
       DEFAULT_SETTINGS.skipSeconds,

@@ -9,7 +9,7 @@ import {
   useAfterSheetClose,
 } from '../../../shared/components/Sheet';
 import {
-  EllipsisIcon,
+  EllipsisVerticalIcon,
   ListMusicIcon,
   MinusIcon,
   PencilIcon,
@@ -83,19 +83,18 @@ export function PlaylistScreen({ navigation, route }: Props) {
             ? formatMediaCount(playlist.items.length, 'all')
             : undefined
         }
-        backLabel="Playlists"
         onBack={navigation.goBack}
         items={playlist.items}
         empty={{
           icon: ListMusicIcon,
           title: 'This playlist is empty',
           message:
-            'Choose "Add to Playlist…" in the ••• menu of any video or song to add it here.',
+            'Choose "Add to Playlist…" in the ⋮ menu of any video or song to add it here.',
         }}
-        navigationRight={
+        actions={
           <IconButton
-            icon={EllipsisIcon}
-            variant="plain"
+            icon={EllipsisVerticalIcon}
+            variant="raised"
             accessibilityLabel="Playlist options"
             onPress={() => setMenuOpen(true)}
             testID="playlist-options"

@@ -1,11 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import React from 'react';
 
-import { Button } from '../../../shared/components/Button';
+import { NameSheet } from '../../../shared/components/NameSheet';
 import { OptionRow, Sheet } from '../../../shared/components/Sheet';
 import { ListMusicIcon, PlusIcon } from '../../../shared/icons';
-import { radius, spacing, typography } from '../../../shared/theme';
-import { makeStyles, useColors } from '../../../shared/theming';
 import {
   cleanPlaylistName,
   MAX_PLAYLIST_NAME,
@@ -24,63 +21,15 @@ interface PlaylistNameSheetProps {
 }
 
 /** Asks for a playlist name (create or rename). */
-export function PlaylistNameSheet({
-  visible,
-  title,
-  confirmLabel,
-  initialName = '',
-  onSubmit,
-  onClose,
-}: PlaylistNameSheetProps) {
-  const styles = useStyles();
-  const colors = useColors();
-  const [name, setName] = useState(initialName);
-
-  useEffect(() => {
-    if (visible) {
-      setName(initialName);
-    }
-  }, [initialName, visible]);
-
-  const valid = cleanPlaylistName(name).length > 0;
-  const submit = () => {
-    if (valid) {
-      onSubmit(cleanPlaylistName(name));
-      onClose();
-    }
-  };
-
+export function PlaylistNameSheet(props: PlaylistNameSheetProps) {
   return (
-    <Sheet
-      visible={visible}
-      onClose={onClose}
-      title={title}
+    <NameSheet
+      {...props}
+      placeholder="Playlist name"
+      maxLength={MAX_PLAYLIST_NAME}
+      clean={cleanPlaylistName}
       testID="playlist-name"
-    >
-      <View style={styles.form}>
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder="Playlist name"
-          placeholderTextColor={colors.textSecondary}
-          selectionColor={colors.primary}
-          cursorColor={colors.primary}
-          maxLength={MAX_PLAYLIST_NAME}
-          autoFocus
-          returnKeyType="done"
-          onSubmitEditing={submit}
-          style={styles.input}
-          accessibilityLabel="Playlist name"
-          testID="playlist-name-input"
-        />
-        <Button
-          label={confirmLabel}
-          onPress={submit}
-          style={!valid && styles.disabled}
-          testID="playlist-name-confirm"
-        />
-      </View>
-    </Sheet>
+    />
   );
 }
 
@@ -132,22 +81,3 @@ export function AddToPlaylistSheet({
     </Sheet>
   );
 }
-
-const useStyles = makeStyles(colors => ({
-  form: {
-    gap: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
-  input: {
-    ...typography.body,
-    height: 48,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.sheetCell,
-    color: colors.textPrimary,
-  },
-  disabled: {
-    opacity: 0.4,
-  },
-}));

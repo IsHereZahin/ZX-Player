@@ -9,7 +9,12 @@ import {
 import { getFolders, getMedia } from 'zxplayer-media';
 
 import type { LibraryStackScreenProps } from '../../../../app/navigation/types';
-import { makeVideo, sampleAlbums, sampleSong } from '../../../../test/fixtures';
+import {
+  makeBucket,
+  makeVideo,
+  sampleAlbums,
+  sampleSong,
+} from '../../../../test/fixtures';
 import {
   lastPlaybackRequest,
   mockNavigation,
@@ -89,7 +94,7 @@ describe('LibraryScreen', () => {
     });
   });
 
-  it('opens Favorites from the Library group', async () => {
+  it('opens Favorites from the shortcuts', async () => {
     getAlbums.mockResolvedValueOnce(sampleAlbums);
     await renderScreen();
     await fireEvent.press(await screen.findByTestId('open-favorites'));
@@ -98,7 +103,16 @@ describe('LibraryScreen', () => {
     });
   });
 
-  it('opens Playlists from the Library group', async () => {
+  it('opens Recently Added from the shortcuts', async () => {
+    getAlbums.mockResolvedValueOnce(sampleAlbums);
+    await renderScreen();
+    await fireEvent.press(await screen.findByTestId('open-recently-added'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('RecentlyAdded', {
+      scope: 'video',
+    });
+  });
+
+  it('opens Playlists from the shortcuts', async () => {
     getAlbums.mockResolvedValueOnce(sampleAlbums);
     await renderScreen();
     await fireEvent.press(await screen.findByTestId('open-playlists'));
@@ -163,7 +177,7 @@ describe('LibraryScreen', () => {
     it('lists audio folders in the Audio tab', async () => {
       useAndroidLibrary();
       (getFolders as jest.Mock).mockResolvedValueOnce([
-        { id: '7', name: 'Music', count: 12 },
+        makeBucket('7', 'Music', 12),
       ]);
       recordProgress(sampleSong, 60, 214);
 
@@ -174,15 +188,15 @@ describe('LibraryScreen', () => {
       expect(screen.getByText('All audio')).toBeOnTheScreen();
       expect(screen.getAllByText('12 audio files')).toHaveLength(2);
       expect(screen.getByText('Continue listening')).toBeOnTheScreen();
-      expect(getFolders).toHaveBeenCalledWith('audio');
+      expect(getFolders).toHaveBeenCalledWith('audio', expect.any(Number));
     });
 
     it('shows videos and audio together when set to', async () => {
       useAndroidLibrary();
       updateSettings({ libraryLayout: 'together' });
       (getFolders as jest.Mock)
-        .mockResolvedValueOnce([{ id: '1', name: 'Downloads', count: 2 }])
-        .mockResolvedValueOnce([{ id: '1', name: 'Downloads', count: 1 }]);
+        .mockResolvedValueOnce([makeBucket('1', 'Downloads', 2)])
+        .mockResolvedValueOnce([makeBucket('1', 'Downloads', 1)]);
 
       await renderScreen();
 
@@ -191,33 +205,15 @@ describe('LibraryScreen', () => {
       expect(screen.getAllByText('3 files')).toHaveLength(2);
     });
 
-    it('shows what was recently added, with a shelf and a count', async () => {
+    it('lists folders without scanning every file first', async () => {
       useAndroidLibrary();
       (getFolders as jest.Mock).mockResolvedValue([
-        { id: '1', name: 'Camera', count: 1 },
+        makeBucket('1', 'Camera', 1),
       ]);
-      (getMedia as jest.Mock).mockResolvedValue({
-        items: [
-          {
-            ...makeVideo('9', { fileName: 'Fresh.mp4' }),
-            addedAtSec: Date.now() / 1000 - 3600,
-            title: null,
-            artist: null,
-            album: null,
-          },
-        ],
-        hasMore: false,
-      });
-
       await renderScreen();
 
-      expect(await screen.findByTestId('recently-added-9')).toBeOnTheScreen();
-      expect(screen.getByLabelText('Fresh, Today')).toBeOnTheScreen();
-      expect(screen.getByLabelText('Recently Added, 1')).toBeOnTheScreen();
-      await fireEvent.press(screen.getByTestId('recently-added-see-all'));
-      expect(mockNavigation.navigate).toHaveBeenCalledWith('RecentlyAdded', {
-        scope: 'video',
-      });
+      expect(await screen.findByText('Camera')).toBeOnTheScreen();
+      expect(getMedia).not.toHaveBeenCalled();
     });
 
     it('rescans when the layout changes', async () => {
@@ -228,7 +224,7 @@ describe('LibraryScreen', () => {
       await act(async () => updateSettings({ libraryLayout: 'together' }));
 
       expect(screen.getByRole('header', { name: 'Library' })).toBeOnTheScreen();
-      expect(getFolders).toHaveBeenLastCalledWith('audio');
+      expect(getFolders).toHaveBeenLastCalledWith('audio', expect.any(Number));
     });
   });
 });

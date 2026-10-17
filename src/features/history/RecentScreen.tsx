@@ -2,13 +2,14 @@ import React, { useCallback, useMemo } from 'react';
 import { Alert, Animated, Text, View } from 'react-native';
 
 import type { MainTabScreenProps } from '../../app/navigation/types';
+import { useBottomInset } from '../../app/navigation/useBottomInset';
 import { EmptyState } from '../../shared/components/EmptyState';
 import { IconButton } from '../../shared/components/IconButton';
 import {
-  LargeTitle,
-  NavigationBar,
-  useCollapsingTitle,
-} from '../../shared/components/NavigationBar';
+  HeaderGlow,
+  ScreenHeader,
+  useHidingHeader,
+} from '../../shared/components/ScreenHeader';
 import { HistoryIcon, Trash2Icon } from '../../shared/icons';
 import { spacing, typography } from '../../shared/theme';
 import { makeStyles } from '../../shared/theming';
@@ -40,7 +41,8 @@ export function confirmClearHistory(): void {
 export function RecentScreen(_props: Props) {
   const styles = useStyles();
   const history = useHistoryList();
-  const { scrollY, onScroll } = useCollapsingTitle();
+  const header = useHidingHeader();
+  const bottom = useBottomInset();
   const { sections, queue } = useMemo(() => {
     const inProgress = history.filter(isInProgress).map(entry => entry.video);
     const played = history
@@ -58,21 +60,8 @@ export function RecentScreen(_props: Props) {
   const { play, openMenu, sheets } = useVideoActions(queue);
 
   const renderItem = useCallback(
-    ({
-      item,
-      index,
-      section,
-    }: {
-      item: VideoItem;
-      index: number;
-      section: Section;
-    }) => (
-      <VideoRow
-        video={item}
-        onPress={play}
-        onMore={openMenu}
-        separator={index < section.data.length - 1}
-      />
+    ({ item }: { item: VideoItem }) => (
+      <VideoRow video={item} onPress={play} onMore={openMenu} />
     ),
     [openMenu, play],
   );
@@ -80,7 +69,7 @@ export function RecentScreen(_props: Props) {
     history.length > 0 ? (
       <IconButton
         icon={Trash2Icon}
-        variant="plain"
+        variant="raised"
         accessibilityLabel="Clear watch history"
         onPress={confirmClearHistory}
         testID="clear-history"
@@ -89,15 +78,14 @@ export function RecentScreen(_props: Props) {
 
   return (
     <View style={styles.screen}>
-      <NavigationBar
-        title="Recent"
-        scrollY={scrollY}
-        tone="plain"
-        right={clearButton}
-      />
+      <HeaderGlow scrollY={header.scrollY} />
       {sections.length === 0 ? (
-        <View style={styles.fill}>
-          <LargeTitle title="Recent" />
+        <View
+          style={[
+            styles.fill,
+            { paddingTop: header.height, paddingBottom: bottom },
+          ]}
+        >
           <EmptyState
             icon={HistoryIcon}
             title="Nothing watched yet"
@@ -113,8 +101,8 @@ export function RecentScreen(_props: Props) {
         <Animated.SectionList
           {...MEDIA_LIST_TUNING}
           sections={sections}
-          ListHeaderComponent={<LargeTitle title="Recent" />}
-          onScroll={onScroll}
+          ListHeaderComponent={<View style={{ height: header.height }} />}
+          onScroll={header.onScroll}
           scrollEventThrottle={16}
           keyExtractor={video => video.id}
           renderItem={renderItem}
@@ -124,10 +112,11 @@ export function RecentScreen(_props: Props) {
             </Text>
           )}
           stickySectionHeadersEnabled={false}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={{ paddingBottom: bottom + spacing.lg }}
           testID="recent-list"
         />
       )}
+      <ScreenHeader title="Recent" actions={clearButton} hiding={header} />
       {sheets}
     </View>
   );
@@ -141,15 +130,11 @@ const useStyles = makeStyles(colors => ({
   fill: {
     flex: 1,
   },
-  listContent: {
-    paddingBottom: spacing.xxl,
-  },
   sectionTitle: {
-    ...typography.title3,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xs,
-    color: colors.textPrimary,
-    backgroundColor: colors.canvas,
+    ...typography.overline,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.sm,
+    color: colors.textSecondary,
   },
 }));

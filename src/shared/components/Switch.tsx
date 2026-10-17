@@ -44,7 +44,7 @@ export function Switch({
       <Animated.View
         style={[
           styles.trackOn,
-          { backgroundColor: colors.green, opacity: progress },
+          { backgroundColor: colors.accent, opacity: progress },
         ]}
       />
       <Animated.View

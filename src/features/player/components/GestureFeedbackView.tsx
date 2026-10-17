@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColors } from '../../../shared/theming';
 
 import { ProgressBar } from '../../../shared/components/ProgressBar';
 import {
@@ -34,6 +35,7 @@ export function GestureFeedbackView({
   feedback: GestureFeedback | null;
 }) {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
   if (!feedback) {
     return null;
   }
@@ -66,7 +68,10 @@ export function GestureFeedbackView({
               <View
                 style={[
                   styles.levelFill,
-                  { height: `${feedback.level * 100}%` },
+                  {
+                    height: `${feedback.level * 100}%`,
+                    backgroundColor: colors.accent,
+                  },
                 ]}
               />
             </View>
@@ -127,7 +132,7 @@ export function GestureFeedbackView({
         >
           <View style={styles.zoomChip} testID="gesture-feedback-zoom">
             <ZoomInIcon size={16} color={playerColors.white} />
-            <Text style={styles.boostText}>{feedback.scale.toFixed(1)}×</Text>
+            <Text style={styles.zoomText}>{feedback.scale.toFixed(1)}×</Text>
           </View>
         </View>
       );
@@ -175,7 +180,6 @@ const styles = StyleSheet.create({
   },
   levelFill: {
     width: '100%',
-    backgroundColor: playerColors.primaryBright,
   },
   levelText: {
     ...typography.captionStrong,
@@ -268,5 +272,10 @@ const styles = StyleSheet.create({
     ...typography.captionStrong,
     fontSize: 13,
     color: playerColors.onPrimary,
+  },
+  zoomText: {
+    ...typography.captionStrong,
+    fontSize: 13,
+    color: playerColors.white,
   },
 });

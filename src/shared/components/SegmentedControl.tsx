@@ -113,7 +113,7 @@ const useStyles = makeStyles(colors => ({
     minHeight: 32,
     flexDirection: 'row',
     padding: PADDING,
-    borderRadius: radius.sm + 1,
+    borderRadius: radius.pill,
     backgroundColor: colors.fill,
   },
   thumb: {
@@ -121,7 +121,7 @@ const useStyles = makeStyles(colors => ({
     top: PADDING,
     bottom: PADDING,
     left: PADDING,
-    borderRadius: radius.sm - 1,
+    borderRadius: radius.pill,
     backgroundColor: colors.white,
     shadowColor: colors.black,
     shadowOpacity: 0.12,

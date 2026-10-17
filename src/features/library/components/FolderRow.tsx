@@ -1,10 +1,8 @@
 import React, { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { useGroupedRowStyle } from '../../../shared/components/GroupedList';
 import {
   CameraIcon,
-  ChevronRightIcon,
   DownloadIcon,
   FilmIcon,
   FolderIcon,
@@ -12,10 +10,15 @@ import {
   VideoIcon,
   type IconComponent,
 } from '../../../shared/icons';
-import { spacing, typography } from '../../../shared/theme';
+import { radius, spacing, typography } from '../../../shared/theme';
 import { makeStyles, useColors } from '../../../shared/theming';
+import { useNewCount } from '../recentlyAdded';
 import { formatMediaCount } from '../scopeCopy';
 import type { VideoFolder } from '../types';
+import { NewTag } from './NewTag';
+
+const FOLDER_ROW_HEIGHT = 72;
+const TILE_SIZE = 44;
 
 const FOLDER_ICON_RULES: ReadonlyArray<[RegExp, IconComponent]> = [
   [/camera|dcim/i, CameraIcon],
@@ -37,80 +40,84 @@ function folderIcon(folder: VideoFolder): IconComponent {
 interface FolderRowProps {
   folder: VideoFolder;
   onPress: (folder: VideoFolder) => void;
-  /** Position in the grouped card, for its rounded corners and separators. */
-  index: number;
-  count: number;
 }
 
-/** Row in the Folders card, like a folder in the Files app. */
+/**
+ * A white card with icon, name and count, and a "new" tag while it holds unplayed new
+ * files: the whole card opens the folder.
+ */
 export const FolderRow = memo(function FolderRowView({
   folder,
   onPress,
-  index,
-  count,
 }: FolderRowProps) {
   const styles = useStyles();
   const colors = useColors();
-  const groupedRow = useGroupedRowStyle();
   const Icon = folderIcon(folder);
+  const newCount = useNewCount(folder.newIds);
   const subtitle =
     folder.count === null
       ? 'Entire library'
       : formatMediaCount(folder.count, folder.scope);
 
   return (
-    <View style={groupedRow(index, count)}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${folder.title}, ${subtitle}`}
-        onPress={() => onPress(folder)}
-        style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-        testID={`folder-${folder.id}`}
-      >
-        <Icon size={26} color={colors.primaryText} strokeWidth={1.6} />
-        <View style={styles.text}>
-          <Text style={styles.title} numberOfLines={1}>
-            {folder.title}
-          </Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
-        </View>
-        <ChevronRightIcon
-          size={18}
-          color={colors.textMuted}
-          strokeWidth={2.5}
-        />
-      </Pressable>
-      {index < count - 1 ? <View style={styles.separator} /> : null}
-    </View>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${folder.title}, ${subtitle}${
+        newCount > 0 ? `, ${newCount} new` : ''
+      }`}
+      onPress={() => onPress(folder)}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      testID={`folder-${folder.id}`}
+    >
+      <View style={styles.tile}>
+        <Icon size={22} color={colors.primaryText} strokeWidth={1.75} />
+      </View>
+      <View style={styles.text}>
+        <Text style={styles.title} numberOfLines={1}>
+          {folder.title}
+        </Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      </View>
+      {newCount > 0 ? (
+        <NewTag count={newCount} testID={`folder-new-${folder.id}`} />
+      ) : null}
+    </Pressable>
   );
 });
 
 const useStyles = makeStyles(colors => ({
-  row: {
-    minHeight: 60,
+  card: {
+    height: FOLDER_ROW_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md + 2,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md + 2,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
   },
   pressed: {
-    backgroundColor: colors.pressed,
+    backgroundColor: colors.surfaceRaised,
+  },
+  tile: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: TILE_SIZE / 2,
+    backgroundColor: colors.primarySoft,
   },
   text: {
     flex: 1,
+    gap: 2,
   },
   title: {
-    ...typography.body,
+    ...typography.headline,
     color: colors.textPrimary,
   },
   subtitle: {
     ...typography.footnote,
     color: colors.textSecondary,
-  },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    marginLeft: spacing.lg + 26 + spacing.md + 2,
-    backgroundColor: colors.divider,
   },
 }));

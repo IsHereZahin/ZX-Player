@@ -83,11 +83,10 @@ export function ListSkeleton({
   );
 }
 
-const useStyles = makeStyles(colors => ({
+const useStyles = makeStyles(() => ({
   container: {
     flex: 1,
     paddingTop: spacing.sm,
-    backgroundColor: colors.canvas,
   },
   row: {
     flexDirection: 'row',
