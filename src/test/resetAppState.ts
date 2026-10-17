@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { dialogStore } from '../shared/components/Dialog';
 import { historyStore } from '../features/history/watchHistory';
 import { favoritesStore } from '../features/library/favorites';
 import {
@@ -37,6 +38,7 @@ export async function flushPersistedStores(): Promise<void> {
 export function resetAppState(): void {
   (AsyncStorage as unknown as { __reset: () => void }).__reset();
   settingsStore.setState(DEFAULT_SETTINGS);
+  dialogStore.setState(null);
   historyStore.setState({});
   libraryPrefsStore.setState(DEFAULT_LIBRARY_PREFS);
   favoritesStore.setState({});

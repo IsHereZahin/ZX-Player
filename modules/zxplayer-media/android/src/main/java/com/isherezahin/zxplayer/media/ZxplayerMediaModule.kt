@@ -10,6 +10,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -99,6 +100,25 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
 
   private val resolver
     get() = reactApplicationContext.contentResolver
+
+  /** The installed package's version, so About and the update check never drift from the build. */
+  override fun getTypedExportedConstants(): Map<String, Any> {
+    val context = reactApplicationContext
+    val info =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+          context.packageManager.getPackageInfo(
+              context.packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+          @Suppress("DEPRECATION") context.packageManager.getPackageInfo(context.packageName, 0)
+        }
+    val build =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+          info.longVersionCode
+        } else {
+          @Suppress("DEPRECATION") info.versionCode.toLong()
+        }
+    return mapOf("appVersion" to (info.versionName ?: ""), "buildNumber" to build.toDouble())
+  }
 
   override fun getFolders(kind: String, newSinceSec: Double, promise: Promise) {
     queryExecutor.execute {

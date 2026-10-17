@@ -7,7 +7,26 @@ export type SleepTimer =
   | { kind: 'end-of-video' }
   | null;
 
-export const SLEEP_TIMER_MINUTES = [15, 30, 45, 60, 90] as const;
+/** The quick choices; anything else is set through "Custom". */
+export const SLEEP_TIMER_MINUTES = [15, 30, 45] as const;
+/** Longest custom timer: ten hours. */
+export const MAX_SLEEP_MINUTES = 600;
+
+/** Whole minutes typed for a custom timer, or null when not a usable number. */
+export function parseSleepMinutes(text: string): number | null {
+  if (!/^\d+$/.test(text.trim())) {
+    return null;
+  }
+  const minutes = Number(text.trim());
+  return minutes >= 1 && minutes <= MAX_SLEEP_MINUTES ? minutes : null;
+}
+
+export function sleepTimerFor(
+  minutes: number,
+  now: number = Date.now(),
+): SleepTimer {
+  return { kind: 'minutes', minutes, endsAt: now + minutes * 60_000 };
+}
 
 export function describeSleepTimer(
   timer: SleepTimer,

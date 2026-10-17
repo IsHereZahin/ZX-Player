@@ -1,21 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { reportError } from '../../../shared/logger';
-import { fetchAllFolderMedia } from '../services/mediaLibrary';
+import {
+  fetchAllFolderMedia,
+  isAllMediaFolder,
+} from '../services/mediaLibrary';
+import { loadMediaIndex, peekMediaIndex } from '../services/videoIndex';
 import type { VideoFolder, VideoItem } from '../types';
 import { useLibraryChanges } from './useLibraryChanges';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
+/** What an "All …" folder can show straight away: the index, if it is already loaded. */
+function itemsAtHand(folder: VideoFolder): VideoItem[] | undefined {
+  return isAllMediaFolder(folder) ? peekMediaIndex(folder.scope) : undefined;
+}
+
 /**
  * All videos in a folder. The list renders as soon as the first page arrives and grows
  * while the rest loads; `complete` turns true once every page is in (sorting by anything
- * other than date is only exact from then on).
+ * other than date is only exact from then on). An "All …" folder reads the shared media
+ * index, so after its first load it opens at once.
  */
 export function useFolderVideos(folder: VideoFolder) {
-  const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [loadState, setLoadState] = useState<LoadState>('loading');
-  const [complete, setComplete] = useState(false);
+  const [atHand] = useState(() => itemsAtHand(folder));
+  const [videos, setVideos] = useState<VideoItem[]>(atHand ?? []);
+  const [loadState, setLoadState] = useState<LoadState>(
+    atHand ? 'ready' : 'loading',
+  );
+  const [complete, setComplete] = useState(atHand !== undefined);
   const [refreshing, setRefreshing] = useState(false);
   const requestId = useRef(0);
 
@@ -34,28 +47,26 @@ export function useFolderVideos(folder: VideoFolder) {
       if (!quiet) {
         setComplete(false);
       }
+      const onPage = quiet
+        ? undefined
+        : (soFar: VideoItem[]) => {
+            if (isStale()) {
+              return;
+            }
+            received = true;
+            setVideos(soFar);
+            setLoadState('ready');
+            setRefreshing(false);
+          };
 
       try {
-        const all = await fetchAllFolderMedia(
-          folder,
-          quiet
-            ? undefined
-            : soFar => {
-                if (isStale()) {
-                  return;
-                }
-                received = true;
-                setVideos(soFar);
-                setLoadState('ready');
-                setRefreshing(false);
-              },
-          isStale,
-        );
+        const all = isAllMediaFolder(folder)
+          ? await loadMediaIndex(folder.scope, mode === 'refresh', onPage)
+          : await fetchAllFolderMedia(folder, onPage, isStale);
         if (!isStale()) {
-          if (quiet) {
-            setVideos(all);
-            setLoadState('ready');
-          }
+          setVideos(all);
+          setLoadState('ready');
+          setRefreshing(false);
           setComplete(true);
         }
       } catch (error) {
@@ -76,11 +87,12 @@ export function useFolderVideos(folder: VideoFolder) {
   );
 
   useEffect(() => {
-    load('initial');
+    // Already on screen from the index: only check it is current, without a skeleton.
+    load(itemsAtHand(folder) ? 'quiet' : 'initial');
     return () => {
       requestId.current += 1;
     };
-  }, [load]);
+  }, [folder, load]);
 
   useLibraryChanges(() => load('quiet'));
 

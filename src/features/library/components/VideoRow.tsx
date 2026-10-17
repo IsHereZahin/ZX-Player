@@ -9,7 +9,6 @@ import { formatDuration } from '../../../shared/utils/format';
 import { useWatchEntry, watchProgress } from '../../history/watchHistory';
 import { isNewItem } from '../recentlyAdded';
 import type { VideoItem } from '../types';
-import { NewTag } from './NewTag';
 import { SelectionMark } from './SelectionMark';
 import { describeVideo } from './videoMeta';
 import { VideoThumbnail } from './VideoThumbnail';
@@ -70,17 +69,15 @@ export const VideoRow = memo(function VideoRowView({
         video={video}
         width={THUMBNAIL_WIDTH}
         progress={watchProgress(entry)}
+        isNew={isNew}
       />
       <View style={styles.text}>
-        <View style={styles.titleRow}>
-          {isNew ? <NewTag testID={`new-mark-${video.id}`} /> : null}
-          <Text
-            style={[styles.title, highlighted && styles.titleHighlighted]}
-            numberOfLines={2}
-          >
-            {title}
-          </Text>
-        </View>
+        <Text
+          style={[styles.title, highlighted && styles.titleHighlighted]}
+          numberOfLines={2}
+        >
+          {title}
+        </Text>
         {details ? (
           <Text style={styles.details} numberOfLines={1}>
             {details}
@@ -143,11 +140,6 @@ const useStyles = makeStyles(colors => ({
   },
   titleHighlighted: {
     color: colors.accentText,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs + 2,
   },
   details: {
     ...typography.footnote,

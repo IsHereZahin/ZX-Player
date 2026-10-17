@@ -1,3 +1,5 @@
+import { act } from '@testing-library/react-native';
+
 import { flushPersistedStores, resetAppState } from './src/test/resetAppState';
 
 // Stores are module singletons; start every test from defaults, an empty disk and clean
@@ -7,7 +9,10 @@ beforeEach(() => {
   resetAppState();
 });
 
-// Pending debounced writes would otherwise keep Jest's process alive.
+// Pending debounced writes would otherwise keep Jest's process alive. Inside act, so a list
+// rendering its last batch of rows meanwhile is not reported as an unwrapped update.
 afterEach(async () => {
-  await flushPersistedStores();
+  await act(async () => {
+    await flushPersistedStores();
+  });
 });

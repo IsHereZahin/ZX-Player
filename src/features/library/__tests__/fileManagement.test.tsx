@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Platform, ToastAndroid } from 'react-native';
+import { Platform, ToastAndroid } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import {
   copyMedia,
@@ -13,6 +13,7 @@ import {
 } from 'zxplayer-media';
 
 import type { LibraryStackScreenProps } from '../../../app/navigation/types';
+import { dialogStore } from '../../../shared/components/Dialog';
 import { makeBucket, makeVideo } from '../../../test/fixtures';
 import { screenProps } from '../../../test/navigation';
 import { recordProgress } from '../../history/watchHistory';
@@ -211,7 +212,6 @@ describe('selecting files in a folder', () => {
   });
 
   it('explains when only some files could be moved', async () => {
-    const alert = jest.spyOn(Alert, 'alert');
     (moveMedia as jest.Mock).mockResolvedValueOnce({
       granted: true,
       done: 1,
@@ -229,7 +229,10 @@ describe('selecting files in a folder', () => {
       await screen.findByTestId('destination-Movies/Trips/'),
     );
 
-    expect(alert).toHaveBeenCalledWith('Moved 1 of 2', '1 could not be moved.');
+    expect(dialogStore.getState()).toEqual({
+      title: 'Moved 1 of 2',
+      message: '1 could not be moved.',
+    });
   });
 
   it('is not offered where Android has no recycle bin', async () => {

@@ -9,6 +9,7 @@ import {
   type Theme,
 } from '@react-navigation/native';
 
+import { DialogHost } from '../shared/components/Dialog';
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import { useSettings } from '../features/settings/settingsStore';
 import {
@@ -63,6 +64,7 @@ export default function App() {
                 <RootNavigator />
                 {/* Above the navigator, so playback can outlive the Player screen. */}
                 <PlayerHost />
+                <DialogHost />
               </NavigationContainer>
             ) : (
               // Saved settings and history load in milliseconds; avoid flashing defaults.

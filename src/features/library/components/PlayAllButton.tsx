@@ -36,7 +36,7 @@ export function PlayAllButton({ onPress }: { onPress: () => void }) {
       ]}
       testID="play-all"
     >
-      <PlayIcon size={26} color={colors.onPrimary} fill={colors.onPrimary} />
+      <PlayIcon size={26} color={colors.onAccent} fill={colors.onAccent} />
     </Pressable>
   );
 }
@@ -50,7 +50,7 @@ const useStyles = makeStyles(colors => ({
     justifyContent: 'center',
     paddingLeft: 3,
     borderRadius: FAB_SIZE / 2,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
     elevation: 6,
     shadowColor: colors.black,
     shadowOpacity: 0.25,
@@ -58,6 +58,6 @@ const useStyles = makeStyles(colors => ({
     shadowOffset: { width: 0, height: 4 },
   },
   pressed: {
-    backgroundColor: colors.primaryPressed,
+    opacity: 0.85,
   },
 }));

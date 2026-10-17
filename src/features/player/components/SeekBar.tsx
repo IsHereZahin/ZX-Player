@@ -27,9 +27,13 @@ import { formatDuration } from '../../../shared/utils/format';
 import { clamp } from '../../../shared/utils/math';
 import { usePlaybackClock, type PlaybackClock } from '../playbackClock';
 
-const TOUCH_AREA_HEIGHT = 32;
-const TRACK_HEIGHT = 5;
-const TRACK_HEIGHT_ACTIVE = 11;
+/** Tall enough to grab easily; the track and handle sit in its middle. */
+const TOUCH_AREA_HEIGHT = 40;
+const TRACK_HEIGHT = 6;
+const TRACK_HEIGHT_ACTIVE = 8;
+/** The handle on the current position, a little bigger while dragged. */
+const THUMB_SIZE = 16;
+const THUMB_SIZE_ACTIVE = 22;
 
 interface SeekBarProps {
   clock: PlaybackClock;
@@ -137,6 +141,7 @@ export function SeekBar({
   const progress = duration > 0 ? clamp(displayTime / duration, 0, 1) : 0;
   const buffered = duration > 0 ? clamp(bufferedTime / duration, 0, 1) : 0;
   const remaining = Math.max(0, duration - displayTime);
+  const thumbSize = scrubbing ? THUMB_SIZE_ACTIVE : THUMB_SIZE;
 
   return (
     <View style={styles.column}>
@@ -175,6 +180,22 @@ export function SeekBar({
               ]}
             />
           </View>
+          {trackWidth > 0 ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.thumb,
+                {
+                  width: thumbSize,
+                  height: thumbSize,
+                  borderRadius: thumbSize / 2,
+                  left: progress * trackWidth - thumbSize / 2,
+                  top: (TOUCH_AREA_HEIGHT - thumbSize) / 2,
+                },
+              ]}
+              testID="seek-thumb"
+            />
+          ) : null}
         </View>
       </GestureDetector>
       <View style={styles.times}>
@@ -214,6 +235,15 @@ const styles = StyleSheet.create({
   },
   buffered: {
     backgroundColor: playerColors.trackBuffered,
+  },
+  thumb: {
+    position: 'absolute',
+    backgroundColor: playerColors.white,
+    shadowColor: playerColors.black,
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
   },
   times: {
     flexDirection: 'row',

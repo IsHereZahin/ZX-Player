@@ -1,0 +1,15 @@
+{
+  "version": "1.11",
+  "build": 12,
+  "releasedAt": "2026-10-17",
+  "downloadUrl": "https://github.com/IsHereZahin/ZX-Player/releases/latest/download/ZX-Player.apk",
+  "minAndroid": "7.0",
+  "sizeMb": 44,
+  "notes": [
+    "A new audio player: a large cover, clear controls and a blurred backdrop",
+    "Fixed a dark block over the video when the controls first appeared",
+    "Faster navigation and smoother scrolling",
+    "All videos and All audio open instantly after the first scan",
+    "About page with Check for Updates"
+  ]
+}

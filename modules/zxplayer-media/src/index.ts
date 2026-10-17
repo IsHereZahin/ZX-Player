@@ -16,6 +16,22 @@ export type MediaKind = 'video' | 'audio';
 
 export const isNativeMediaAvailable = NativeZxplayerMedia != null;
 
+export interface AppVersion {
+  /** What people see, e.g. "1.10". */
+  version: string;
+  /** Android versionCode; it only ever grows, so releases compare by it. */
+  build: number;
+}
+
+/** The installed app's version, or null where the native module is missing (iOS). */
+export function getAppVersion(): AppVersion | null {
+  if (!NativeZxplayerMedia) {
+    return null;
+  }
+  const { appVersion, buildNumber } = NativeZxplayerMedia.getConstants();
+  return { version: appVersion, build: buildNumber };
+}
+
 function requireModule() {
   if (!NativeZxplayerMedia) {
     throw new Error('ZxplayerMedia native module is not available');

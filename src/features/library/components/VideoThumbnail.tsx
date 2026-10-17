@@ -8,18 +8,22 @@ import { makeStyles, useColors } from '../../../shared/theming';
 import { formatDuration } from '../../../shared/utils/format';
 import { useThumbnail } from '../hooks/useThumbnail';
 import type { VideoItem } from '../types';
+import { NewTag } from './NewTag';
 
 interface VideoThumbnailProps {
   video: VideoItem;
   width: number;
   /** Watched fraction (0–1); a bar is drawn along the bottom when above zero. */
   progress?: number;
+  /** Puts a "NEW" tag in the top-left corner of the artwork. */
+  isNew?: boolean;
 }
 
 export function VideoThumbnail({
   video,
   width,
   progress = 0,
+  isNew = false,
 }: VideoThumbnailProps) {
   const styles = useStyles();
   const colors = useColors();
@@ -63,6 +67,11 @@ export function VideoThumbnail({
           />
         </View>
       )}
+      {isNew ? (
+        <View style={styles.newTag}>
+          <NewTag testID={`new-mark-${video.id}`} />
+        </View>
+      ) : null}
       {video.durationSec > 0 ? (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>
@@ -95,6 +104,11 @@ const useStyles = makeStyles(colors => ({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  newTag: {
+    position: 'absolute',
+    top: spacing.xs + 2,
+    left: spacing.xs + 2,
   },
   badge: {
     position: 'absolute',

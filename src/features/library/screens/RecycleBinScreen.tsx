@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Animated, Platform, ToastAndroid, View } from 'react-native';
+import { Animated, Platform, ToastAndroid, View } from 'react-native';
 
 import type { LibraryStackScreenProps } from '../../../app/navigation/types';
 import { useBottomInset } from '../../../app/navigation/useBottomInset';
+import { showDialog } from '../../../shared/components/Dialog';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { IconButton } from '../../../shared/components/IconButton';
 import {
@@ -98,7 +99,10 @@ export function RecycleBinScreen({ navigation, route }: Props) {
       }
     } catch (error) {
       reportError('Restoring files failed', error);
-      Alert.alert("Couldn't restore", 'Something went wrong. Try again.');
+      showDialog({
+        title: "Couldn't restore",
+        message: 'Something went wrong. Try again.',
+      });
     }
   };
 
@@ -109,7 +113,10 @@ export function RecycleBinScreen({ navigation, route }: Props) {
       }
     } catch (error) {
       reportError('Deleting files for good failed', error);
-      Alert.alert("Couldn't delete", 'Something went wrong. Try again.');
+      showDialog({
+        title: "Couldn't delete",
+        message: 'Something went wrong. Try again.',
+      });
     }
   };
 

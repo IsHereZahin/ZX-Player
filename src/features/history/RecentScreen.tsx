@@ -1,8 +1,9 @@
 import React, { useCallback, useMemo } from 'react';
-import { Alert, Animated, Text, View } from 'react-native';
+import { Animated, Text, View } from 'react-native';
 
 import type { MainTabScreenProps } from '../../app/navigation/types';
 import { useBottomInset } from '../../app/navigation/useBottomInset';
+import { showDialog } from '../../shared/components/Dialog';
 import { EmptyState } from '../../shared/components/EmptyState';
 import { IconButton } from '../../shared/components/IconButton';
 import {
@@ -28,14 +29,15 @@ interface Section {
 }
 
 export function confirmClearHistory(): void {
-  Alert.alert(
-    'Clear watch history?',
-    'Saved playback positions and your recently played list will be removed.',
-    [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: clearHistory },
+  showDialog({
+    title: 'Clear watch history?',
+    message:
+      'Saved playback positions and your recently played list will be removed.',
+    actions: [
+      { label: 'Cancel', style: 'cancel' },
+      { label: 'Clear', style: 'destructive', onPress: clearHistory },
     ],
-  );
+  });
 }
 
 export function RecentScreen(_props: Props) {

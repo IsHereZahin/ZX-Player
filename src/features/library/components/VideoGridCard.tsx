@@ -8,7 +8,6 @@ import { makeStyles } from '../../../shared/theming';
 import { useWatchEntry, watchProgress } from '../../history/watchHistory';
 import { isNewItem } from '../recentlyAdded';
 import type { VideoItem } from '../types';
-import { NewTag } from './NewTag';
 import { SelectionMark } from './SelectionMark';
 import { describeVideo } from './videoMeta';
 import { VideoThumbnail } from './VideoThumbnail';
@@ -60,12 +59,8 @@ export const VideoGridCard = memo(function VideoGridCardView({
           video={video}
           width={width}
           progress={watchProgress(entry)}
+          isNew={isNew}
         />
-        {isNew ? (
-          <View style={styles.newTag}>
-            <NewTag testID={`new-mark-${video.id}`} />
-          </View>
-        ) : null}
         {selecting ? (
           <View style={styles.mark}>
             <SelectionMark selected={selected} />
@@ -104,11 +99,6 @@ const useStyles = makeStyles(colors => ({
   },
   pressed: {
     opacity: 0.7,
-  },
-  newTag: {
-    position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
   },
   mark: {
     position: 'absolute',

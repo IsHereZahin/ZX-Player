@@ -17,6 +17,8 @@ import {
 } from '../../../../test/navigation';
 import { historyStore, isFinished } from '../../../history/watchHistory';
 import { libraryPrefsStore } from '../../libraryPrefs';
+import { allMediaFolder } from '../../services/mediaLibrary';
+import type { VideoFolder } from '../../types';
 import { FolderVideosScreen } from '../FolderVideosScreen';
 
 jest.mock('@react-navigation/native', () => ({
@@ -35,11 +37,11 @@ function page(ids: string[], nextCursor?: string) {
   };
 }
 
-async function renderScreen() {
+async function renderScreen(folder: VideoFolder = sampleFolder) {
   await render(
     <FolderVideosScreen
       {...screenProps<LibraryStackScreenProps<'FolderVideos'>>('FolderVideos', {
-        folder: sampleFolder,
+        folder,
       })}
     />,
   );
@@ -147,5 +149,18 @@ describe('FolderVideosScreen', () => {
     getPhotos.mockResolvedValueOnce(page([]));
     await fireEvent.press(screen.getByText('Try again'));
     expect(await screen.findByText('This folder is empty')).toBeOnTheScreen();
+  });
+
+  it('opens the All folder at once after its first load', async () => {
+    getPhotos.mockResolvedValueOnce(page(['1', '2']));
+    await renderScreen(allMediaFolder('video'));
+    expect(await screen.findByText('Episode 1')).toBeOnTheScreen();
+    await screen.unmount();
+
+    // The second visit reads the shared media index: no new scan, no skeleton.
+    await renderScreen(allMediaFolder('video'));
+    expect(screen.queryByTestId('videos-loading')).toBeNull();
+    expect(screen.getByText('Episode 2')).toBeOnTheScreen();
+    expect(getPhotos).toHaveBeenCalledTimes(1);
   });
 });

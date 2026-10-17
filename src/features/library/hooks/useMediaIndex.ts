@@ -2,13 +2,20 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { reportError } from '../../../shared/logger';
 import { useStore } from '../../../shared/storage/store';
-import { loadMediaIndex, mediaIndexVersion } from '../services/videoIndex';
+import {
+  loadMediaIndex,
+  mediaIndexVersion,
+  peekMediaIndex,
+} from '../services/videoIndex';
 import type { MediaScope, VideoItem } from '../types';
 
 /** Every item of the scope (null while loading), reloaded when the library is rescanned. */
 export function useMediaIndex(scope: MediaScope) {
   const version = useStore(mediaIndexVersion, value => value);
-  const [items, setItems] = useState<VideoItem[] | null>(null);
+  // An index loaded earlier this session shows on the first render, with no skeleton.
+  const [items, setItems] = useState<VideoItem[] | null>(
+    () => peekMediaIndex(scope) ?? null,
+  );
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
 

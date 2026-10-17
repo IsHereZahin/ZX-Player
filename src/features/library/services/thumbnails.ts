@@ -7,7 +7,11 @@ import {
 } from '../../../shared/utils/taskQueue';
 import type { VideoItem } from '../types';
 
-const THUMBNAIL_MAX_EDGE = 320;
+/**
+ * Long edge of generated thumbnails. A list thumbnail is ~400 px wide on a 3x screen, so
+ * 512 stays sharp there and in grid cards, and matches the size Android keeps cached.
+ */
+const THUMBNAIL_MAX_EDGE = 512;
 // System thumbnails come from MediaStore's cache, so several can load at once. Newest
 // requests go first: they belong to the rows the user is looking at right now.
 const MAX_CONCURRENT_THUMBNAILS = 4;
@@ -18,7 +22,11 @@ const memoryCache = new Map<string, string | null>();
 
 function cacheKey(item: VideoItem): string {
   // Including the modification time invalidates the on-disk thumbnail if the file changes.
-  return `zxplayer_${item.id}_${item.modifiedAtSec}`.replace(/[^\w-]/g, '_');
+  // The size is part of the name, so changing it never reuses smaller copies.
+  return `zxplayer_${item.id}_${item.modifiedAtSec}_${THUMBNAIL_MAX_EDGE}`.replace(
+    /[^\w-]/g,
+    '_',
+  );
 }
 
 /**

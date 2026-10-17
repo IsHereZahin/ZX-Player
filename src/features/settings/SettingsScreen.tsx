@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Animated, Text, View } from 'react-native';
+import { Animated, View } from 'react-native';
+import { getAppVersion } from 'zxplayer-media';
 
-import type { MainTabScreenProps } from '../../app/navigation/types';
+import type { SettingsStackScreenProps } from '../../app/navigation/types';
 import { useBottomInset } from '../../app/navigation/useBottomInset';
-import { AppLogo } from '../../shared/components/AppLogo';
 import {
   HeaderGlow,
   ScreenHeader,
@@ -17,6 +17,7 @@ import {
   HandIcon,
   HeadphonesIcon,
   HistoryIcon,
+  InfoIcon,
   LayersIcon,
   ListVideoIcon,
   MoveHorizontalIcon,
@@ -28,7 +29,7 @@ import {
   Volume2Icon,
   ZoomInIcon,
 } from '../../shared/icons';
-import { spacing, typography } from '../../shared/theme';
+import { spacing } from '../../shared/theme';
 import { makeStyles } from '../../shared/theming';
 import { confirmClearHistory } from '../history/RecentScreen';
 import { useHistoryList } from '../history/watchHistory';
@@ -57,7 +58,7 @@ import {
   type SubtitleSize,
 } from './settingsStore';
 
-type Props = MainTabScreenProps<'Settings'>;
+type Props = SettingsStackScreenProps<'SettingsHome'>;
 type Picker =
   | 'appearance'
   | 'layout'
@@ -91,9 +92,10 @@ const SUBTITLE_SIZE_LABELS: Record<SubtitleSize, string> = {
   large: 'Large',
 };
 
-export function SettingsScreen(_props: Props) {
+export function SettingsScreen({ navigation }: Props) {
   const styles = useStyles();
   const settings = useSettings();
+  const [appVersion] = useState(getAppVersion);
   const header = useHidingHeader();
   const bottom = useBottomInset();
   const historyCount = useHistoryList().length;
@@ -272,13 +274,15 @@ export function SettingsScreen(_props: Props) {
           />
         </SettingsSection>
 
-        <View style={styles.about}>
-          <AppLogo size={56} testID="about-logo" />
-          <Text style={styles.aboutTitle}>ZX Player</Text>
-          <Text style={styles.aboutText}>
-            Your videos stay on this device. ZX Player never uploads anything.
-          </Text>
-        </View>
+        <SettingsSection title="About">
+          <SettingActionRow
+            icon={InfoIcon}
+            title="About ZX Player"
+            value={appVersion?.version}
+            onPress={() => navigation.navigate('About')}
+            testID="setting-about"
+          />
+        </SettingsSection>
       </Animated.ScrollView>
       <ScreenHeader title="Settings" hiding={header} />
 
@@ -381,21 +385,5 @@ const useStyles = makeStyles(colors => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  about: {
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.xxxl,
-    paddingTop: spacing.sm,
-  },
-  aboutTitle: {
-    ...typography.headline,
-    marginTop: spacing.sm,
-    color: colors.textPrimary,
-  },
-  aboutText: {
-    ...typography.footnote,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
 }));

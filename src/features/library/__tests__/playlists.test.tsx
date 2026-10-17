@@ -1,10 +1,11 @@
 import React from 'react';
-import { Alert, Platform } from 'react-native';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Platform } from 'react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 import { shareMedia } from 'zxplayer-media';
 
 import type { LibraryStackScreenProps } from '../../../app/navigation/types';
+import { DialogHost } from '../../../shared/components/Dialog';
 import { shuffled } from '../../../shared/utils/shuffle';
 import {
   makePhotoIdentifier,
@@ -215,11 +216,14 @@ describe('Playlists and Playlist screens', () => {
     jest.replaceProperty(Platform, 'OS', 'android');
     const id = createPlaylist('Mix', [makeVideo('1'), sampleSong])!;
     await render(
-      <PlaylistScreen
-        {...screenProps<LibraryStackScreenProps<'Playlist'>>('Playlist', {
-          id,
-        })}
-      />,
+      <>
+        <PlaylistScreen
+          {...screenProps<LibraryStackScreenProps<'Playlist'>>('Playlist', {
+            id,
+          })}
+        />
+        <DialogHost />
+      </>,
     );
     expect(screen.getByText('2 files')).toBeOnTheScreen();
 
@@ -239,11 +243,10 @@ describe('Playlists and Playlist screens', () => {
     await fireEvent.press(screen.getByTestId('playlist-name-confirm'));
     expect(playlistsStore.getState()[0].name).toBe('Night mix');
 
-    const alert = jest.spyOn(Alert, 'alert');
     await fireEvent.press(screen.getByTestId('playlist-options'));
     await fireEvent.press(screen.getByTestId('playlist-delete'));
-    const buttons = alert.mock.calls[0][2]!;
-    await act(async () => buttons[1].onPress?.());
+    expect(screen.getByText('Delete "Night mix"?')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('dialog-Delete'));
     expect(playlistsStore.getState()).toEqual([]);
     expect(mockNavigation.goBack).toHaveBeenCalled();
   });

@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, Platform, ToastAndroid } from 'react-native';
+import { Platform, ToastAndroid } from 'react-native';
 
+import { showDialog } from '../../../shared/components/Dialog';
 import { useAfterSheetClose } from '../../../shared/components/Sheet';
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
 import { reportError } from '../../../shared/logger';
@@ -55,19 +56,21 @@ function reportTransfer(
   if (result.failed === 0) {
     notify(`${verb} ${countOf(transfer.items)} to ${folderName(relativePath)}`);
   } else if (result.done === 0) {
-    Alert.alert(
-      transfer.mode === 'move'
-        ? "Couldn't move the files"
-        : "Couldn't copy the files",
-      'Android did not allow it. The folder may not accept this kind of file, or there may not be enough space.',
-    );
+    showDialog({
+      title:
+        transfer.mode === 'move'
+          ? "Couldn't move the files"
+          : "Couldn't copy the files",
+      message:
+        'Android did not allow it. The folder may not accept this kind of file, or there may not be enough space.',
+    });
   } else {
-    Alert.alert(
-      `${verb} ${result.done} of ${total}`,
-      `${result.failed} could not be ${
+    showDialog({
+      title: `${verb} ${result.done} of ${total}`,
+      message: `${result.failed} could not be ${
         transfer.mode === 'move' ? 'moved' : 'copied'
       }.`,
-    );
+    });
   }
 }
 
@@ -92,7 +95,10 @@ export function useFileActions(options: { onComplete?: () => void } = {}) {
         }
       } catch (error) {
         reportError('Deleting files failed', error);
-        Alert.alert("Couldn't delete", 'Something went wrong. Try again.');
+        showDialog({
+          title: "Couldn't delete",
+          message: 'Something went wrong. Try again.',
+        });
       }
     },
     [onComplete],
@@ -102,10 +108,11 @@ export function useFileActions(options: { onComplete?: () => void } = {}) {
     (mode: TransferMode, items: VideoItem[], fromPath?: string | null) => {
       const kind = kindOfItems(items);
       if (!kind) {
-        Alert.alert(
-          'Choose one kind of file',
-          'Android keeps videos and audio in different folders, so move or copy them separately.',
-        );
+        showDialog({
+          title: 'Choose one kind of file',
+          message:
+            'Android keeps videos and audio in different folders, so move or copy them separately.',
+        });
         return;
       }
       setTransfer({ mode, items, kind, fromPath });
@@ -142,10 +149,10 @@ export function useFileActions(options: { onComplete?: () => void } = {}) {
       }
     } catch (error) {
       reportError('Moving or copying files failed', error);
-      Alert.alert(
-        transfer.mode === 'move' ? "Couldn't move" : "Couldn't copy",
-        'Something went wrong. Try again.',
-      );
+      showDialog({
+        title: transfer.mode === 'move' ? "Couldn't move" : "Couldn't copy",
+        message: 'Something went wrong. Try again.',
+      });
     }
   };
 

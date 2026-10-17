@@ -2,7 +2,9 @@ import React from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
+import { nowPlayingStore } from '../../features/player/nowPlaying';
 import { FrostedBackground } from '../../shared/components/FrostedBackground';
+import { useStore } from '../../shared/storage/store';
 import { radius, spacing } from '../../shared/theme';
 import { makeStyles, useColors } from '../../shared/theming';
 
@@ -10,7 +12,8 @@ const BUTTON_SIZE = 46;
 const ICON_SIZE = 21;
 
 /**
- * Floating, frosted capsule of round icon buttons; the current tab is a filled ink circle.
+ * Floating, frosted capsule of round icon buttons; the current tab is filled with the
+ * theme's accent.
  * Labels are read out by screen readers rather than drawn.
  */
 export function FloatingTabBar({
@@ -21,6 +24,11 @@ export function FloatingTabBar({
 }: BottomTabBarProps) {
   const styles = useStyles();
   const colors = useColors();
+  // Under the full player the bar can't be seen, so it stops blurring (and redrawing).
+  const playerOpen = useStore(
+    nowPlayingStore,
+    playing => playing.request !== null && playing.presentation === 'full',
+  );
 
   return (
     <View
@@ -31,7 +39,7 @@ export function FloatingTabBar({
       pointerEvents="box-none"
     >
       <View style={styles.capsule} accessibilityRole="tablist">
-        <FrostedBackground />
+        <FrostedBackground blur={!playerOpen} />
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const focused = state.index === index;
@@ -68,7 +76,7 @@ export function FloatingTabBar({
             >
               {options.tabBarIcon?.({
                 focused,
-                color: focused ? colors.onPrimary : colors.textSecondary,
+                color: focused ? colors.onAccent : colors.textSecondary,
                 size: ICON_SIZE,
               })}
             </Pressable>
@@ -110,7 +118,7 @@ const useStyles = makeStyles(colors => ({
     borderRadius: BUTTON_SIZE / 2,
   },
   buttonFocused: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
   },
   pressed: {
     backgroundColor: colors.pressed,

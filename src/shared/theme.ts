@@ -116,6 +116,35 @@ export const COLOR_THEME_SPECS: Record<ColorTheme, ColorThemeSpec> = {
   },
 };
 
+/** WCAG relative luminance of an opaque `#RRGGBB` colour. */
+export function luminance(hex: string): number {
+  const [red, green, blue] = [1, 3, 5].map(index => {
+    const channel = parseInt(hex.slice(index, index + 2), 16) / 255;
+    return channel <= 0.03928
+      ? channel / 12.92
+      : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+/** WCAG contrast ratio between two opaque colours. */
+export function contrastRatio(first: string, second: string): number {
+  const [light, dark] = [luminance(first), luminance(second)].sort(
+    (a, b) => b - a,
+  );
+  return (light + 0.05) / (dark + 0.05);
+}
+
+const INK = '#111318';
+const WHITE = '#FFFFFF';
+
+/** White or ink, whichever reads better on the colour (light accents need dark icons). */
+function readableOn(background: string): string {
+  return contrastRatio(WHITE, background) >= contrastRatio(INK, background)
+    ? WHITE
+    : INK;
+}
+
 /** `#RRGGBB` with an alpha, as `rgba(…)`. */
 export function withAlpha(hex: string, alpha: number): string {
   const [red, green, blue] = [1, 3, 5].map(index =>
@@ -252,7 +281,7 @@ function buildPalette(scheme: ColorScheme, theme: ColorTheme): ColorTokens {
     accent: tint.accent,
     accentText: tint.accentText,
     accentSoft: withAlpha(tint.accent, scheme === 'light' ? 0.12 : 0.18),
-    onAccent: '#FFFFFF',
+    onAccent: readableOn(tint.accent),
     background: tint.background,
     canvas: tint.background,
     // Sheets take the screen colour when light and a raised card colour when dark.

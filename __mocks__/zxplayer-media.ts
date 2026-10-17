@@ -7,6 +7,7 @@ import type {
 } from 'zxplayer-media';
 
 export const isNativeMediaAvailable = true;
+export const getAppVersion = jest.fn(() => ({ version: '1.10', build: 11 }));
 export const getFolders = jest.fn(async (): Promise<NativeMediaFolder[]> => []);
 export const getMedia = jest.fn(
   async (): Promise<NativeMediaPage> => ({ items: [], hasMore: false }),

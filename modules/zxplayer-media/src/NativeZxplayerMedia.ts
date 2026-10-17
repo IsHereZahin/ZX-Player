@@ -80,6 +80,8 @@ export type RemoteCommand = {
 };
 
 export interface Spec extends TurboModule {
+  /** The installed app: its version name and build number (Android versionCode). */
+  getConstants(): { appVersion: string; buildNumber: number };
   /** `kind` is "video" or "audio"; items added since `newSinceSec` are listed as new. */
   getFolders(kind: string, newSinceSec: number): Promise<NativeMediaFolder[]>;
   /** Newest first; `bucketId` null means every folder. */

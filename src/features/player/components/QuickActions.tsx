@@ -39,6 +39,8 @@ export interface QuickActionsProps {
   onRotate: () => void;
   onToggleBackgroundPlay: () => void;
   onOpenMore: () => void;
+  /** Centred under the audio controls; the video player keeps it under the title. */
+  centered?: boolean;
 }
 
 /**
@@ -51,7 +53,10 @@ export function QuickActions(props: QuickActionsProps) {
   const isVideo = props.mode === 'video';
   const speedChanged = props.speed !== 1;
   return (
-    <View style={styles.row} testID="quick-actions">
+    <View
+      style={[styles.row, props.centered && styles.centered]}
+      testID="quick-actions"
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Playback speed ${formatSpeed(props.speed)}`}
@@ -130,6 +135,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: spacing.sm + 2,
+  },
+  centered: {
+    alignSelf: 'center',
   },
   speed: {
     minWidth: SIZE,

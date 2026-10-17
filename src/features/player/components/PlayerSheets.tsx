@@ -1,6 +1,7 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { Button } from '../../../shared/components/Button';
 import { IconButton } from '../../../shared/components/IconButton';
 import { SegmentedControl } from '../../../shared/components/SegmentedControl';
 import { useColors } from '../../../shared/theming';
@@ -35,7 +36,13 @@ import {
 } from '../../../shared/theme';
 import { formatSpeed } from '../../../shared/utils/format';
 import type { SubtitleSize } from '../../settings/settingsStore';
-import { SLEEP_TIMER_MINUTES, type SleepTimer } from '../hooks/useSleepTimer';
+import {
+  MAX_SLEEP_MINUTES,
+  parseSleepMinutes,
+  SLEEP_TIMER_MINUTES,
+  sleepTimerFor,
+  type SleepTimer,
+} from '../hooks/useSleepTimer';
 import {
   ASPECT_MODE_DESCRIPTIONS,
   ASPECT_MODE_LABELS,
@@ -432,6 +439,10 @@ interface SleepTimerSheetProps extends BaseSheetProps {
   onSet: (timer: SleepTimer) => void;
 }
 
+/**
+ * Quick timers (15, 30, 45 minutes), a custom length typed in place, or the end of the
+ * video. "Turn off" appears while a timer runs.
+ */
 export function SleepTimerSheet({
   visible,
   onClose,
@@ -439,10 +450,34 @@ export function SleepTimerSheet({
   remainingLabel,
   onSet,
 }: SleepTimerSheetProps) {
+  const colors = useColors();
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customText, setCustomText] = useState('');
+  const customMinutes = parseSleepMinutes(customText);
+  const runningCustom =
+    timer?.kind === 'minutes' &&
+    !(SLEEP_TIMER_MINUTES as readonly number[]).includes(timer.minutes)
+      ? timer.minutes
+      : null;
+
+  // Every opening starts from the list, not a half-typed number.
+  useEffect(() => {
+    if (visible) {
+      setCustomOpen(false);
+      setCustomText('');
+    }
+  }, [visible]);
+
   const set = (next: SleepTimer) => {
     onSet(next);
     onClose();
   };
+  const startCustom = () => {
+    if (customMinutes !== null) {
+      set(sleepTimerFor(customMinutes));
+    }
+  };
+
   return (
     <Sheet
       visible={visible}
@@ -455,34 +490,66 @@ export function SleepTimerSheet({
       }
       testID="sleep-sheet"
     >
-      <OptionRow
-        icon={AlarmClockOffIcon}
-        label="Off"
-        selected={timer === null}
-        onPress={() => set(null)}
-        testID="sleep-off"
-      />
       {SLEEP_TIMER_MINUTES.map(minutes => (
         <OptionRow
           key={minutes}
           label={`${minutes} minutes`}
           selected={timer?.kind === 'minutes' && timer.minutes === minutes}
-          onPress={() =>
-            set({
-              kind: 'minutes',
-              minutes,
-              endsAt: Date.now() + minutes * 60_000,
-            })
-          }
+          onPress={() => set(sleepTimerFor(minutes))}
           testID={`sleep-${minutes}`}
         />
       ))}
+      <OptionRow
+        label={
+          runningCustom !== null
+            ? `Custom · ${runningCustom} minutes`
+            : 'Custom…'
+        }
+        selected={runningCustom !== null}
+        onPress={() => setCustomOpen(true)}
+        testID="sleep-custom"
+      />
+      {customOpen ? (
+        <View style={styles.customRow}>
+          <TextInput
+            value={customText}
+            onChangeText={setCustomText}
+            placeholder={`Minutes (1–${MAX_SLEEP_MINUTES})`}
+            placeholderTextColor={playerColors.textSecondary}
+            selectionColor={colors.accent}
+            cursorColor={colors.accent}
+            keyboardType="number-pad"
+            maxLength={3}
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={startCustom}
+            style={styles.customInput}
+            accessibilityLabel="Minutes until playback pauses"
+            testID="sleep-custom-input"
+          />
+          <Button
+            label="Start"
+            size="small"
+            onPress={startCustom}
+            style={customMinutes === null && styles.disabled}
+            testID="sleep-custom-start"
+          />
+        </View>
+      ) : null}
       <OptionRow
         label="End of this video"
         selected={timer?.kind === 'end-of-video'}
         onPress={() => set({ kind: 'end-of-video' })}
         testID="sleep-end-of-video"
       />
+      {timer ? (
+        <OptionRow
+          icon={AlarmClockOffIcon}
+          label="Turn off"
+          onPress={() => set(null)}
+          testID="sleep-off"
+        />
+      ) : null}
     </Sheet>
   );
 }
@@ -555,6 +622,25 @@ const styles = StyleSheet.create({
   },
   tileValue: {
     ...typography.captionStrong,
+  },
+  customRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  customInput: {
+    ...typography.body,
+    flex: 1,
+    height: 44,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: playerColors.sheetCell,
+    color: playerColors.textPrimary,
+  },
+  disabled: {
+    opacity: 0.4,
   },
   padded: {
     paddingHorizontal: spacing.xl,

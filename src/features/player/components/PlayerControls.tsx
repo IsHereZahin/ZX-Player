@@ -23,15 +23,20 @@ import {
   spacing,
   typography,
 } from '../../../shared/theme';
+import type { VideoItem } from '../../library/types';
 import type { PlaybackClock } from '../playbackClock';
+import { AudioControls } from './AudioControls';
 import type { RepeatMode } from './PlayerSheets';
 import { QuickActions } from './QuickActions';
 import { Scrim } from './Scrim';
 import { SeekBar } from './SeekBar';
 
 export interface PlayerControlsProps {
-  /** Audio has no picture: no subtitles, aspect, rotation, PiP or lock, and the transport sits low. */
+  /** Audio gets its own layout (AudioControls): cover, title, transport, no picture tools. */
   mode: 'video' | 'audio';
+  /** The playing audio item and its cover (audio mode). */
+  track?: VideoItem;
+  art?: string | null;
   /** Current pinch zoom; above 1 a "Reset zoom" pill appears. */
   zoom: number;
   onResetZoom: () => void;
@@ -70,14 +75,21 @@ export interface PlayerControlsProps {
   onPictureInPicture: () => void;
 }
 
-/**
- * Player chrome. The root uses `box-none` so taps between the bars fall through to the
- * gesture layer underneath.
- */
+/** Player chrome: the video bars, or the music-style layout for an audio track. */
 export function PlayerControls(props: PlayerControlsProps) {
+  return props.mode === 'audio' && props.track ? (
+    <AudioControls {...props} track={props.track} art={props.art ?? null} />
+  ) : (
+    <VideoControls {...props} />
+  );
+}
+
+/**
+ * The video player's bars. The root uses `box-none` so taps between the bars fall through
+ * to the gesture layer underneath.
+ */
+function VideoControls(props: PlayerControlsProps) {
   const insets = useSafeAreaInsets();
-  const isAudio = props.mode === 'audio';
-  const itemNoun = isAudio ? 'track' : 'video';
   const sidePadding = {
     paddingLeft: Math.max(insets.left, spacing.md),
     paddingRight: Math.max(insets.right, spacing.md),
@@ -114,16 +126,14 @@ export function PlayerControls(props: PlayerControlsProps) {
             <Text style={styles.queue}>{props.queueLabel}</Text>
           ) : null}
         </View>
-        {isAudio ? null : (
-          <IconButton
-            icon={CaptionsIcon}
-            variant="overlay"
-            active={props.subtitlesActive}
-            accessibilityLabel="Subtitles"
-            onPress={props.onOpenSubtitles}
-            testID="subtitles-button"
-          />
-        )}
+        <IconButton
+          icon={CaptionsIcon}
+          variant="overlay"
+          active={props.subtitlesActive}
+          accessibilityLabel="Subtitles"
+          onPress={props.onOpenSubtitles}
+          testID="subtitles-button"
+        />
         {props.showAudioTracks ? (
           <IconButton
             icon={AudioLinesIcon}
@@ -137,7 +147,7 @@ export function PlayerControls(props: PlayerControlsProps) {
 
       <View style={[styles.quickRow, sidePadding]} pointerEvents="box-none">
         <QuickActions
-          mode={props.mode}
+          mode="video"
           speed={props.speed}
           repeatMode={props.repeatMode}
           sleepActive={props.sleepActive}
@@ -172,14 +182,11 @@ export function PlayerControls(props: PlayerControlsProps) {
         </View>
       ) : null}
 
-      <View
-        style={[styles.center, isAudio && styles.centerAudio]}
-        pointerEvents="box-none"
-      >
+      <View style={styles.center} pointerEvents="box-none">
         <IconButton
           icon={SkipBackIcon}
           variant="glyph"
-          accessibilityLabel={`Previous ${itemNoun}`}
+          accessibilityLabel="Previous video"
           onPress={props.onPrevious}
           disabled={!props.hasPrevious}
           testID="previous-button"
@@ -209,7 +216,7 @@ export function PlayerControls(props: PlayerControlsProps) {
         <IconButton
           icon={SkipForwardIcon}
           variant="glyph"
-          accessibilityLabel={`Next ${itemNoun}`}
+          accessibilityLabel="Next video"
           onPress={props.onNext}
           disabled={!props.hasNext}
           testID="next-button"
@@ -230,31 +237,29 @@ export function PlayerControls(props: PlayerControlsProps) {
           onSeek={props.onSeek}
           onScrubbingChange={props.onScrubbingChange}
         />
-        {isAudio ? null : (
-          <View style={styles.actions}>
+        <View style={styles.actions}>
+          <IconButton
+            icon={LockIcon}
+            variant="ghost"
+            accessibilityLabel="Lock controls"
+            onPress={props.onLock}
+            testID="lock-button"
+          />
+          <View style={styles.actionsRight}>
             <IconButton
-              icon={LockIcon}
-              variant="ghost"
-              accessibilityLabel="Lock controls"
-              onPress={props.onLock}
-              testID="lock-button"
+              icon={RatioIcon}
+              accessibilityLabel="Change aspect ratio"
+              onPress={props.onCycleAspect}
+              testID="aspect-button"
             />
-            <View style={styles.actionsRight}>
-              <IconButton
-                icon={RatioIcon}
-                accessibilityLabel="Change aspect ratio"
-                onPress={props.onCycleAspect}
-                testID="aspect-button"
-              />
-              <IconButton
-                icon={PictureInPictureIcon}
-                accessibilityLabel="Picture in picture"
-                onPress={props.onPictureInPicture}
-                testID="pip-button"
-              />
-            </View>
+            <IconButton
+              icon={PictureInPictureIcon}
+              accessibilityLabel="Picture in picture"
+              onPress={props.onPictureInPicture}
+              testID="pip-button"
+            />
           </View>
-        )}
+        </View>
       </View>
     </View>
   );
@@ -307,10 +312,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xxxl,
-  },
-  centerAudio: {
-    alignItems: 'flex-end',
-    paddingBottom: spacing.lg,
   },
   bottomBar: {
     gap: spacing.xs,

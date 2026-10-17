@@ -5,11 +5,20 @@ import { TaskCancelledError } from '../../../shared/utils/taskQueue';
 import { getCachedThumbnail, requestThumbnail } from '../services/thumbnails';
 import type { VideoItem } from '../types';
 
-/** Thumbnail or album-art URI, or null while it loads / when the item has none. */
-export function useThumbnail(item: VideoItem): string | null {
-  const [uri, setUri] = useState(() => getCachedThumbnail(item) ?? null);
+/**
+ * Thumbnail or album-art URI, or null while it loads / when the item has none. A null item
+ * (nothing that needs artwork) asks for nothing.
+ */
+export function useThumbnail(item: VideoItem | null): string | null {
+  const [uri, setUri] = useState(() =>
+    item ? getCachedThumbnail(item) ?? null : null,
+  );
 
   useEffect(() => {
+    if (!item) {
+      setUri(null);
+      return;
+    }
     const cached = getCachedThumbnail(item);
     setUri(cached ?? null);
     if (cached !== undefined) {

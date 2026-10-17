@@ -1,8 +1,8 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import type { MainTabScreenProps } from '../../../app/navigation/types';
+import { DialogHost } from '../../../shared/components/Dialog';
 import { makeVideo } from '../../../test/fixtures';
 import {
   lastPlaybackRequest,
@@ -19,7 +19,10 @@ jest.mock('@react-navigation/native', () => ({
 
 async function renderScreen() {
   await render(
-    <RecentScreen {...screenProps<MainTabScreenProps<'Recent'>>('Recent')} />,
+    <>
+      <RecentScreen {...screenProps<MainTabScreenProps<'Recent'>>('Recent')} />
+      <DialogHost />
+    </>,
   );
 }
 
@@ -58,14 +61,13 @@ describe('RecentScreen', () => {
 
   it('clears history after confirmation', async () => {
     recordProgress(makeVideo('a'), 100, 600);
-    jest
-      .spyOn(Alert, 'alert')
-      .mockImplementation((_title, _message, buttons) => {
-        buttons?.find(button => button.style === 'destructive')?.onPress?.();
-      });
     await renderScreen();
 
     await fireEvent.press(screen.getByLabelText('Clear watch history'));
+    expect(screen.getByText('Clear watch history?')).toBeOnTheScreen();
+    expect(historyStore.getState()).not.toEqual({});
+
+    await fireEvent.press(screen.getByTestId('dialog-Clear'));
     expect(historyStore.getState()).toEqual({});
     expect(screen.getByText('Nothing watched yet')).toBeOnTheScreen();
   });

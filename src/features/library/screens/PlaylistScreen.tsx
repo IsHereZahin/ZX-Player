@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
 
 import type { LibraryStackScreenProps } from '../../../app/navigation/types';
+import { showDialog } from '../../../shared/components/Dialog';
 import { IconButton } from '../../../shared/components/IconButton';
 import {
   OptionRow,
@@ -61,18 +61,19 @@ export function PlaylistScreen({ navigation, route }: Props) {
   }
 
   const confirmDelete = () =>
-    Alert.alert(
-      `Delete "${playlist.name}"?`,
-      'The playlist is removed. Its videos and music stay on your device.',
-      [
-        { text: 'Cancel', style: 'cancel' },
+    showDialog({
+      title: `Delete "${playlist.name}"?`,
+      message:
+        'The playlist is removed. Its videos and music stay on your device.',
+      actions: [
+        { label: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          label: 'Delete',
           style: 'destructive',
           onPress: () => deletePlaylist(id),
         },
       ],
-    );
+    });
 
   return (
     <>

@@ -2,15 +2,15 @@ import React from 'react';
 import { PermissionsAndroid, Platform } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-import type { MainTabScreenProps } from '../../../app/navigation/types';
-import { screenProps } from '../../../test/navigation';
+import type { SettingsStackScreenProps } from '../../../app/navigation/types';
+import { mockNavigation, screenProps } from '../../../test/navigation';
 import { SettingsScreen } from '../SettingsScreen';
 import { settingsStore } from '../settingsStore';
 
 async function renderScreen() {
   await render(
     <SettingsScreen
-      {...screenProps<MainTabScreenProps<'Settings'>>('Settings')}
+      {...screenProps<SettingsStackScreenProps<'SettingsHome'>>('SettingsHome')}
     />,
   );
 }
@@ -20,6 +20,16 @@ afterEach(() => {
 });
 
 describe('SettingsScreen', () => {
+  it('opens About, showing the installed version', async () => {
+    await renderScreen();
+
+    expect(screen.getByTestId('setting-about')).toHaveTextContent(
+      /About ZX Player.*1\.10/,
+    );
+    await fireEvent.press(screen.getByTestId('setting-about'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('About');
+  });
+
   it('toggles playback and gesture preferences', async () => {
     await renderScreen();
 

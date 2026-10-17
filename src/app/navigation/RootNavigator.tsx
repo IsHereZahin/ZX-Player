@@ -5,7 +5,10 @@ import {
   createBottomTabNavigator,
   type BottomTabBarProps,
 } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import {
+  createNativeStackNavigator,
+  type NativeStackNavigationOptions,
+} from '@react-navigation/native-stack';
 
 import { RecentScreen } from '../../features/history/RecentScreen';
 import {
@@ -24,6 +27,7 @@ import { isAudioLibrarySupported } from '../../features/library/services/mediaLi
 import { SearchScreen } from '../../features/library/screens/SearchScreen';
 import { MiniPlayer } from '../../features/player/components/MiniPlayer';
 import { showFullPlayer } from '../../features/player/nowPlaying';
+import { AboutScreen } from '../../features/settings/AboutScreen';
 import { SettingsScreen } from '../../features/settings/SettingsScreen';
 import {
   FilmIcon,
@@ -40,11 +44,24 @@ import type {
   LibraryStackParamList,
   MainTabParamList,
   RootStackParamList,
+  SettingsStackParamList,
 } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const LibraryStack = createNativeStackNavigator<LibraryStackParamList>();
+const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
+
+/** Options shared by the stacks that live inside a tab. */
+function useTabStackOptions(): NativeStackNavigationOptions {
+  const colors = useColors();
+  return {
+    headerShown: false,
+    contentStyle: { backgroundColor: colors.background },
+    // Android 13+ pushes take 450 ms by default; this slide takes 200 ms (Android only).
+    animation: 'ios_from_right',
+  };
+}
 
 /**
  * Folders, search and their videos open inside the tab, so the tab bar (and the mini
@@ -52,14 +69,8 @@ const LibraryStack = createNativeStackNavigator<LibraryStackParamList>();
  */
 function libraryStack(tab: LibraryTab) {
   return function LibraryStackNavigator() {
-    const colors = useColors();
     return (
-      <LibraryStack.Navigator
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      >
+      <LibraryStack.Navigator screenOptions={useTabStackOptions()}>
         <LibraryStack.Screen
           name="LibraryHome"
           component={LibraryScreen}
@@ -88,6 +99,15 @@ function libraryStack(tab: LibraryTab) {
 }
 const VideosStack = libraryStack('Library');
 const AudioStack = libraryStack('Audio');
+
+function SettingsStackNavigator() {
+  return (
+    <SettingsStack.Navigator screenOptions={useTabStackOptions()}>
+      <SettingsStack.Screen name="SettingsHome" component={SettingsScreen} />
+      <SettingsStack.Screen name="About" component={AboutScreen} />
+    </SettingsStack.Navigator>
+  );
+}
 
 /**
  * The floating tab bar, topped by the mini player while something plays in the
@@ -161,7 +181,7 @@ function MainTabs() {
       />
       <Tab.Screen
         name="Settings"
-        component={SettingsScreen}
+        component={SettingsStackNavigator}
         options={{
           tabBarIcon: SettingsTabIcon,
           tabBarButtonTestID: 'tab-settings',

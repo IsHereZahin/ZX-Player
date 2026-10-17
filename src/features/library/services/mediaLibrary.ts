@@ -59,6 +59,11 @@ export function allMediaFolder(
   return { ...ALL_FOLDER[scope], count, album: null, newIds, scope };
 }
 
+/** True for the "All …" entry, which stands for the whole library of its scope. */
+export function isAllMediaFolder(folder: VideoFolder): boolean {
+  return folder.id === ALL_FOLDER[folder.scope].id;
+}
+
 export const ALL_VIDEOS_FOLDER = allMediaFolder('video');
 
 const VIDEO_FIELDS: GetPhotosParams['include'] = [

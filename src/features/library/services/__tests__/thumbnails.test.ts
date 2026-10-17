@@ -43,11 +43,11 @@ describe('on Android', () => {
 
     expect(getThumbnailMock).toHaveBeenCalledWith(
       sampleVideo.uri,
-      'zxplayer_101_1700000500',
-      320,
+      'zxplayer_101_1700000500_512',
+      512,
     );
     expect(path).toBe(
-      'file:///data/cache/thumbnails/zxplayer_101_1700000500.jpg',
+      'file:///data/cache/thumbnails/zxplayer_101_1700000500_512.jpg',
     );
     expect(getCachedThumbnail(sampleVideo)).toBe(path);
 
@@ -57,7 +57,7 @@ describe('on Android', () => {
 
   it('keys the disk cache by modification time so edited files refresh', async () => {
     await requestThumbnail({ ...sampleVideo, modifiedAtSec: 42 }).promise;
-    expect(getThumbnailMock.mock.calls[0][1]).toBe('zxplayer_101_42');
+    expect(getThumbnailMock.mock.calls[0][1]).toBe('zxplayer_101_42_512');
   });
 
   it('loads the most recently requested rows first', async () => {
@@ -90,8 +90,8 @@ describe('on Android', () => {
     await expect(requestThumbnail(sampleSong).promise).resolves.toBeNull();
     expect(getThumbnailMock).toHaveBeenCalledWith(
       sampleSong.uri,
-      'zxplayer_501_1700000900',
-      320,
+      'zxplayer_501_1700000900_512',
+      512,
     );
     expect(getCachedThumbnail(sampleSong)).toBeNull();
 

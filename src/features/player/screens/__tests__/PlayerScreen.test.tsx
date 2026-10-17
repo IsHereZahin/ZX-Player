@@ -300,6 +300,24 @@ describe('controls', () => {
     expect(screen.getByTestId('sleep-sheet')).toBeOnTheScreen();
   });
 
+  it('shows a handle at the playback position', async () => {
+    await renderPlayer();
+    await loadVideo();
+    await fireEvent(screen.getByTestId('seek-bar'), 'layout', {
+      nativeEvent: { layout: { width: 400, height: 40 } },
+    });
+    await act(async () =>
+      fireEvent(video(), 'progress', {
+        currentTime: 60,
+        playableDuration: 90,
+      }),
+    );
+    // 60 s of 600 s on a 400 pt track; the 16 pt handle is centred on that point.
+    expect(
+      StyleSheet.flatten(screen.getByTestId('seek-thumb').props.style).left,
+    ).toBeCloseTo((60 / 600) * 400 - 8);
+  });
+
   it('locks the controls until the unlock button is pressed', async () => {
     await renderPlayer();
     await fireEvent.press(screen.getByTestId('lock-button'));
@@ -552,6 +570,41 @@ describe('queue', () => {
       expect(screen.getByTestId('player-toast')).toHaveTextContent(
         'Sleep timer ended · Playback paused',
       );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('offers 15, 30 and 45 minutes, then a custom length', async () => {
+    useAndroid();
+    jest.useFakeTimers();
+    try {
+      await renderPlayer();
+      await fireEvent.press(screen.getByTestId('sleep-button'));
+      expect(screen.getByText('15 minutes')).toBeOnTheScreen();
+      expect(screen.getByText('30 minutes')).toBeOnTheScreen();
+      expect(screen.getByText('45 minutes')).toBeOnTheScreen();
+      // Nothing to turn off yet.
+      expect(screen.queryByTestId('sleep-off')).toBeNull();
+
+      await fireEvent.press(screen.getByTestId('sleep-custom'));
+      await fireEvent.changeText(screen.getByTestId('sleep-custom-input'), '0');
+      await fireEvent.press(screen.getByTestId('sleep-custom-start'));
+      expect(screen.getByTestId('sleep-custom-input')).toBeOnTheScreen();
+
+      await fireEvent.changeText(
+        screen.getByTestId('sleep-custom-input'),
+        '20',
+      );
+      await fireEvent.press(screen.getByTestId('sleep-custom-start'));
+      expect(screen.getByTestId('player-toast')).toHaveTextContent(
+        'Sleep timer · 20 min left',
+      );
+
+      await act(async () => {
+        jest.advanceTimersByTime(20 * 60 * 1000);
+      });
+      expect(video().props.paused).toBe(true);
     } finally {
       jest.useRealTimers();
     }
@@ -923,6 +976,21 @@ describe('audio', () => {
     // A tap does not hide the controls of an audio track.
     await runGesture('player-single-tap', tap(400));
     expect(screen.getByTestId('player-controls')).toBeOnTheScreen();
+  });
+
+  it('lays a track out like a music player', async () => {
+    await renderPlayer({ queue: [makeSong('1'), makeSong('2')] }, loadAudio);
+
+    expect(screen.getByText('1 of 2')).toBeOnTheScreen();
+    expect(screen.getByTestId('audio-backdrop')).toBeOnTheScreen();
+    // Speed, repeat, sleep and more; nothing that needs a picture.
+    expect(screen.getByTestId('quick-actions')).toBeOnTheScreen();
+    expect(screen.queryByTestId('rotate-button')).toBeNull();
+    expect(screen.queryByTestId('lock-button')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('play-pause-button'));
+    expect(video().props.paused).toBe(true);
+    expect(screen.getByLabelText('Play')).toBeOnTheScreen();
   });
 
   it('always keeps playing in the background, with notification controls', async () => {

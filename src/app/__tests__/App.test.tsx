@@ -39,6 +39,20 @@ describe('App', () => {
     expect(await screen.findByText('Resume playback')).toBeOnTheScreen();
   });
 
+  it('opens About inside the Settings tab, keeping the tab bar', async () => {
+    (CameraRoll.getAlbums as jest.Mock).mockResolvedValueOnce(sampleAlbums);
+    await render(<App />);
+    await screen.findByText('Camera');
+
+    await fireEvent.press(screen.getByTestId('tab-settings'));
+    await fireEvent.press(await screen.findByTestId('setting-about'));
+
+    expect(await screen.findByTestId('about-version')).toHaveTextContent(
+      'Version 1.10 (11)',
+    );
+    expect(screen.getByTestId('tab-settings')).toBeOnTheScreen();
+  });
+
   it('opens folders inside the tab, keeping the tab bar', async () => {
     (CameraRoll.getAlbums as jest.Mock).mockResolvedValueOnce(sampleAlbums);
     await render(<App />);

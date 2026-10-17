@@ -20,13 +20,19 @@ export type LibraryStackParamList = {
   RecycleBin: { scope: MediaScope };
 };
 
+/** Settings and the pages it opens; the tab bar stays visible on them too. */
+export type SettingsStackParamList = {
+  SettingsHome: undefined;
+  About: undefined;
+};
+
 export type MainTabParamList = {
   /** Videos, or videos and audio together (Settings → Audio and video). */
   Library: NavigatorScreenParams<LibraryStackParamList> | undefined;
   /** Only shown while audio has its own tab. */
   Audio: NavigatorScreenParams<LibraryStackParamList> | undefined;
   Recent: undefined;
-  Settings: undefined;
+  Settings: NavigatorScreenParams<SettingsStackParamList> | undefined;
 };
 
 export type RootStackParamList = {
@@ -47,5 +53,11 @@ export type MainTabScreenProps<T extends keyof MainTabParamList> =
 export type LibraryStackScreenProps<T extends keyof LibraryStackParamList> =
   CompositeScreenProps<
     NativeStackScreenProps<LibraryStackParamList, T>,
+    MainTabScreenProps<keyof MainTabParamList>
+  >;
+
+export type SettingsStackScreenProps<T extends keyof SettingsStackParamList> =
+  CompositeScreenProps<
+    NativeStackScreenProps<SettingsStackParamList, T>,
     MainTabScreenProps<keyof MainTabParamList>
   >;

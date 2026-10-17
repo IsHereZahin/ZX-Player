@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZX Player</title>
+<meta name="description" content="ZX Player is a fast, minimal video and audio player for Android. It works fully offline, it's free and it has no ads.">
+<link rel="canonical" href="https://zx-player.vercel.app/">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F4F7FB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B0F15" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ZX Player">
+<meta property="og:url" content="https://zx-player.vercel.app/">
+<meta property="og:title" content="ZX Player: a fast, offline video player for Android">
+<meta property="og:description" content="A fast, minimal video and audio player for Android. Works fully offline. Free, with no ads.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='108' y2='108' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0' stop-color='%238CC6FB'/%3E%3Cstop offset='0.5' stop-color='%235DA6F5'/%3E%3Cstop offset='1' stop-color='%232F7FE0'/%3E%3C/linearGradient%3E%3CradialGradient id='shine' cx='30' cy='20' r='70' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0' stop-color='%23FFFFFF' stop-opacity='0.22'/%3E%3Cstop offset='1' stop-color='%23FFFFFF' stop-opacity='0'/%3E%3C/radialGradient%3E%3CclipPath id='upper'%3E%3Cpath d='M-200,44.4 L65.28,44.4 L53.28,59.9 L200,59.9 L200,-200 L-200,-200 Z'/%3E%3C/clipPath%3E%3CclipPath id='lower'%3E%3Cpath d='M-200,48.6 L56.72,48.6 L44.72,64.1 L200,64.1 L200,200 L-200,200 Z'/%3E%3C/clipPath%3E%3C/defs%3E%3Crect width='108' height='108' rx='24' fill='url(%23bg)'/%3E%3Crect width='108' height='108' rx='24' fill='url(%23shine)'/%3E%3Cg transform='translate(54 54) scale(1.04) translate(-54 -54)'%3E%3Cg transform='translate(0 2.4)' opacity='0.2'%3E%3Cpath d='M41,31 L41,77 L80,54 Z' fill='%23000000' stroke='%23000000' stroke-width='7' stroke-linejoin='round' clip-path='url(%23upper)'/%3E%3Cpath d='M41,31 L41,77 L80,54 Z' fill='%23000000' stroke='%23000000' stroke-width='7' stroke-linejoin='round' clip-path='url(%23lower)'/%3E%3C/g%3E%3Cpath d='M41,31 L41,77 L80,54 Z' fill='%23FFFFFF' stroke='%23FFFFFF' stroke-width='7' stroke-linejoin='round' clip-path='url(%23upper)'/%3E%3Cpath d='M41,31 L41,77 L80,54 Z' fill='%23DCEBFD' stroke='%23DCEBFD' stroke-width='7' stroke-linejoin='round' clip-path='url(%23lower)'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap">
+<style>
+/* Tokens follow the app's default "Sky" theme (src/shared/theme.ts). */
+:root {
+  --gutter: 16px;
+  --radius-sm: 10px; --radius-md: 14px; --radius-lg: 20px; --radius-xl: 28px;
+  --bg: #F4F7FB; --surface: #FFFFFF; --ink: #0B0F15; --ink-2: #5F6673; --line: rgba(17, 19, 24, .08);
+  --accent-text: #1E6BCB; --btn: #0B0F15; --btn-text: #FFFFFF;
+  --art: linear-gradient(180deg, #E3EEFB 0%, #EEF3F9 75%);
+  --cta-glow: #D3E7FD;
+  --hero-1: #195FBA; --hero-2: #1E6BCB; --hero-3: #4A97F0; --hero-4: #B4D7FB; --hero-glow: rgba(222, 238, 255, .95);
+  --glass: rgba(255, 255, 255, .42); --glass-tile: rgba(255, 255, 255, .62); --glass-line: rgba(255, 255, 255, .8);
+  --fast: #0B0F15;
+  /* The app's own palette, for the mockups (they follow the device theme like the app). */
+  --app-bg: #F4F7FB; --app-surface: #FFFFFF; --app-text: #111318; --app-text-2: #5F6673;
+  --app-soft: rgba(17, 19, 24, .06); --app-line: rgba(17, 19, 24, .08); --app-glow: #A9D1FB;
+  --app-accent: #3D8EF0; --app-on-accent: #111318; --app-bar: rgba(244, 247, 251, .84); --app-danger: #D93025;
+  /* The player is always dark, so it always uses the dark accent. */
+  --player-accent: #5AA8F8;
+}
+@media (min-width: 640px) { :root { --gutter: 24px; } }
+@media (min-width: 1024px) { :root { --gutter: clamp(32px, 3vw, 56px); } }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0B0F15; --surface: #17191D; --ink: #F2F4F7; --ink-2: #9AA1AC; --line: rgba(255, 255, 255, .08);
+    --accent-text: #7DBBFA; --btn: #F2F4F7; --btn-text: #0B0F15;
+    --art: linear-gradient(180deg, #132338 0%, #13181F 75%);
+    --cta-glow: rgba(28, 79, 134, .65);
+    --hero-1: #0D2748; --hero-2: #11345F; --hero-3: #1C4F86; --hero-4: #16304F; --hero-glow: rgba(90, 168, 248, .28);
+    --glass: rgba(23, 25, 29, .42); --glass-tile: rgba(23, 25, 29, .62); --glass-line: rgba(255, 255, 255, .12);
+    --fast: #17191D;
+    --app-bg: #0B0F15; --app-surface: #17191D; --app-text: #F2F4F7; --app-text-2: #9AA1AC;
+    --app-soft: rgba(255, 255, 255, .08); --app-line: rgba(255, 255, 255, .08); --app-glow: #1C4F86;
+    --app-accent: #5AA8F8; --app-on-accent: #111318; --app-bar: rgba(23, 25, 29, .84); --app-danger: #FF6B60;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body {
+  margin: 0; overflow-x: clip;
+  background: var(--bg); color: var(--ink);
+  font: 400 1rem/1.55 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, p { margin: 0; }
+a { color: inherit; }
+svg { display: block; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--accent-text); outline-offset: 3px; }
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.i { width: 1em; height: 1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.logo { flex: none; }
+.skip {
+  position: absolute; left: 16px; top: -64px; z-index: 10; padding: 10px 18px; border-radius: 999px;
+  background: var(--btn); color: var(--btn-text); font-weight: 600; text-decoration: none;
+}
+.skip:focus { top: 16px; }
+/* Every section spans the full width; only the gutter keeps it off the edges. */
+.wrap { width: 100%; padding-inline: var(--gutter); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 56px; padding: 0 28px; border-radius: 999px;
+  font-size: 1.0625rem; font-weight: 600; letter-spacing: -.01em; text-decoration: none;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.btn .i { width: 20px; height: 20px; }
+.btn:hover { transform: translateY(-2px); }
+@media (max-width: 360px) { .btn { padding: 0 20px; font-size: 1rem; } }
+.btn-light { background: #FFFFFF; color: #0B0F15; box-shadow: 0 14px 34px -14px rgba(3, 24, 58, .6); }
+.btn-ink { background: var(--btn); color: var(--btn-text); box-shadow: 0 14px 34px -18px rgba(11, 15, 21, .6); }
+.meta { font-size: .875rem; font-variant-numeric: tabular-nums; }
+
+/* Top bar: drawn as the top of the hero card */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 12px; padding: 16px 16px 0 20px;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--hero-1); color: #FFFFFF;
+}
+.brand { display: flex; align-items: center; gap: 10px; border-radius: 12px; font-weight: 600; font-size: 1.0625rem; letter-spacing: -.01em; text-decoration: none; }
+.brand .logo { width: 32px; height: 32px; }
+.pill-btn {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 18px; border-radius: 999px;
+  background: #FFFFFF; color: #0B0F15; font-size: .875rem; font-weight: 600; text-decoration: none;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.pill-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .4); }
+.topbar :focus-visible, .hero-card :focus-visible { outline-color: #FFFFFF; }
+
+/* Hero. Text sits on the deeper blue (white on #1E6BCB is 5.2:1); the glow stays below it. */
+.hero-card {
+  position: relative; overflow: hidden; padding: clamp(40px, 7vw, 72px) 20px 0;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl); color: #FFFFFF; text-align: center;
+  background:
+    radial-gradient(70% 36% at 50% 100%, var(--hero-glow), transparent 72%),
+    linear-gradient(180deg, var(--hero-1) 0, var(--hero-2) 34rem, var(--hero-3) 48rem, var(--hero-4) 100%);
+}
+.badge {
+  display: inline-block; padding: 7px 15px; border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .38); background: rgba(255, 255, 255, .08);
+  font-size: .8125rem; font-weight: 600; letter-spacing: .01em;
+}
+h1 { margin: 20px auto 0; font-size: clamp(2.5rem, 1.4rem + 5.6vw, 5.5rem); font-weight: 600; line-height: .98; letter-spacing: -.045em; }
+.lede { max-width: 33rem; margin: 20px auto 0; font-size: clamp(1.0625rem, 1rem + .3vw, 1.1875rem); color: rgba(255, 255, 255, .95); }
+.hero-cta { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 30px; }
+.hero-cta .meta { color: #EAF3FF; }
+.hero-copy > * { animation: fade-up .7s cubic-bezier(.2, .7, .2, 1) both; }
+.hero-copy > :nth-child(2) { animation-delay: .06s; }
+.hero-copy > :nth-child(3) { animation-delay: .12s; }
+.hero-copy > :nth-child(4) { animation-delay: .18s; }
+.stage { display: flex; justify-content: center; margin-top: clamp(40px, 6vw, 60px); }
+
+/* Facts: frosted tiles straddling the hero's bottom edge */
+.facts {
+  position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
+  width: min(680px, calc(100% - 24px)); margin: -28px auto 0; padding: 8px; list-style: none;
+  border: 1px solid var(--glass-line); border-radius: 24px; background: var(--glass);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow: 0 20px 44px -26px rgba(16, 44, 84, .45);
+  animation: fade-up .8s cubic-bezier(.2, .7, .2, 1) .4s both;
+}
+.facts li { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 4px; border-radius: 16px; background: var(--glass-tile); text-align: center; }
+.facts strong { font-size: clamp(1.25rem, 1rem + 1.2vw, 1.75rem); font-weight: 600; line-height: 1.1; letter-spacing: -.02em; }
+.facts span { margin-top: 4px; color: var(--ink-2); font-size: .6875rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+@media (max-width: 420px) { .facts span { font-size: .625rem; letter-spacing: .04em; } }
+@media (max-width: 340px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Phone mockup of the home screen. Sizes inside are in em: 1em = 10 app points. */
+.phone {
+  --pw: min(272px, calc(100vw - 72px));
+  position: relative; width: var(--pw); aspect-ratio: 9 / 18.6; flex: none;
+  padding: calc(var(--pw) * .034);
+  border-radius: calc(var(--pw) * .165); background: #0B0D11;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .14), 0 40px 70px -30px rgba(4, 24, 56, .6);
+  animation: rise 1s cubic-bezier(.2, .7, .2, 1) .2s both;
+}
+@media (min-width: 720px) { .phone { --pw: 300px; } }
+.screen {
+  position: relative; height: 100%; overflow: hidden; border-radius: calc(var(--pw) * .135);
+  background: var(--app-bg); color: var(--app-text); font-size: calc(var(--pw) * .0236); line-height: 1.25; text-align: left;
+}
+.screen::before { content: ""; position: absolute; inset: 0 0 auto; height: 32em; background: linear-gradient(var(--app-glow), transparent); opacity: .9; }
+.screen > * { position: relative; }
+.status { display: flex; align-items: center; justify-content: space-between; height: 4.6em; padding: 0 2.6em; }
+.status-time { font-size: 1.4em; font-weight: 600; }
+.status-cam { position: absolute; left: 50%; top: 1.35em; width: 1.9em; height: 1.9em; margin-left: -.95em; border-radius: 50%; background: #0B0D11; }
+.status-icons { display: flex; align-items: center; gap: .6em; }
+.status-signal { width: 1.4em; height: 1.2em; background: currentColor; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+.status-battery { position: relative; width: 2.4em; height: 1.2em; border: .15em solid currentColor; border-radius: .35em; opacity: .9; }
+.status-battery::after { content: ""; position: absolute; inset: .15em 35% .15em .15em; border-radius: .12em; background: currentColor; }
+.app-header { display: flex; align-items: center; gap: 1.2em; padding: .6em 1.6em 1em; }
+.app-header .logo { width: 3.4em; height: 3.4em; }
+.app-title { flex: 1; font-size: 2em; font-weight: 600; letter-spacing: -.02em; }
+.round { display: grid; place-items: center; width: 4.4em; height: 4.4em; border-radius: 50%; background: var(--app-surface); box-shadow: 0 .1em .5em rgba(17, 19, 24, .06); }
+.round .i { width: 2.2em; height: 2.2em; stroke-width: 1.9; }
+.chips { display: flex; gap: .6em; padding: .4em 1.6em 1.2em; overflow: hidden; }
+.chip { display: flex; flex: none; align-items: center; gap: .6em; height: 3.8em; padding: 0 1.2em; border-radius: 99em; background: var(--app-surface); }
+.chip .i { width: 1.6em; height: 1.6em; stroke-width: 1.75; }
+.chip span { font-size: 1.3em; font-weight: 500; }
+.overline { padding: .7em 1.67em .85em; color: var(--app-text-2); font-size: 1.2em; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
+.folder { display: flex; align-items: center; gap: 1.4em; height: 7.2em; margin: 0 1.6em .8em; padding: 0 1.4em; border-radius: 2em; background: var(--app-surface); }
+.folder-tile { display: grid; flex: none; place-items: center; width: 4.4em; height: 4.4em; border-radius: 50%; background: var(--app-soft); }
+.folder-tile .i { width: 2.2em; height: 2.2em; stroke-width: 1.75; }
+.folder-text { display: flex; flex: 1; flex-direction: column; gap: .2em; min-width: 0; }
+.folder-text b { overflow: hidden; font-size: 1.7em; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; text-overflow: ellipsis; }
+.folder-text small { color: var(--app-text-2); font-size: 1.3em; }
+.tag { display: inline-flex; flex: none; align-items: center; height: 1.8em; padding: 0 .6em; border-radius: .6em; background: var(--app-accent); color: var(--app-on-accent); font-weight: 700; letter-spacing: .06em; }
+.tabs {
+  position: absolute; left: 50%; bottom: 3.6em; display: flex; gap: .6em; padding: .5em; transform: translateX(-50%);
+  border: 1px solid var(--app-line); border-radius: 99em; background: var(--app-bar);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 .8em 1.8em rgba(17, 19, 24, .12);
+}
+.tab { display: grid; place-items: center; width: 4.6em; height: 4.6em; border-radius: 50%; color: var(--app-text-2); }
+.tab .i { width: 2.1em; height: 2.1em; }
+.tab.on { background: var(--app-accent); color: var(--app-on-accent); }
+.home-bar { position: absolute; left: 50%; bottom: .9em; width: 10em; height: .45em; margin-left: -5em; border-radius: 1em; background: var(--app-text); opacity: .35; }
+
+/* Sections */
+.section { padding-top: clamp(80px, 11vw, 136px); }
+.head { max-width: 42rem; margin: 0 auto; text-align: center; }
+.kicker { display: inline-block; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--accent-text); font-size: .8125rem; font-weight: 600; }
+h2 { margin-top: 18px; font-size: clamp(2rem, 1.35rem + 2.8vw, 3.25rem); font-weight: 600; line-height: 1.06; letter-spacing: -.035em; }
+.sub { margin-top: 14px; color: var(--ink-2); font-size: 1.0625rem; }
+
+/* Feature cards */
+.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin: 48px 0 0; padding: 0; list-style: none; }
+@media (min-width: 760px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; } }
+.card { padding: 10px 10px 30px; border: 1px solid var(--line); border-radius: var(--radius-xl); background: var(--surface); text-align: center; }
+.card h3 { margin: 24px 20px 6px; font-size: 1.25rem; font-weight: 600; line-height: 1.25; letter-spacing: -.02em; }
+.card > p { max-width: 38ch; margin: 0 auto; padding: 0 20px; color: var(--ink-2); font-size: .96875rem; }
+.art { position: relative; display: grid; place-items: center; height: 260px; overflow: hidden; border-radius: var(--radius-lg); background: var(--art); color: var(--app-text); text-align: left; }
+.lift { box-shadow: 0 22px 44px -26px rgba(16, 44, 84, .45); }
+
+/* Player */
+.player { width: min(340px, 88%); overflow: hidden; border-radius: 20px; background: #111216; color: #FFFFFF; }
+.player-video {
+  display: grid; place-items: center; height: 118px;
+  background: radial-gradient(90% 120% at 80% 0%, rgba(255, 190, 120, .85), rgba(255, 190, 120, 0) 55%), linear-gradient(165deg, #3A6EA5, #17324F 60%, #0C1724);
+}
+.player-chip { padding: 6px 12px; border-radius: 999px; background: rgba(30, 30, 32, .72); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.player-body { padding: 12px 16px 16px; }
+.player-title { font-size: 13px; font-weight: 600; }
+.seek { position: relative; height: 6px; margin: 12px 0 7px; border-radius: 3px; background: rgba(255, 255, 255, .24); }
+.seek::before { content: ""; position: absolute; inset: 0 58% 0 0; border-radius: inherit; background: var(--player-accent); }
+.seek::after { content: ""; position: absolute; left: 42%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 4px rgba(0, 0, 0, .45); }
+.times { display: flex; justify-content: space-between; color: #9AA1AC; font-size: 11px; font-variant-numeric: tabular-nums; }
+.quick { display: flex; gap: 8px; margin-top: 12px; }
+.qa { display: grid; flex: none; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, .14); }
+.qa .i { width: 16px; height: 16px; }
+.qa.on { background: var(--player-accent); color: #111318; }
+.qa-speed { width: auto; padding: 0 11px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+
+/* Library */
+.stack { display: grid; gap: 1.1em; width: min(36em, 86%); font-size: 8.4px; line-height: 1.25; }
+@media (min-width: 1000px) { .stack { font-size: 9.4px; } }
+.stack .folder { margin: 0; }
+.stack .folder:not(.lift) { opacity: .78; }
+.stack .lift { transform: scale(1.04); }
+
+/* Sleep timer sheet (the player's sheets are dark) */
+.sheet { align-self: start; width: min(320px, 86%); margin-top: 26px; padding: 8px 12px 0; border-radius: 26px 26px 0 0; background: #1E1E20; color: #F2F4F7; box-shadow: 0 -10px 40px -20px rgba(0, 0, 0, .5); }
+.grabber { width: 36px; height: 5px; margin: 0 auto 12px; border-radius: 3px; background: rgba(255, 255, 255, .24); }
+.sheet-head { padding: 0 6px 10px; }
+.sheet-head b { display: block; font-size: 15px; font-weight: 600; }
+.sheet-head small { color: #9AA1AC; font-size: 12px; }
+.options { border-radius: 14px; background: rgba(255, 255, 255, .06); }
+.options div { display: flex; align-items: center; height: 38px; padding: 0 14px; border-top: 1px solid rgba(255, 255, 255, .08); font-size: 13.5px; }
+.options div:first-child { border-top: 0; }
+
+/* Colour themes */
+.picker { width: min(360px, 88%); padding: 16px 16px 18px; border-radius: 22px; background: var(--app-surface); }
+.picker-title { color: var(--app-text-2); font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
+.swatches { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 500; }
+.theme-logo {
+  --lo: rgba(255, 255, 255, .78);
+  display: block; width: 100%; max-width: 48px; aspect-ratio: 1; border-radius: 22%;
+  background: radial-gradient(circle at 28% 18%, rgba(255, 255, 255, .25), transparent 65%), linear-gradient(135deg, var(--a), var(--b));
+}
+.theme-logo svg { width: 100%; height: 100%; }
+.swatch.on .theme-logo { box-shadow: 0 0 0 2px var(--app-surface), 0 0 0 4px var(--app-accent); }
+.segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 16px; padding: 3px; border-radius: 12px; background: var(--app-soft); font-size: 12.5px; font-weight: 500; text-align: center; }
+.segmented span { padding: 7px 0; border-radius: 9px; }
+.segmented .on { background: var(--app-surface); box-shadow: 0 1px 3px rgba(17, 19, 24, .12); }
+
+/* Recycle Bin */
+.bin { display: grid; gap: 10px; width: min(350px, 88%); }
+.bin-row { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 18px; background: var(--app-surface); }
+.bin-row + .bin-row { opacity: .75; }
+.thumb { flex: none; width: 64px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #7FC4F5, #2F6FB8); }
+.thumb-warm { background: linear-gradient(135deg, #F7C17A, #D0657B); }
+.row-text { display: grid; flex: 1; min-width: 0; }
+.row-text b { overflow: hidden; font-size: 14px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.row-text small { color: var(--app-text-2); font-size: 12px; }
+.bin-actions { display: flex; gap: 8px; }
+.bin-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 999px; background: var(--app-surface); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.bin-btn .i { width: 15px; height: 15px; }
+.bin-btn.ink { background: var(--app-text); color: var(--app-bg); }
+.bin-btn.danger { color: var(--app-danger); }
+
+/* About / privacy */
+.about { width: min(330px, 86%); padding: 22px 20px 20px; border-radius: 22px; background: var(--app-surface); text-align: center; }
+.about .logo { width: 52px; height: 52px; margin: 0 auto; }
+.about b { display: block; margin-top: 10px; font-size: 16px; font-weight: 600; }
+.about-text { display: block; max-width: 25ch; margin: 4px auto 0; color: var(--app-text-2); font-size: 12.5px; line-height: 1.4; }
+.pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 14px; }
+.pills span { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 11px; border-radius: 999px; background: var(--app-soft); font-size: 11.5px; font-weight: 500; }
+.pills .i { width: 13px; height: 13px; }
+
+/* Background play notification */
+.notice { width: min(340px, 88%); padding: 14px 16px 16px; border-radius: 24px; background: var(--app-surface); }
+.notice-top { display: flex; align-items: center; gap: 8px; color: var(--app-text-2); font-size: 11.5px; }
+.notice-top .logo { width: 16px; height: 16px; }
+.notice-main { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.cover { flex: none; width: 52px; height: 52px; border-radius: 12px; background: radial-gradient(circle at 30% 30%, #FFD29A, transparent 55%), linear-gradient(135deg, #F06C8F, #5B3FD0); }
+.progress { height: 4px; margin-top: 14px; border-radius: 2px; background: linear-gradient(90deg, var(--app-accent) 35%, var(--app-soft) 35%); }
+.controls { display: flex; align-items: center; justify-content: center; gap: 24px; margin-top: 12px; }
+.controls .i { width: 20px; height: 20px; }
+.play { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--app-text); color: var(--app-bg); }
+
+/* Subtitles */
+.frame { position: relative; width: min(340px, 88%); aspect-ratio: 16 / 9; overflow: hidden; border-radius: 18px; background: radial-gradient(80% 90% at 25% 15%, rgba(120, 200, 190, .7), transparent 60%), linear-gradient(160deg, #1F4E5A, #0E1E28 65%, #081017); }
+.caption { position: absolute; left: 50%; bottom: 13%; max-width: 90%; padding: 4px 10px; transform: translateX(-50%); border-radius: 6px; background: rgba(0, 0, 0, .6); color: #FFFFFF; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.frame-tags { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; }
+.frame-tags span { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(30, 30, 32, .72); color: #FFFFFF; font-size: 11px; font-weight: 600; }
+.frame-tags .on { background: var(--player-accent); color: #111318; }
+.frame-tags .i { width: 13px; height: 13px; }
+
+/* Narrow cards: shrink the illustrations so they fit the shorter art panel uncropped. */
+@media (max-width: 480px) {
+  .art { height: 240px; }
+  .player-video { height: 92px; }
+  .about { width: 90%; padding: 14px 12px; }
+  .about .logo { width: 40px; height: 40px; }
+  .about b { margin-top: 8px; }
+  .about-text { max-width: 30ch; font-size: 12px; }
+  .pills { margin-top: 12px; }
+  .bin { width: 92%; }
+  .bin-btn { padding: 0 11px; font-size: 12px; }
+  .picker { width: 94%; padding: 14px 12px 16px; }
+  .swatches { gap: 6px; }
+  .swatch { font-size: 10px; }
+}
+@media (max-width: 340px) { .swatch-name { display: none; } }
+
+/* Also included */
+.extras-title { margin-top: 48px; color: var(--ink-2); font-size: .9375rem; font-weight: 600; text-align: center; }
+.extras { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
+.extras li { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: .875rem; }
+
+/* Why it feels fast */
+.fast {
+  position: relative; overflow: hidden; padding: clamp(36px, 6vw, 64px) clamp(22px, 5vw, 64px);
+  border: 1px solid var(--line); border-radius: var(--radius-xl); color: #F2F4F7;
+  background: radial-gradient(60% 80% at 100% 0%, rgba(61, 142, 240, .32), transparent 62%), var(--fast);
+}
+.fast h2 { margin-top: 0; color: #FFFFFF; }
+.fast-sub { max-width: 36rem; margin-top: 12px; color: #AEB5C0; font-size: 1.0625rem; }
+.fast-list { display: grid; gap: 28px; margin: 40px 0 0; padding: 0; list-style: none; }
+@media (min-width: 760px) { .fast-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; } }
+.fast-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--player-accent); color: #111318; }
+.fast-icon .i { width: 21px; height: 21px; }
+.fast h3 { margin-top: 16px; color: #FFFFFF; font-size: 1.125rem; font-weight: 600; letter-spacing: -.015em; }
+.fast-list p { margin-top: 6px; color: #AEB5C0; font-size: .96875rem; }
+
+/* FAQ */
+.faq { display: grid; gap: 12px; max-width: 760px; margin: 48px auto 0; }
+.faq details { border: 1px solid var(--line); border-radius: 22px; background: var(--surface); }
+.faq summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 16px 16px 16px 22px; border-radius: 22px; cursor: pointer; list-style: none;
+  font-size: 1.0625rem; font-weight: 600; letter-spacing: -.01em;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after {
+  content: ""; flex: none; width: 32px; height: 32px; border-radius: 50%;
+  background:
+    linear-gradient(var(--btn-text), var(--btn-text)) center / 12px 2px no-repeat,
+    linear-gradient(var(--btn-text), var(--btn-text)) center / 2px 12px no-repeat,
+    var(--btn);
+  transition: transform .25s ease;
+}
+.faq details[open] summary::after { transform: rotate(45deg); }
+.answer { padding: 0 22px 20px; color: var(--ink-2); }
+.answer p + p { margin-top: 10px; }
+.answer ol { margin: 0; padding-left: 1.3em; }
+.answer li + li { margin-top: 4px; }
+.answer strong { color: var(--ink); font-weight: 600; }
+
+/* Final call to action */
+.cta-card {
+  padding: clamp(48px, 8vw, 88px) 20px; border: 1px solid var(--line); border-radius: var(--radius-xl); text-align: center;
+  background: radial-gradient(70% 60% at 50% 0%, var(--cta-glow), transparent 70%), var(--surface);
+}
+.cta-card .logo { width: 72px; height: 72px; margin: 0 auto; filter: drop-shadow(0 12px 24px rgba(47, 127, 224, .35)); }
+.cta-card h2 { margin-top: 24px; }
+.cta-actions { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 28px; }
+.cta-actions .meta { color: var(--ink-2); }
+.news { max-width: 420px; margin: 32px auto 0; padding: 18px 20px; border-radius: var(--radius-lg); background: var(--bg); text-align: left; }
+.news h3 { font-size: .9375rem; font-weight: 600; }
+.news ul { display: grid; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+.news li { position: relative; padding-left: 26px; color: var(--ink-2); font-size: .9375rem; }
+.news li::before { content: ""; position: absolute; left: 3px; top: .5em; width: 11px; height: 6px; border-bottom: 2px solid var(--accent-text); border-left: 2px solid var(--accent-text); transform: rotate(-45deg); }
+
+/* Footer */
+.footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 28px; padding-block: 56px 40px; color: var(--ink-2); font-size: .9375rem; }
+.footer .brand { color: var(--ink); }
+.footer a { color: var(--ink); text-underline-offset: 3px; }
+.footer-links { display: flex; flex-wrap: wrap; gap: 6px 24px; }
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes rise { from { opacity: 0; transform: translateY(32px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- Brand mark, from assets/brand/zx-player-icon.svg -->
+    <linearGradient id="logo-bg" x1="0" y1="0" x2="108" y2="108" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#8CC6FB"/><stop offset=".5" stop-color="#5DA6F5"/><stop offset="1" stop-color="#2F7FE0"/></linearGradient>
+    <radialGradient id="logo-shine" cx="30" cy="20" r="70" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".22"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
+    <clipPath id="logo-upper"><path d="M-200,44.4 L65.28,44.4 L53.28,59.9 L200,59.9 L200,-200 L-200,-200 Z"/></clipPath>
+    <clipPath id="logo-lower"><path d="M-200,48.6 L56.72,48.6 L44.72,64.1 L200,64.1 L200,200 L-200,200 Z"/></clipPath>
+  </defs>
+  <symbol id="mark" viewBox="0 0 108 108"><g transform="translate(54 54) scale(1.04) translate(-54 -54)" stroke-width="7" stroke-linejoin="round"><g transform="translate(0 2.4)" opacity=".2" fill="#000000" stroke="#000000"><path d="M41,31 L41,77 L80,54 Z" clip-path="url(#logo-upper)"/><path d="M41,31 L41,77 L80,54 Z" clip-path="url(#logo-lower)"/></g><path d="M41,31 L41,77 L80,54 Z" fill="#FFFFFF" stroke="#FFFFFF" clip-path="url(#logo-upper)"/><path d="M41,31 L41,77 L80,54 Z" clip-path="url(#logo-lower)" style="fill:var(--lo,#DCEBFD);stroke:var(--lo,#DCEBFD)"/></g></symbol>
+  <symbol id="logo" viewBox="0 0 108 108"><rect width="108" height="108" rx="24" fill="url(#logo-bg)"/><rect width="108" height="108" rx="24" fill="url(#logo-shine)"/><use href="#mark"/></symbol>
+  <!-- Icons: Lucide (ISC licence), the same set the app uses -->
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18M3 7.5h4M3 12h18M3 16.5h4M17 3v18M17 7.5h4M17 16.5h4"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M21 16V3a1 1 0 0 0-1.28-.96l-10 2.917a1 1 0 0 0-.72.96V19"/><circle cx="18" cy="16" r="3"/><circle cx="6" cy="19" r="3"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4M22 4h-4"/><circle cx="4" cy="20" r="2"/></symbol>
+  <symbol id="i-list-music" viewBox="0 0 24 24"><path d="M16 5H3M11 12H3M11 19H3M21 16V5"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M10 11v6M14 11v6M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><path d="M10 2h4M12 14l3-3"/><circle cx="12" cy="14" r="8"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
+  <symbol id="i-headphones" viewBox="0 0 24 24"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><path d="m15.194 13.707 3.814 1.86-1.86 3.814M16.47214 7.52786A5 10 0 1 0 13 21.79796M21.79796 11A10 5 0 1 0 19 15.57071"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="3" width="5" height="18" rx="1"/><rect x="5" y="3" width="5" height="18" rx="1"/></symbol>
+  <symbol id="i-skip-back" viewBox="0 0 24 24"><path d="M17.971 4.285A2 2 0 0 1 21 6v12a2 2 0 0 1-3.029 1.715l-9.997-5.998a2 2 0 0 1-.003-3.432zM3 20V4"/></symbol>
+  <symbol id="i-skip-forward" viewBox="0 0 24 24"><path d="M21 4v16M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z"/></symbol>
+  <symbol id="i-wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01M8.5 16.429a5 5 0 0 1 7 0M5 12.859a10 10 0 0 1 5.17-2.69M19 12.859a10 10 0 0 0-2.007-1.523M2 8.82a15 15 0 0 1 4.177-2.643M22 8.82a15 15 0 0 0-11.288-3.764M2 2l20 20"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4M3.34 19a10 10 0 1 1 17.32 0"/></symbol>
+  <symbol id="i-captions" viewBox="0 0 24 24"><rect width="18" height="14" x="3" y="5" rx="2" ry="2"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/></symbol>
+  <symbol id="i-restore" viewBox="0 0 24 24"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h2M20 8v11a2 2 0 0 1-2 2h-2M9 15l3-3 3 3M12 12v9"/></symbol>
+</svg>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="wrap">
+  <div class="topbar">
+    <a class="brand" href="#main" aria-label="ZX Player, back to top">
+      <svg class="logo" viewBox="0 0 108 108" aria-hidden="true"><use href="#logo"/></svg>
+      <span>ZX Player</span>
+    </a>
+    <a class="pill-btn" href="https://github.com/IsHereZahin/ZX-Player/releases/latest/download/ZX-Player.apk" data-download download>Download</a>
+  </div>
+</header>
+
+<main id="main">
+  <section class="wrap" aria-labelledby="hero-title">
+    <div class="hero-card">
+      <div class="hero-copy">
+        <p class="badge">Free · No ads · Offline</p>
+        <h1 id="hero-title">Every video.<br> Instantly.</h1>
+        <p class="lede">A fast, minimal video and audio player for Android that works fully offline. Free, with no ads.</p>
+        <div class="hero-cta">
+          <a class="btn btn-light" href="https://github.com/IsHereZahin/ZX-Player/releases/latest/download/ZX-Player.apk" data-download download>
+            <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Download for Android
+          </a>
+          <p class="meta" data-release-meta>Latest version · Android 7.0+</p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="phone" role="img" aria-label="The ZX Player home screen: video folders such as Camera and Download, shortcuts to Favorites, Recently Added, Playlists and the Recycle Bin, and a floating tab bar.">
+          <div class="screen">
+            <div class="status">
+              <span class="status-time">9:41</span>
+              <span class="status-cam"></span>
+              <span class="status-icons"><span class="status-signal"></span><span class="status-battery"></span></span>
+            </div>
+            <div class="app-header">
+              <svg class="logo" viewBox="0 0 108 108"><use href="#logo"/></svg>
+              <span class="app-title">Videos</span>
+              <span class="round"><svg class="i"><use href="#i-search"/></svg></span>
+            </div>
+            <div class="chips">
+              <span class="chip"><svg class="i"><use href="#i-heart"/></svg><span>Favorites</span></span>
+              <span class="chip"><svg class="i"><use href="#i-sparkles"/></svg><span>Recently Added</span></span>
+              <span class="chip"><svg class="i"><use href="#i-list-music"/></svg><span>Playlists</span></span>
+              <span class="chip"><svg class="i"><use href="#i-trash"/></svg><span>Recycle Bin</span></span>
+            </div>
+            <div class="overline">Folders</div>
+            <div class="folder"><span class="folder-tile"><svg class="i"><use href="#i-film"/></svg></span><span class="folder-text"><b>All videos</b><small>Entire library</small></span></div>
+            <div class="folder"><span class="folder-tile"><svg class="i"><use href="#i-camera"/></svg></span><span class="folder-text"><b>Camera</b><small>86 videos</small></span></div>
+            <div class="folder"><span class="folder-tile"><svg class="i"><use href="#i-download"/></svg></span><span class="folder-text"><b>Download</b><small>24 videos</small></span><span class="tag">2 NEW</span></div>
+            <div class="folder"><span class="folder-tile"><svg class="i"><use href="#i-folder"/></svg></span><span class="folder-text"><b>Movies</b><small>12 videos</small></span></div>
+            <div class="folder"><span class="folder-tile"><svg class="i"><use href="#i-folder"/></svg></span><span class="folder-text"><b>Lectures</b><small>31 videos</small></span></div>
+            <div class="folder"><span class="folder-tile"><svg class="i"><use href="#i-folder"/></svg></span><span class="folder-text"><b>Clips</b><small>9 videos</small></span></div>
+            <div class="tabs">
+              <span class="tab on"><svg class="i"><use href="#i-film"/></svg></span>
+              <span class="tab"><svg class="i"><use href="#i-music"/></svg></span>
+              <span class="tab"><svg class="i"><use href="#i-history"/></svg></span>
+              <span class="tab"><svg class="i"><use href="#i-settings"/></svg></span>
+            </div>
+            <span class="home-bar"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ul class="facts">
+      <li><strong>Free</strong><span>To use</span></li>
+      <li><strong>0</strong><span>Ads</span></li>
+      <li><strong>100%</strong><span>Offline</span></li>
+      <li><strong>5</strong><span>Themes</span></li>
+    </ul>
+  </section>
+
+  <section class="section wrap" id="features" aria-labelledby="features-title">
+    <div class="head">
+      <p class="kicker">Features</p>
+      <h2 id="features-title">Everything a player needs. Nothing it doesn't.</h2>
+      <p class="sub">Your library, a capable player and simple file tools, in one calm app.</p>
+    </div>
+
+    <ul class="grid">
+      <li class="card">
+        <div class="art" aria-hidden="true">
+          <div class="player lift">
+            <div class="player-video"><span class="player-chip">+0:45 · 4:57 / 10:00</span></div>
+            <div class="player-body">
+              <div class="player-title">Weekend trip</div>
+              <div class="seek"></div>
+              <div class="times"><span>4:12</span><span>10:00</span></div>
+              <div class="quick">
+                <span class="qa qa-speed on">1.5×</span>
+                <span class="qa"><svg class="i"><use href="#i-repeat"/></svg></span>
+                <span class="qa on"><svg class="i"><use href="#i-timer"/></svg></span>
+                <span class="qa"><svg class="i"><use href="#i-rotate"/></svg></span>
+                <span class="qa"><svg class="i"><use href="#i-headphones"/></svg></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <h3>Gestures for everything</h3>
+        <p>Swipe for brightness, volume and seeking, double-tap to skip, hold for 2× speed and pinch to zoom up to 4×.</p>
+      </li>
+
+      <li class="card">
+        <div class="art" aria-hidden="true">
+          <div class="stack">
+            <div class="folder"><span class="folder-tile"><svg class="i"><use href="#i-camera"/></svg></span><span class="folder-text"><b>Camera</b><small>86 videos</small></span><span class="tag">3 NEW</span></div>
+            <div class="folder lift"><span class="folder-tile"><svg class="i"><use href="#i-download"/></svg></span><span class="folder-text"><b>Download</b><small>24 videos</small></span><span class="tag">2 NEW</span></div>
+            <div class="folder"><span class="folder-tile"><svg class="i"><use href="#i-folder"/></svg></span><span class="folder-text"><b>Movies</b><small>12 videos</small></span></div>
+          </div>
+        </div>
+        <h3>A library that keeps up</h3>
+        <p>Folders, All videos and All audio, Continue watching, Favorites, Recently Added, Playlists and search. New files get a NEW tag.</p>
+      </li>
+
+      <li class="card">
+        <div class="art" aria-hidden="true">
+          <div class="sheet">
+            <div class="grabber"></div>
+            <div class="sheet-head"><b>Sleep timer</b><small>Pause playback automatically</small></div>
+            <div class="options">
+              <div>15 minutes</div>
+              <div>30 minutes</div>
+              <div>45 minutes</div>
+              <div>Custom…</div>
+              <div>End of this video</div>
+            </div>
+          </div>
+        </div>
+        <h3>A sleep timer that fits</h3>
+        <p>Stop playback after 15, 30 or 45 minutes, a time you choose, or at the end of the video.</p>
+      </li>
+
+      <li class="card">
+        <div class="art" aria-hidden="true">
+          <div class="picker lift">
+            <div class="picker-title">Color</div>
+            <div class="swatches">
+              <span class="swatch on"><span class="theme-logo" style="--a:#8CC6FB;--b:#2F7FE0"><svg viewBox="0 0 108 108"><use href="#mark"/></svg></span><span class="swatch-name">Sky</span></span>
+              <span class="swatch"><span class="theme-logo" style="--a:#4FBF7E;--b:#145A3F"><svg viewBox="0 0 108 108"><use href="#mark"/></svg></span><span class="swatch-name">Forest</span></span>
+              <span class="swatch"><span class="theme-logo" style="--a:#FF5470;--b:#B30E2C"><svg viewBox="0 0 108 108"><use href="#mark"/></svg></span><span class="swatch-name">Crimson</span></span>
+              <span class="swatch"><span class="theme-logo" style="--a:#3B8FD6;--b:#0A3A6B"><svg viewBox="0 0 108 108"><use href="#mark"/></svg></span><span class="swatch-name">Ocean</span></span>
+              <span class="swatch"><span class="theme-logo" style="--a:#E85A54;--b:#9A1F1C"><svg viewBox="0 0 108 108"><use href="#mark"/></svg></span><span class="swatch-name">Racing</span></span>
+            </div>
+            <div class="segmented"><span class="on">System</span><span>Light</span><span>Dark</span></div>
+          </div>
+        </div>
+        <h3>Five colour themes</h3>
+        <p>Sky, Forest, Crimson, Ocean and Racing, each in light and dark. It follows your phone, or stays the way you set it.</p>
+      </li>
+
+      <li class="card">
+        <div class="art" aria-hidden="true">
+          <div class="bin">
+            <div class="bin-row lift"><span class="thumb"></span><span class="row-text"><b>Beach day.mp4</b><small>Deletes in 29 days</small></span></div>
+            <div class="bin-row"><span class="thumb thumb-warm"></span><span class="row-text"><b>Old clip.mp4</b><small>Deletes in 12 days</small></span></div>
+            <div class="bin-actions">
+              <span class="bin-btn ink"><svg class="i"><use href="#i-restore"/></svg>Restore</span>
+              <span class="bin-btn danger"><svg class="i"><use href="#i-trash"/></svg>Delete for Good</span>
+            </div>
+          </div>
+        </div>
+        <h3>Tidy up, safely</h3>
+        <p>On Android 11+, select files to copy, move or delete, with Android's own confirmation. Deleted files wait 30 days in the Recycle Bin.</p>
+      </li>
+
+      <li class="card">
+        <div class="art" aria-hidden="true">
+          <div class="about lift">
+            <svg class="logo" viewBox="0 0 108 108"><use href="#logo"/></svg>
+            <b>ZX Player</b>
+            <span class="about-text">Your videos stay on this device. ZX Player never uploads anything.</span>
+            <div class="pills">
+              <span><svg class="i"><use href="#i-wifi-off"/></svg>Works offline</span>
+              <span>No account</span>
+              <span>No ads</span>
+            </div>
+          </div>
+        </div>
+        <h3>Private by design</h3>
+        <p>No account, no sign-in, no ads. Your videos stay on your phone, and ZX Player never uploads anything.</p>
+      </li>
+
+      <li class="card">
+        <div class="art" aria-hidden="true">
+          <div class="notice lift">
+            <div class="notice-top"><svg class="logo" viewBox="0 0 108 108"><use href="#logo"/></svg>ZX Player</div>
+            <div class="notice-main">
+              <span class="cover"></span>
+              <span class="row-text"><b>Night Drive</b><small>Lumen</small></span>
+            </div>
+            <div class="progress"></div>
+            <div class="controls">
+              <svg class="i"><use href="#i-skip-back"/></svg>
+              <span class="play"><svg class="i"><use href="#i-pause"/></svg></span>
+              <svg class="i"><use href="#i-skip-forward"/></svg>
+            </div>
+          </div>
+        </div>
+        <h3>Keeps playing in the background</h3>
+        <p>Background play with notification and lock screen controls, picture-in-picture, and an audio mode with album art.</p>
+      </li>
+
+      <li class="card">
+        <div class="art" aria-hidden="true">
+          <div class="frame lift">
+            <div class="frame-tags">
+              <span class="on"><svg class="i"><use href="#i-captions"/></svg>English.srt</span>
+              <span>Delay +0.5 s</span>
+            </div>
+            <span class="caption">I'll meet you at the station.</span>
+          </div>
+        </div>
+        <h3>Subtitles and audio tracks</h3>
+        <p>Switch embedded subtitle and audio tracks, or load .srt, .ass and .ssa files and fine-tune their delay.</p>
+      </li>
+    </ul>
+
+    <h3 class="extras-title">Also included</h3>
+    <ul class="extras">
+      <li>Resume where you left off</li>
+      <li>Speed 0.5×–3×</li>
+      <li>Repeat one or all</li>
+      <li>Auto-play next</li>
+      <li>Mini player</li>
+      <li>Rotate</li>
+      <li>Fit, Fill, Crop or Stretch</li>
+      <li>List or grid view</li>
+      <li>Sort by date, name, length or size</li>
+      <li>Mark as watched</li>
+      <li>Recent searches</li>
+      <li>Share</li>
+    </ul>
+  </section>
+
+  <section class="section wrap" aria-labelledby="fast-title">
+    <div class="fast">
+      <h2 id="fast-title">Why it feels fast</h2>
+      <p class="fast-sub">ZX Player does less work, so you wait less.</p>
+      <ul class="fast-list">
+        <li>
+          <span class="fast-icon"><svg class="i" aria-hidden="true"><use href="#i-zap"/></svg></span>
+          <h3>Reads, doesn't scan</h3>
+          <p>Your library comes straight from Android's media index, with thumbnails from its own cache. No video is opened to list it.</p>
+        </li>
+        <li>
+          <span class="fast-icon"><svg class="i" aria-hidden="true"><use href="#i-gauge"/></svg></span>
+          <h3>Instant after the first scan</h3>
+          <p>All videos, All audio, search and Recently Added share one list, so they open at once.</p>
+        </li>
+        <li>
+          <span class="fast-icon"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg></span>
+          <h3>One player for the queue</h3>
+          <p>Next and previous only swap the source, and local files start after buffering just 0.5 s.</p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section wrap" id="faq" aria-labelledby="faq-title">
+    <div class="head">
+      <p class="kicker">FAQ</p>
+      <h2 id="faq-title">Questions, answered.</h2>
+      <p class="sub">The short version: free, offline and without ads.</p>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>Is ZX Player really free?</summary>
+        <div class="answer"><p>Yes. It's free to download and use, with no ads, no subscriptions and no in-app purchases.</p></div>
+      </details>
+      <details>
+        <summary>Does it need the internet?</summary>
+        <div class="answer"><p>No. Everything works offline, and there's no account or sign-in. The only time ZX Player goes online is when you tap <strong>Check for Updates</strong> in Settings → About ZX Player.</p></div>
+      </details>
+      <details>
+        <summary>Does it collect my data?</summary>
+        <div class="answer"><p>No. ZX Player never uploads your videos or your data. Your watch history, favorites, playlists and settings are saved on your phone.</p></div>
+      </details>
+      <details>
+        <summary>Which Android versions are supported?</summary>
+        <div class="answer"><p>Android <span data-min-android>7.0</span> or newer. Copying, moving and the Recycle Bin need Android 11 or newer. There's no iPhone version to download.</p></div>
+      </details>
+      <details>
+        <summary>How do I install the APK?</summary>
+        <div class="answer">
+          <ol>
+            <li>Open this page on your Android phone and tap <strong>Download for Android</strong>.</li>
+            <li>Open the downloaded APK from the notification or your Downloads folder.</li>
+            <li>If Android asks, allow your browser to <strong>Install unknown apps</strong>, then go back and tap <strong>Install</strong>.</li>
+            <li>Open ZX Player and allow access to your videos and audio.</li>
+          </ol>
+        </div>
+      </details>
+      <details>
+        <summary>How do I update?</summary>
+        <div class="answer"><p>Download the new APK and install it over the app you have. Updates are signed with the same key, so your settings, history and playlists are kept. In the app, <strong>Settings → About ZX Player → Check for Updates</strong> looks for a new version.</p></div>
+      </details>
+      <details>
+        <summary>Does it support subtitles?</summary>
+        <div class="answer"><p>Yes. Pick a subtitle track built into the video, or load an .srt, .ass or .ssa file and adjust its delay. You can change subtitle size and background in Settings.</p><p>Subtitle files need to be UTF-8, and ASS styling and positioning aren't kept.</p></div>
+      </details>
+      <details>
+        <summary>Does it need access to all my files?</summary>
+        <div class="answer"><p>No. It reads your media library, and on Android 14 and newer you can allow only selected videos. Copying, moving and deleting each go through Android's own confirmation, so it never asks for all-files access.</p></div>
+      </details>
+    </div>
+  </section>
+
+  <section class="section wrap" aria-labelledby="cta-title">
+    <div class="cta-card">
+      <svg class="logo" viewBox="0 0 108 108" aria-hidden="true"><use href="#logo"/></svg>
+      <h2 id="cta-title">Ready when you are.</h2>
+      <p class="sub">Free, ad-free and fully offline. Download it and press play.</p>
+      <div class="cta-actions">
+        <a class="btn btn-ink" href="https://github.com/IsHereZahin/ZX-Player/releases/latest/download/ZX-Player.apk" data-download download>
+          <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Download for Android
+        </a>
+        <p class="meta" data-release-meta>Latest version · Android 7.0+</p>
+      </div>
+      <div class="news" data-whats-new hidden>
+        <h3 data-whats-new-title>What's new</h3>
+        <ul></ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer wrap">
+  <a class="brand" href="#main" aria-label="ZX Player, back to top">
+    <svg class="logo" viewBox="0 0 108 108" aria-hidden="true" style="width:28px;height:28px"><use href="#logo"/></svg>
+    <span>ZX Player</span>
+  </a>
+  <div class="footer-links">
+    <span>Made by Zahin Mohammad · <a href="https://www.facebook.com/isherezahin" rel="noopener">Facebook</a></span>
+    <span>© 2026 ZX Player</span>
+  </div>
+</footer>
+
+<script>
+// Release details come from version.json, the one file that is edited for a release
+// (the app's "Check for Updates" reads it too). If it can't be loaded, the markup's
+// fallbacks stay: links to the latest GitHub release and a generic version line.
+(() => {
+  'use strict';
+
+  const FALLBACK_MIN_ANDROID = '7.0';
+  const SHORT_LABEL = /^[\w.+-]{1,20}$/; // e.g. "1.9" or "7.0"
+
+  function shortLabel(value) {
+    return typeof value === 'string' && SHORT_LABEL.test(value) ? value : null;
+  }
+
+  // Accepts https: URLs and relative paths only, so the JSON can never point the
+  // download buttons at javascript:, data: or plain http: links.
+  function safeDownloadUrl(raw) {
+    if (typeof raw !== 'string') return null;
+    const value = raw.trim();
+    // URL parsers drop tabs/newlines and treat "\" like "/", which could hide a scheme.
+    if (!value || /[\u0000-\u001f\u007f\\]/.test(value)) return null;
+    const hasScheme = /^[a-z][a-z\d+.-]*:/i.test(value);
+    if (!hasScheme && !value.startsWith('//')) return value;
+    try {
+      const url = new URL(value, document.baseURI);
+      return url.protocol === 'https:' ? url.href : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function applyRelease(release) {
+    const version = shortLabel(release.version);
+    const minAndroid = shortLabel(release.minAndroid);
+    const sizeMb = Number.isFinite(release.sizeMb) && release.sizeMb > 0 ? Math.round(release.sizeMb) : null;
+
+    const meta = [version ? `Version ${version}` : 'Latest version', `Android ${minAndroid || FALLBACK_MIN_ANDROID}+`];
+    if (sizeMb) meta.push(`${sizeMb} MB`);
+    document.querySelectorAll('[data-release-meta]').forEach(el => { el.textContent = meta.join(' · '); });
+    if (minAndroid) {
+      document.querySelectorAll('[data-min-android]').forEach(el => { el.textContent = minAndroid; });
+    }
+
+    const href = safeDownloadUrl(release.downloadUrl);
+    if (href) document.querySelectorAll('a[data-download]').forEach(link => { link.href = href; });
+
+    const notes = Array.isArray(release.notes)
+      ? release.notes.filter(note => typeof note === 'string' && note.trim()).slice(0, 6)
+      : [];
+    const box = document.querySelector('[data-whats-new]');
+    if (box && notes.length) {
+      box.querySelector('[data-whats-new-title]').textContent = version ? `What's new in ${version}` : "What's new";
+      box.querySelector('ul').replaceChildren(...notes.map(note => {
+        const item = document.createElement('li');
+        item.textContent = note.trim();
+        return item;
+      }));
+      box.hidden = false;
+    }
+  }
+
+  fetch('version.json', { cache: 'no-store' })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then(release => {
+      if (release && typeof release === 'object') applyRelease(release);
+    })
+    .catch(error => console.warn('version.json could not be loaded; showing default release details.', error));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+diff --git a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ExoPlayerView.kt b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ExoPlayerView.kt
+index 75e2307..6636862 100644
+--- a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ExoPlayerView.kt
++++ b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ExoPlayerView.kt
+@@ -40,8 +40,12 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, attrs: Attribute
+     private val playerView = PlayerView(context).apply {
+         layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+         setShutterBackgroundColor(Color.TRANSPARENT)
+-        useController = true
+-        controllerAutoShow = true
++        // Media3's own controller stays off until the `controls` prop turns it on
++        // (setUseController). Enabled here, attaching the player (setPlayer, in IDLE) shows
++        // it at once, before `controls={false}` reaches the view, so its dark backdrop
++        // flashed over the video, drawn at stale bounds.
++        useController = false
++        controllerAutoShow = false
+         controllerHideOnTouch = true
+         controllerShowTimeoutMs = 5000
+         // Don't show subtitle button by default - will be enabled when tracks are available

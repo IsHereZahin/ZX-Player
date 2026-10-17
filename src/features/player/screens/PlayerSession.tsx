@@ -29,6 +29,7 @@ import { historyStore, resumePosition } from '../../history/watchHistory';
 import { VideoInfoSheet } from '../../library/components/VideoSheets';
 import { toggleFavorite, useIsFavorite } from '../../library/favorites';
 import { mediaTitle } from '../../library/services/mediaLibrary';
+import { useThumbnail } from '../../library/hooks/useThumbnail';
 import { getCachedThumbnail } from '../../library/services/thumbnails';
 import type { VideoItem } from '../../library/types';
 import { setBackgroundPlay } from '../../settings/backgroundPlay';
@@ -37,7 +38,7 @@ import {
   updateSettings,
   useSettings,
 } from '../../settings/settingsStore';
-import { AudioArtwork } from '../components/AudioArtwork';
+import { AudioBackdrop } from '../components/AudioBackdrop';
 import { LockOverlay } from '../components/LockOverlay';
 import { PlaybackErrorOverlay } from '../components/PlaybackErrorOverlay';
 import { PlayerControls } from '../components/PlayerControls';
@@ -159,6 +160,8 @@ export function PlayerSession(props: PlayerSessionProps) {
   const backgroundPlay = settings.backgroundPlay || isAudio;
   // Read once: changing the source's metadata mid-playback could make the player reload.
   const [artworkUri] = useState(() => getCachedThumbnail(video) ?? undefined);
+  // The audio screen's cover and backdrop; loaded once here for both.
+  const audioArt = useThumbnail(isAudio ? video : null);
   const latest = useLatestRef(props);
   const { toast, show: showToast, dismiss: dismissToast } = useToast();
   const { schedule, onDismissed } = useAfterSheetClose();
@@ -542,7 +545,7 @@ export function PlayerSession(props: PlayerSessionProps) {
               testID="video-poster"
             />
           ) : null}
-          {isAudio ? <AudioArtwork item={video} layout={layout} /> : null}
+          {isAudio ? <AudioBackdrop art={audioArt} /> : null}
 
           {externalTrack ? (
             <TimedSubtitleOverlay
@@ -581,6 +584,8 @@ export function PlayerSession(props: PlayerSessionProps) {
           {showControls ? (
             <PlayerControls
               mode={isAudio ? 'audio' : 'video'}
+              track={isAudio ? video : undefined}
+              art={audioArt}
               zoom={zoom.scale}
               onResetZoom={resetZoom}
               title={isAudio ? 'Now playing' : title}
