@@ -52,8 +52,22 @@ interface PlayerParams {
 const onClose = jest.fn();
 const onOrientationChange = jest.fn();
 
+const { __sendPlaybackEnded: sendPlaybackEnded } = jest.requireMock<{
+  __sendPlaybackEnded: (uri: string) => void;
+}>('zxplayer-media');
+
 const video = () => screen.getByTestId('video-surface');
 const videoStyle = () => StyleSheet.flatten(video().props.style);
+
+/** Ends the playing item the way the platform reports it (see VideoSurface). */
+async function endItem() {
+  if (Platform.OS === 'android') {
+    const { uri } = video().props.source as { uri: string };
+    await act(async () => sendPlaybackEnded(uri));
+  } else {
+    await fireEvent(video(), 'end');
+  }
+}
 
 async function loadVideo(overrides: Record<string, unknown> = {}) {
   await fireEvent(video(), 'load', {
@@ -330,7 +344,7 @@ describe('controls', () => {
 
   it('replays from the start after a single video ends', async () => {
     await renderPlayer();
-    await fireEvent(video(), 'end');
+    await endItem();
     expect(video().props.paused).toBe(true);
 
     await fireEvent.press(screen.getByTestId('play-pause-button'));
@@ -497,13 +511,13 @@ describe('queue', () => {
 
   it('plays the next video automatically, unless turned off', async () => {
     await renderPlayer({ queue: queueOf(2) });
-    await fireEvent(video(), 'end');
+    await endItem();
     await loadVideo();
     expect(screen.getByText('Video 2')).toBeOnTheScreen();
     expect(video().props.paused).toBe(false);
 
     await act(async () => updateSettings({ autoPlayNext: false }));
-    await fireEvent(video(), 'end');
+    await endItem();
     expect(screen.getByText('Video 2')).toBeOnTheScreen();
     expect(video().props.paused).toBe(true);
   });
@@ -519,7 +533,7 @@ describe('queue', () => {
       within(screen.getByTestId('more-repeat')).getByText('All'),
     ).toBeOnTheScreen();
 
-    await fireEvent(video(), 'end');
+    await endItem();
     await loadVideo();
     expect(screen.getByText('Video 1')).toBeOnTheScreen();
 
@@ -548,7 +562,7 @@ describe('queue', () => {
     await fireEvent.press(screen.getByTestId('more-sleep'));
     await fireEvent.press(screen.getByTestId('sleep-end-of-video'));
 
-    await fireEvent(video(), 'end');
+    await endItem();
     expect(screen.getByText('Video 1')).toBeOnTheScreen();
     expect(video().props.paused).toBe(true);
   });
@@ -1084,10 +1098,26 @@ describe('notification and lock-screen controls', () => {
       Object.assign(AppState, { currentState: foregroundState });
     });
 
+    it('moves to the next item from the notification', async () => {
+      await renderPlayer({ queue: queueOf(2) });
+      await loadVideo();
+
+      await act(async () => press('next'));
+
+      expect(mockVideoRef.setSource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          uri: 'content://media/external/video/media/2',
+        }),
+      );
+      expect(setNowPlaying).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: '2', playing: true }),
+      );
+    });
+
     it('starts the next item as soon as one ends', async () => {
       await renderPlayer({ queue: queueOf(2) });
       await loadVideo();
-      await fireEvent(video(), 'end');
+      await endItem();
 
       expect(mockVideoRef.setSource).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1118,10 +1148,27 @@ describe('notification and lock-screen controls', () => {
   it('leaves the source to the view props in the foreground', async () => {
     await renderPlayer({ queue: queueOf(2) });
     await loadVideo();
-    await fireEvent(video(), 'end');
+    await endItem();
 
     expect(screen.getByText('Video 2')).toBeOnTheScreen();
     expect(mockVideoRef.setSource).not.toHaveBeenCalled();
+  });
+
+  it('takes the end of an item from the media module, not the view', async () => {
+    await renderPlayer({ queue: queueOf(2) });
+    await loadVideo();
+    // React Native holds the view's events back in the background; a late onEnd would skip
+    // an item, so the view's own one is not used.
+    expect(video().props.onEnd).toBeUndefined();
+
+    // An end reported for an item that is no longer playing changes nothing.
+    await act(async () =>
+      sendPlaybackEnded('content://media/external/video/media/9'),
+    );
+    expect(screen.getByText('Video 1')).toBeOnTheScreen();
+
+    await endItem();
+    expect(screen.getByText('Video 2')).toBeOnTheScreen();
   });
 
   it('stays out of the notification without background play', async () => {

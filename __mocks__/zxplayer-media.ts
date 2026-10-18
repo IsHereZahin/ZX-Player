@@ -3,6 +3,7 @@ import type {
   NativeMediaFolder,
   NativeMediaPage,
   NativeTrashedItem,
+  PlaybackEnded,
   RemoteCommand,
 } from 'zxplayer-media';
 
@@ -53,4 +54,17 @@ export const addRemoteCommandListener = jest.fn(
 /** Test hook: presses a notification / lock-screen button. */
 export function __sendRemoteCommand(command: string, positionMs = 0): void {
   remoteListeners.forEach(listener => listener({ command, positionMs }));
+}
+
+const endedListeners = new Set<(event: PlaybackEnded) => void>();
+export const addPlaybackEndedListener = jest.fn(
+  (listener: (event: PlaybackEnded) => void) => {
+    endedListeners.add(listener);
+    return { remove: () => endedListeners.delete(listener) };
+  },
+);
+
+/** Test hook: the native player reports that the item at `uri` ended. */
+export function __sendPlaybackEnded(uri: string): void {
+  endedListeners.forEach(listener => listener({ uri }));
 }

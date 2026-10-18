@@ -1,6 +1,10 @@
 import NativeZxplayerMedia from './NativeZxplayerMedia';
 
-import type { NowPlayingInfo, RemoteCommand } from './NativeZxplayerMedia';
+import type {
+  NowPlayingInfo,
+  PlaybackEnded,
+  RemoteCommand,
+} from './NativeZxplayerMedia';
 
 export type {
   FileOperationResult,
@@ -9,6 +13,7 @@ export type {
   NativeMediaPage,
   NativeTrashedItem,
   NowPlayingInfo,
+  PlaybackEnded,
   RemoteCommand,
 } from './NativeZxplayerMedia';
 
@@ -92,4 +97,10 @@ export function addRemoteCommandListener(
   listener: (command: RemoteCommand) => void,
 ): { remove: () => void } {
   return requireModule().onRemoteCommand(listener);
+}
+
+export function addPlaybackEndedListener(
+  listener: (event: PlaybackEnded) => void,
+): { remove: () => void } {
+  return requireModule().onPlaybackEnded(listener);
 }

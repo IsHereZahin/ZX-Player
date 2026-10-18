@@ -79,6 +79,12 @@ export type RemoteCommand = {
   positionMs: number;
 };
 
+/** react-native-video's player reached the end of an item. */
+export type PlaybackEnded = {
+  /** The item's URI, as it was handed to the player; empty when unknown. */
+  uri: string;
+};
+
 export interface Spec extends TurboModule {
   /** The installed app: its version name and build number (Android versionCode). */
   getConstants(): { appVersion: string; buildNumber: number };
@@ -125,6 +131,11 @@ export interface Spec extends TurboModule {
     relativePath: string,
   ): Promise<FileOperationResult>;
   readonly onRemoteCommand: CodegenTypes.EventEmitter<RemoteCommand>;
+  /**
+   * Sent straight from the player, so it arrives in the background and with the screen off,
+   * when react-native-video's own onEnd (delivered on a screen frame) does not.
+   */
+  readonly onPlaybackEnded: CodegenTypes.EventEmitter<PlaybackEnded>;
 }
 
 export default TurboModuleRegistry.get<Spec>('ZxplayerMedia');

@@ -20,7 +20,11 @@ import android.util.Log
 import android.util.Size
 import androidx.annotation.RequiresApi
 import com.facebook.react.bridge.ActivityEventListener
+import androidx.media3.common.Player
+import com.brentvatne.react.RNVPlugin
+import com.brentvatne.react.ReactNativeVideoManager
 import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.UiThreadUtil
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
@@ -94,8 +98,43 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
         override fun onNewIntent(intent: Intent) = Unit
       }
 
+  /**
+   * react-native-video reports its events through React Native's renderer, which hands them
+   * to JavaScript only on a screen frame. In the background, and with the screen off, none
+   * come, so its onEnd never arrived and a queue stopped after one item. Its players are
+   * watched here instead, and the end of an item goes out as a module event, which
+   * JavaScript gets right away.
+   */
+  private val endWatcher =
+      object : RNVPlugin, Player.Listener {
+        override fun onInstanceCreated(id: String, player: Any) {
+          (player as? Player)?.addListener(this)
+        }
+
+        override fun onInstanceRemoved(id: String, player: Any) {
+          (player as? Player)?.removeListener(this)
+        }
+
+        override fun onEvents(player: Player, events: Player.Events) {
+          if (events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED) &&
+              player.playbackState == Player.STATE_ENDED) {
+            emitOnPlaybackEnded(
+                Arguments.createMap().apply {
+                  putString(
+                      "uri",
+                      player.currentMediaItem?.localConfiguration?.uri?.toString() ?: "")
+                })
+          }
+        }
+      }
+
   init {
     reactContext.addActivityEventListener(activityListener)
+    // react-native-video announces its players on the main thread; registering there too
+    // keeps its plugin list from being touched by two threads at once.
+    UiThreadUtil.runOnUiThread {
+      ReactNativeVideoManager.getInstance().registerPlugin(endWatcher)
+    }
   }
 
   private val resolver
@@ -563,6 +602,9 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
 
   override fun invalidate() {
     reactApplicationContext.removeActivityEventListener(activityListener)
+    UiThreadUtil.runOnUiThread {
+      ReactNativeVideoManager.getInstance().unregisterPlugin(endWatcher)
+    }
     pendingConsent = null
     queryExecutor.shutdownNow()
     thumbnailExecutor.shutdownNow()

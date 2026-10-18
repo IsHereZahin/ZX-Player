@@ -15,7 +15,9 @@ import Video, {
   type SelectedTrack,
   type VideoRef,
 } from 'react-native-video';
+import * as nativeMedia from 'zxplayer-media';
 
+import { useLatestRef } from '../../../shared/hooks/useLatestRef';
 import { playerColors } from '../../../shared/theme';
 import { usesOwnMediaSession } from '../hooks/useMediaSession';
 import {
@@ -121,6 +123,37 @@ function useCommandsInBackground(
   }, [paused, source, videoRef]);
 }
 
+/**
+ * react-native-video's events reach JavaScript only on a screen frame, so in the background
+ * and with the screen off its onEnd never arrives and a queue would stop after one item.
+ * On Android the media module watches the player and reports the end itself, at once; it is
+ * then the only source, since the held-back onEnd would land late and skip an item.
+ */
+function endsFromMediaModule(): boolean {
+  return Platform.OS === 'android' && nativeMedia.isNativeMediaAvailable;
+}
+
+function useNativeEnd(
+  enabled: boolean,
+  uri: string,
+  onEnd: VideoEvents['onEnd'],
+) {
+  const latest = useLatestRef({ uri, onEnd });
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+    const subscription = nativeMedia.addPlaybackEndedListener(ended => {
+      // An item that already gave way to another (e.g. Next pressed as it ended).
+      if (ended.uri && ended.uri !== latest.current.uri) {
+        return;
+      }
+      latest.current.onEnd();
+    });
+    return () => subscription.remove();
+  }, [enabled, latest]);
+}
+
 /** Which subtitle the player itself should render (external files are drawn by the app). */
 export type NativeTextTrack =
   | { kind: 'off' }
@@ -191,6 +224,8 @@ export const VideoSurface = memo(function VideoSurfaceView({
     [artist, artworkUri, startPositionSec, title, uri],
   );
   useCommandsInBackground(videoRef, source, paused);
+  const nativeEnd = endsFromMediaModule();
+  useNativeEnd(nativeEnd, uri, events.onEnd);
   const layout = resolveVideoLayout(
     aspectMode,
     container,
@@ -248,7 +283,7 @@ export const VideoSurface = memo(function VideoSurfaceView({
         onLoad={events.onLoad}
         onProgress={events.onProgress}
         onBuffer={events.onBuffer}
-        onEnd={events.onEnd}
+        onEnd={nativeEnd ? undefined : events.onEnd}
         onError={events.onError}
         onAudioTracks={events.onAudioTracks}
         onTextTracks={events.onTextTracks}
