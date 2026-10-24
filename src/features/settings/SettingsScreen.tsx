@@ -12,6 +12,7 @@ import {
 import { OptionRow, Sheet } from '../../shared/components/Sheet';
 import {
   CaptionsIcon,
+  ClockIcon,
   FastForwardIcon,
   GaugeIcon,
   HandIcon,
@@ -32,7 +33,7 @@ import {
 import { spacing } from '../../shared/theme';
 import { makeStyles } from '../../shared/theming';
 import { confirmClearHistory } from '../history/RecentScreen';
-import { useHistoryList } from '../history/watchHistory';
+import { setHistoryLimit, useHistoryList } from '../history/watchHistory';
 import { isAudioLibrarySupported } from '../library/services/mediaLibrary';
 import {
   ASPECT_MODE_DESCRIPTIONS,
@@ -48,6 +49,7 @@ import {
 } from './SettingRows';
 import {
   APPEARANCES,
+  HISTORY_LIMITS,
   LIBRARY_LAYOUTS,
   SKIP_INTERVALS,
   SUBTITLE_SIZES,
@@ -65,6 +67,7 @@ type Picker =
   | 'skip'
   | 'aspect'
   | 'subtitleSize'
+  | 'historyLimit'
   | null;
 
 const APPEARANCE_LABELS: Record<Appearance, string> = {
@@ -261,6 +264,14 @@ export function SettingsScreen({ navigation }: Props) {
 
         <SettingsSection title="Privacy">
           <SettingActionRow
+            icon={ClockIcon}
+            title="History limit"
+            description="The least recently played go first"
+            value={`${settings.historyLimit} videos`}
+            onPress={() => setPicker('historyLimit')}
+            testID="setting-history-limit"
+          />
+          <SettingActionRow
             icon={Trash2Icon}
             title="Clear watch history"
             description={
@@ -339,6 +350,24 @@ export function SettingsScreen({ navigation }: Props) {
               closePicker();
             }}
             testID={`skip-option-${seconds}`}
+          />
+        ))}
+      </Sheet>
+      <Sheet
+        visible={picker === 'historyLimit'}
+        onClose={closePicker}
+        title="History limit"
+      >
+        {HISTORY_LIMITS.map(limit => (
+          <OptionRow
+            key={limit}
+            label={`${limit} videos`}
+            selected={settings.historyLimit === limit}
+            onPress={() => {
+              setHistoryLimit(limit);
+              closePicker();
+            }}
+            testID={`history-limit-option-${limit}`}
           />
         ))}
       </Sheet>

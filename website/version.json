@@ -1,15 +1,16 @@
 {
-  "version": "1.12",
-  "build": 13,
-  "releasedAt": "2026-10-18",
+  "version": "1.13",
+  "build": 14,
+  "releasedAt": "2026-10-24",
   "downloadUrl": "https://github.com/IsHereZahin/ZX-Player/releases/latest/download/ZX-Player.apk",
   "minAndroid": "7.0",
   "sizeMb": 44,
   "notes": [
-    "Background play moves on to the next item, even with the screen off",
-    "A new audio player: a large cover, clear controls and a blurred backdrop",
-    "Fixed a dark block over the video when the controls first appeared",
-    "Faster navigation and smoother scrolling",
-    "About page with Check for Updates"
+    "Fixed a dark area on the left when a landscape video starts",
+    "The playback notification stays in step with what is playing, has a Stop button, and background play keeps your place",
+    "Play on a folder picks up where you left off",
+    "Smoother gestures: swipe sideways to seek along the timeline, up or down for brightness and volume",
+    "A cleaner speed menu and double-tap seek, and a countdown for the sleep timer",
+    "Watch history keeps up to 300 videos, adjustable in Settings"
   ]
 }

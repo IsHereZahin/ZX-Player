@@ -169,6 +169,7 @@ export function AudioControls(props: AudioControlsProps) {
             clock={props.clock}
             duration={props.duration}
             skipSeconds={props.skipSeconds}
+            preview={props.seekPreview}
             onSeek={props.onSeek}
             onScrubbingChange={props.onScrubbingChange}
           />
@@ -238,7 +239,7 @@ export function AudioControls(props: AudioControlsProps) {
             centered
             speed={props.speed}
             repeatMode={props.repeatMode}
-            sleepActive={props.sleepActive}
+            sleepTimer={props.sleepTimer}
             backgroundPlay={props.backgroundPlay}
             onOpenSpeed={props.onOpenSpeed}
             onCycleRepeat={props.onCycleRepeat}

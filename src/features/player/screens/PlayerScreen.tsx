@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  AppState,
   Dimensions,
   StatusBar,
   StyleSheet,
@@ -19,6 +20,7 @@ import { playerColors } from '../../../shared/theme';
 import { ThemeProvider } from '../../../shared/theming';
 import { clamp } from '../../../shared/utils/math';
 import type { VideoItem } from '../../library/types';
+import { playsInBackground } from '../../settings/backgroundPlay';
 import { useSettings } from '../../settings/settingsStore';
 import type { RepeatMode } from '../components/PlayerSheets';
 import {
@@ -31,7 +33,7 @@ import { useBrightnessControl } from '../hooks/useBrightnessControl';
 import { endMediaSession } from '../hooks/useMediaSession';
 import { useSleepTimer } from '../hooks/useSleepTimer';
 import { useVolumeControl } from '../hooks/useVolumeControl';
-import type { PlayerOrientation } from '../nowPlaying';
+import { nowPlayingStore, type PlayerOrientation } from '../nowPlaying';
 import type { AspectMode, Size } from '../utils/aspectRatio';
 import {
   orientationOfItem,
@@ -49,6 +51,8 @@ interface PlayerScreenProps {
   /** Playing on behind the mini player: only the native player is kept, off screen. */
   minimized?: boolean;
   onClose: () => void;
+  /** Ends playback altogether (the notification's Stop button). */
+  onStop: () => void;
   /** The orientation the full player wants the screen in (null: follow the device). */
   onOrientationChange: (orientation: PlayerOrientation) => void;
 }
@@ -71,6 +75,7 @@ export function PlayerScreen({
   startFromBeginning = false,
   minimized = false,
   onClose,
+  onStop,
   onOrientationChange,
 }: PlayerScreenProps) {
   const settings = useSettings();
@@ -83,6 +88,7 @@ export function PlayerScreen({
   // "Play from beginning" applies to the first video only.
   const [ignoreSavedPosition, setIgnoreSavedPosition] =
     useState(startFromBeginning);
+  const [startPaused, setStartPaused] = useState(false);
   const [layout, setLayout] = useState<Size>(initialLayout);
   const [speed, setSpeed] = useState(1);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
@@ -130,8 +136,17 @@ export function PlayerScreen({
     onOrientationChange(orientation);
   }, [onOrientationChange, orientation]);
 
-  // The notification goes when the player closes, not between queue items.
-  useEffect(() => endMediaSession, []);
+  // The notification goes when the player closes, not between queue items. A new queue that
+  // replaces this one takes the session over; clearing it first would race the restart of
+  // the native session service and could leave playback without a notification.
+  useEffect(
+    () => () => {
+      if (!nowPlayingStore.getState().request) {
+        endMediaSession();
+      }
+    },
+    [],
+  );
 
   const onLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -142,10 +157,27 @@ export function PlayerScreen({
     );
   }, []);
 
-  const goTo = useCallback((next: number) => {
-    setIgnoreSavedPosition(false);
-    setIndex(next);
-  }, []);
+  const goTo = useCallback(
+    (next: number) => {
+      const current = latest.current;
+      const from = current.queue[current.index];
+      const to = current.queue[next];
+      const { backgroundPlay } = current.settings;
+      setIgnoreSavedPosition(false);
+      // Moving on in the background from an item allowed to play there (audio) to one that
+      // isn't (a video without background play): the view's props are held until the app
+      // returns, so it would keep playing with no notification. It waits, paused, instead.
+      setStartPaused(
+        AppState.currentState === 'background' &&
+          from !== undefined &&
+          to !== undefined &&
+          playsInBackground(from, backgroundPlay) &&
+          !playsInBackground(to, backgroundPlay),
+      );
+      setIndex(next);
+    },
+    [latest],
+  );
 
   const goNext = useCallback(() => {
     if (latest.current.hasNext) {
@@ -218,6 +250,7 @@ export function PlayerScreen({
           hasPrevious={hasPrevious}
           layout={layout}
           ignoreSavedPosition={ignoreSavedPosition}
+          startPaused={startPaused}
           speed={speed}
           repeatMode={repeatMode}
           aspectMode={aspectMode}
@@ -238,6 +271,7 @@ export function PlayerScreen({
           onNaturalSize={onNaturalSize}
           minimized={minimized}
           onClose={onClose}
+          onStop={onStop}
         />
       </View>
     </ThemeProvider>

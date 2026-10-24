@@ -8,6 +8,11 @@ import { useStore } from '../../shared/storage/store';
 import { clamp } from '../../shared/utils/math';
 import { isNumber, parseMediaItem } from '../library/mediaItemParsing';
 import type { VideoItem } from '../library/types';
+import {
+  settingsStore,
+  updateSettings,
+  type HistoryLimit,
+} from '../settings/settingsStore';
 
 export interface WatchEntry {
   /** Snapshot of the video, so history can be shown without rescanning the library. */
@@ -19,7 +24,6 @@ export interface WatchEntry {
 
 export type WatchHistory = Readonly<Record<string, WatchEntry>>;
 
-export const MAX_HISTORY_ENTRIES = 300;
 /** Below this position a video starts from the beginning instead of resuming. */
 export const RESUME_MIN_SECONDS = 5;
 /** Within this many seconds of the end a video counts as watched. */
@@ -52,6 +56,32 @@ export function isInProgress(entry: WatchEntry): boolean {
   return resumePosition(entry) !== null;
 }
 
+/**
+ * Where playing a whole folder starts: at its most recently played item while that is
+ * unfinished (the player then resumes its position), at the next one once it is finished
+ * (back to the first after the last), and at the first when nothing in it was played.
+ */
+export function folderStartIndex(
+  items: readonly VideoItem[],
+  history: WatchHistory,
+): number {
+  let latest = -1;
+  let latestAt = -Infinity;
+  items.forEach((item, index) => {
+    const playedAt = history[item.id]?.lastPlayedAt;
+    if (playedAt !== undefined && playedAt > latestAt) {
+      latest = index;
+      latestAt = playedAt;
+    }
+  });
+  if (latest === -1) {
+    return 0;
+  }
+  return isFinished(history[items[latest].id])
+    ? (latest + 1) % items.length
+    : latest;
+}
+
 /** Keeps only well-formed entries from stored history. */
 export function parseHistory(raw: unknown): WatchHistory {
   if (!isRecord(raw)) {
@@ -81,14 +111,15 @@ export function parseHistory(raw: unknown): WatchHistory {
   return history;
 }
 
-function prune(history: Record<string, WatchEntry>): WatchHistory {
+/** Keeps the `limit` most recently played entries. */
+function prune(history: WatchHistory, limit: number): WatchHistory {
   const ids = Object.keys(history);
-  if (ids.length <= MAX_HISTORY_ENTRIES) {
+  if (ids.length <= limit) {
     return history;
   }
   const keep = ids
     .sort((a, b) => history[b].lastPlayedAt - history[a].lastPlayedAt)
-    .slice(0, MAX_HISTORY_ENTRIES);
+    .slice(0, limit);
   return Object.fromEntries(keep.map(id => [id, history[id]]));
 }
 
@@ -109,16 +140,25 @@ export function recordProgress(
     return;
   }
   historyStore.setState(previous =>
-    prune({
-      ...previous,
-      [video.id]: {
-        video,
-        positionSec: clamp(positionSec, 0, durationSec),
-        durationSec,
-        lastPlayedAt: now,
+    prune(
+      {
+        ...previous,
+        [video.id]: {
+          video,
+          positionSec: clamp(positionSec, 0, durationSec),
+          durationSec,
+          lastPlayedAt: now,
+        },
       },
-    }),
+      settingsStore.getState().historyLimit,
+    ),
   );
+}
+
+/** Changes how many videos history keeps; entries past a lower limit go at once. */
+export function setHistoryLimit(limit: HistoryLimit): void {
+  updateSettings({ historyLimit: limit });
+  historyStore.setState(previous => prune(previous, limit));
 }
 
 export function markWatched(

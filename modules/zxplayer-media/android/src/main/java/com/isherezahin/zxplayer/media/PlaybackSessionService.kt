@@ -2,12 +2,20 @@ package com.isherezahin.zxplayer.media
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Bundle
 import android.os.Looper
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
+
+private val STOP_COMMAND = SessionCommand("com.isherezahin.zxplayer.STOP", Bundle.EMPTY)
 
 /**
  * Hosts the media session behind the playback notification and lock-screen controls.
@@ -28,7 +36,19 @@ class PlaybackSessionService : MediaSessionService() {
             .build()
             .apply { setSmallIcon(R.drawable.zx_notification_icon) })
 
-    val builder = MediaSession.Builder(this, sharedPlayer(mainLooper)).setId(SESSION_ID)
+    val player = sharedPlayer(mainLooper)
+    // A custom command rather than the player's stop: system media controls (Android 13+)
+    // only show extra buttons that are custom actions.
+    val stopButton =
+        CommandButton.Builder(CommandButton.ICON_STOP)
+            .setDisplayName(getString(R.string.zx_stop_playback))
+            .setSessionCommand(STOP_COMMAND)
+            .build()
+    val builder =
+        MediaSession.Builder(this, player)
+            .setId(SESSION_ID)
+            .setCallback(SessionCallback(player))
+            .setMediaButtonPreferences(listOf(stopButton))
     packageManager.getLaunchIntentForPackage(packageName)?.let { launch ->
       launch.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
       builder.setSessionActivity(
@@ -54,6 +74,33 @@ class PlaybackSessionService : MediaSessionService() {
     session?.release()
     session = null
     super.onDestroy()
+  }
+
+  /** Offers Stop to every controller (the notification, the lock screen, Bluetooth, …). */
+  private class SessionCallback(private val player: RemotePlayer) : MediaSession.Callback {
+    override fun onConnect(
+        session: MediaSession,
+        controller: MediaSession.ControllerInfo
+    ): MediaSession.ConnectionResult =
+        MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+            .setAvailableSessionCommands(
+                MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                    .add(STOP_COMMAND)
+                    .build())
+            .build()
+
+    override fun onCustomCommand(
+        session: MediaSession,
+        controller: MediaSession.ControllerInfo,
+        customCommand: SessionCommand,
+        args: Bundle
+    ): ListenableFuture<SessionResult> {
+      if (customCommand.customAction != STOP_COMMAND.customAction) {
+        return super.onCustomCommand(session, controller, customCommand, args)
+      }
+      player.requestStop()
+      return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+    }
   }
 
   companion object {

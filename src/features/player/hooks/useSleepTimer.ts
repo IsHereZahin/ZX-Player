@@ -42,6 +42,21 @@ export function describeSleepTimer(
   return `${minutesLeft} min left`;
 }
 
+/** Seconds until a timed sleep timer pauses playback, ticking every second; null otherwise. */
+export function useSleepSecondsLeft(timer: SleepTimer): number | null {
+  const endsAt = timer?.kind === 'minutes' ? timer.endsAt : null;
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (endsAt === null) {
+      return;
+    }
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [endsAt]);
+  return endsAt === null ? null : Math.max(0, Math.ceil((endsAt - now) / 1000));
+}
+
 /**
  * Pauses playback after a delay. The "end of video" variant is handled by the player when
  * a video finishes, so it only needs to be stored here.

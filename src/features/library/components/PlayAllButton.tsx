@@ -16,7 +16,7 @@ const FAB_MARGIN = spacing.lg;
  */
 export const FAB_CLEARANCE = FAB_SIZE + FAB_MARGIN + spacing.md;
 
-/** Floating action button that plays the current list from the top. */
+/** Floating action button that plays the current list. */
 export function PlayAllButton({ onPress }: { onPress: () => void }) {
   const styles = useStyles();
   const colors = useColors();

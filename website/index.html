@@ -27,8 +27,8 @@
   --accent-text: #1E6BCB; --btn: #0B0F15; --btn-text: #FFFFFF;
   --art: linear-gradient(180deg, #E3EEFB 0%, #EEF3F9 75%);
   --cta-glow: #D3E7FD;
-  --hero-1: #195FBA; --hero-2: #1E6BCB; --hero-3: #4A97F0; --hero-4: #B4D7FB; --hero-glow: rgba(222, 238, 255, .95);
-  --glass: rgba(255, 255, 255, .42); --glass-tile: rgba(255, 255, 255, .62); --glass-line: rgba(255, 255, 255, .8);
+  /* The logo's deepest blue (#logo-bg), where the hero text sits. */
+  --hero-1: #2F7FE0;
   --fast: #0B0F15;
   /* The app's own palette, for the mockups (they follow the device theme like the app). */
   --app-bg: #F4F7FB; --app-surface: #FFFFFF; --app-text: #111318; --app-text-2: #5F6673;
@@ -45,8 +45,7 @@
     --accent-text: #7DBBFA; --btn: #F2F4F7; --btn-text: #0B0F15;
     --art: linear-gradient(180deg, #132338 0%, #13181F 75%);
     --cta-glow: rgba(28, 79, 134, .65);
-    --hero-1: #0D2748; --hero-2: #11345F; --hero-3: #1C4F86; --hero-4: #16304F; --hero-glow: rgba(90, 168, 248, .28);
-    --glass: rgba(23, 25, 29, .42); --glass-tile: rgba(23, 25, 29, .62); --glass-line: rgba(255, 255, 255, .12);
+    --hero-1: #0D2748;
     --fast: #17191D;
     --app-bg: #0B0F15; --app-surface: #17191D; --app-text: #F2F4F7; --app-text-2: #9AA1AC;
     --app-soft: rgba(255, 255, 255, .08); --app-line: rgba(255, 255, 255, .08); --app-glow: #1C4F86;
@@ -93,11 +92,13 @@ svg { display: block; }
 .btn-ink { background: var(--btn); color: var(--btn-text); box-shadow: 0 14px 34px -18px rgba(11, 15, 21, .6); }
 .meta { font-size: .875rem; font-variant-numeric: tabular-nums; }
 
-/* Top bar: drawn as the top of the hero card */
+/* Top bar: drawn as the top of the hero card. The bar and the card are a full-width band,
+   edge to edge; their content stays where the page gutter puts it. */
 .topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  margin-top: 12px; padding: 16px 16px 0 20px;
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--hero-1); color: #FFFFFF;
+  margin: 0 calc(-1 * var(--gutter));
+  padding: 28px calc(var(--gutter) + 16px) 0 calc(var(--gutter) + 20px);
+  background: var(--hero-1); color: #FFFFFF;
 }
 .brand { display: flex; align-items: center; gap: 10px; border-radius: 12px; font-weight: 600; font-size: 1.0625rem; letter-spacing: -.01em; text-decoration: none; }
 .brand .logo { width: 32px; height: 32px; }
@@ -109,13 +110,31 @@ svg { display: block; }
 .pill-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .4); }
 .topbar :focus-visible, .hero-card :focus-visible { outline-color: #FFFFFF; }
 
-/* Hero. Text sits on the deeper blue (white on #1E6BCB is 5.2:1); the glow stays below it. */
+/* Hero. Text sits on the logo's deepest blue (white on #2F7FE0 is 4.0:1); from 30rem it
+   fades into the page colour by 58rem, behind the top of the phone mockup. The fade is
+   eased (smoothstep, mixed in Oklab): a straight linear fade starts and stops abruptly,
+   and the eye sees those two points as lines. The bottom padding leaves room for the
+   phone's shadow, which would otherwise be cut off in a straight line. */
 .hero-card {
-  position: relative; overflow: hidden; padding: clamp(40px, 7vw, 72px) 20px 0;
-  border-radius: 0 0 var(--radius-xl) var(--radius-xl); color: #FFFFFF; text-align: center;
-  background:
-    radial-gradient(70% 36% at 50% 100%, var(--hero-glow), transparent 72%),
-    linear-gradient(180deg, var(--hero-1) 0, var(--hero-2) 34rem, var(--hero-3) 48rem, var(--hero-4) 100%);
+  position: relative; overflow: hidden; margin-inline: calc(-1 * var(--gutter));
+  padding: clamp(40px, 7vw, 72px) calc(var(--gutter) + 20px) 56px;
+  color: #FFFFFF; text-align: center;
+  /* For browsers without color-mix(). */
+  background: linear-gradient(180deg, var(--hero-1) 30rem, var(--bg) 58rem);
+  background: linear-gradient(
+    180deg,
+    var(--hero-1) 30rem,
+    color-mix(in oklab, var(--hero-1), var(--bg) 2.8%) 32.8rem,
+    color-mix(in oklab, var(--hero-1), var(--bg) 10.4%) 35.6rem,
+    color-mix(in oklab, var(--hero-1), var(--bg) 21.6%) 38.4rem,
+    color-mix(in oklab, var(--hero-1), var(--bg) 35.2%) 41.2rem,
+    color-mix(in oklab, var(--hero-1), var(--bg) 50%) 44rem,
+    color-mix(in oklab, var(--hero-1), var(--bg) 64.8%) 46.8rem,
+    color-mix(in oklab, var(--hero-1), var(--bg) 78.4%) 49.6rem,
+    color-mix(in oklab, var(--hero-1), var(--bg) 89.6%) 52.4rem,
+    color-mix(in oklab, var(--hero-1), var(--bg) 97.2%) 55.2rem,
+    var(--bg) 58rem
+  );
 }
 .badge {
   display: inline-block; padding: 7px 15px; border-radius: 999px;
@@ -132,16 +151,15 @@ h1 { margin: 20px auto 0; font-size: clamp(2.5rem, 1.4rem + 5.6vw, 5.5rem); font
 .hero-copy > :nth-child(4) { animation-delay: .18s; }
 .stage { display: flex; justify-content: center; margin-top: clamp(40px, 6vw, 60px); }
 
-/* Facts: frosted tiles straddling the hero's bottom edge */
+/* Facts: a card of tiles under the phone, on the page itself */
 .facts {
-  position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
-  width: min(680px, calc(100% - 24px)); margin: -28px auto 0; padding: 8px; list-style: none;
-  border: 1px solid var(--glass-line); border-radius: 24px; background: var(--glass);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
-  box-shadow: 0 20px 44px -26px rgba(16, 44, 84, .45);
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
+  width: min(680px, calc(100% - 24px)); margin: 0 auto; padding: 8px; list-style: none;
+  border: 1px solid var(--line); border-radius: 24px; background: var(--surface);
+  box-shadow: 0 20px 44px -26px rgba(16, 44, 84, .35);
   animation: fade-up .8s cubic-bezier(.2, .7, .2, 1) .4s both;
 }
-.facts li { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 4px; border-radius: 16px; background: var(--glass-tile); text-align: center; }
+.facts li { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 4px; border-radius: 16px; background: var(--bg); text-align: center; }
 .facts strong { font-size: clamp(1.25rem, 1rem + 1.2vw, 1.75rem); font-weight: 600; line-height: 1.1; letter-spacing: -.02em; }
 .facts span { margin-top: 4px; color: var(--ink-2); font-size: .6875rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 @media (max-width: 420px) { .facts span { font-size: .625rem; letter-spacing: .04em; } }

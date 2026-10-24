@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 
 import { reportError } from '../../logger';
 import { createPersistentStore, isRecord } from '../persistentStore';
@@ -53,6 +54,24 @@ describe('createPersistentStore', () => {
       );
     } finally {
       jest.useRealTimers();
+    }
+  });
+
+  it('writes at once while the app is in the background, where timers stop', async () => {
+    // The Jest preset mocks `currentState` as a function, so it is set directly.
+    const foregroundState = AppState.currentState;
+    Object.assign(AppState, { currentState: 'background' });
+    try {
+      const store = makeStore();
+      store.setState({ count: 4 });
+      // No timer runs: the write is already under way after one microtask.
+      await Promise.resolve();
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+        'test.counter',
+        '{"count":4}',
+      );
+    } finally {
+      Object.assign(AppState, { currentState: foregroundState });
     }
   });
 

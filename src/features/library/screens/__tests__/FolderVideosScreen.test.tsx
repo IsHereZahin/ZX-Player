@@ -1,6 +1,7 @@
 import React from 'react';
 import { Platform } from 'react-native';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -15,7 +16,13 @@ import {
   mockNavigation,
   screenProps,
 } from '../../../../test/navigation';
-import { historyStore, isFinished } from '../../../history/watchHistory';
+import {
+  historyStore,
+  isFinished,
+  markWatched,
+  recordProgress,
+} from '../../../history/watchHistory';
+import { updateSettings } from '../../../settings/settingsStore';
 import { libraryPrefsStore } from '../../libraryPrefs';
 import { allMediaFolder } from '../../services/mediaLibrary';
 import type { VideoFolder } from '../../types';
@@ -83,6 +90,31 @@ describe('FolderVideosScreen', () => {
     });
     expect(playerQueueIds()).toEqual(['1', '2', '3']);
 
+    await fireEvent.press(screen.getByTestId('play-all'));
+    expect(lastPlaybackRequest()?.startIndex).toBe(0);
+  });
+
+  it('plays the folder from where it was left off', async () => {
+    getPhotos.mockResolvedValueOnce(page(['1', '2', '3']));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('Episode 2'));
+    const second = (lastPlaybackRequest()?.queue ?? [])[1];
+
+    // Unfinished: back to it (the player resumes its saved position).
+    await act(async () => recordProgress(second, 120, 600));
+    await fireEvent.press(screen.getByTestId('play-all'));
+    expect(lastPlaybackRequest()).toEqual({
+      queue: expect.any(Array),
+      startIndex: 1,
+      startFromBeginning: false,
+    });
+
+    // Finished: on to the next one.
+    await act(async () => markWatched(second, 600));
+    await fireEvent.press(screen.getByTestId('play-all'));
+    expect(lastPlaybackRequest()?.startIndex).toBe(2);
+
+    await act(async () => updateSettings({ resumePlayback: false }));
     await fireEvent.press(screen.getByTestId('play-all'));
     expect(lastPlaybackRequest()?.startIndex).toBe(0);
   });

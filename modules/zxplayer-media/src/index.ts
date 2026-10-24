@@ -3,6 +3,7 @@ import NativeZxplayerMedia from './NativeZxplayerMedia';
 import type {
   NowPlayingInfo,
   PlaybackEnded,
+  PlaybackProgress,
   RemoteCommand,
 } from './NativeZxplayerMedia';
 
@@ -14,6 +15,7 @@ export type {
   NativeTrashedItem,
   NowPlayingInfo,
   PlaybackEnded,
+  PlaybackProgress,
   RemoteCommand,
 } from './NativeZxplayerMedia';
 
@@ -103,4 +105,10 @@ export function addPlaybackEndedListener(
   listener: (event: PlaybackEnded) => void,
 ): { remove: () => void } {
   return requireModule().onPlaybackEnded(listener);
+}
+
+export function addPlaybackProgressListener(
+  listener: (event: PlaybackProgress) => void,
+): { remove: () => void } {
+  return requireModule().onPlaybackProgress(listener);
 }

@@ -1,7 +1,16 @@
 import { PermissionsAndroid, Platform } from 'react-native';
 
 import { reportError } from '../../shared/logger';
+import type { VideoItem } from '../library/types';
 import { updateSettings } from './settingsStore';
+
+/** Music should not stop when the screen turns off, so audio always plays on. */
+export function playsInBackground(
+  item: VideoItem,
+  backgroundPlay: boolean,
+): boolean {
+  return backgroundPlay || item.kind === 'audio';
+}
 
 /**
  * Turns background playback on or off. On Android 13+ the media controls live in a

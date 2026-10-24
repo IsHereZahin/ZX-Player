@@ -1,5 +1,6 @@
 import { createStore } from '../../shared/storage/store';
 import type { VideoItem } from '../library/types';
+import { playsInBackground } from '../settings/backgroundPlay';
 import { settingsStore } from '../settings/settingsStore';
 import type { PlaybackClock } from './playbackClock';
 import { orientationOfItem } from './utils/orientation';
@@ -100,7 +101,7 @@ export function leaveFullPlayer(): void {
   const active = activePlaybackStore.getState();
   const keepPlaying =
     active !== null &&
-    (settingsStore.getState().backgroundPlay || active.item.kind === 'audio');
+    playsInBackground(active.item, settingsStore.getState().backgroundPlay);
   if (keepPlaying) {
     nowPlayingStore.setState(state => ({ ...state, presentation: 'mini' }));
   } else {

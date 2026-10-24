@@ -20,6 +20,7 @@ import android.util.Log
 import android.util.Size
 import androidx.annotation.RequiresApi
 import com.facebook.react.bridge.ActivityEventListener
+import com.facebook.react.bridge.LifecycleEventListener
 import androidx.media3.common.Player
 import com.brentvatne.react.RNVPlugin
 import com.brentvatne.react.ReactNativeVideoManager
@@ -102,17 +103,27 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
    * react-native-video reports its events through React Native's renderer, which hands them
    * to JavaScript only on a screen frame. In the background, and with the screen off, none
    * come, so its onEnd never arrived and a queue stopped after one item. Its players are
-   * watched here instead, and the end of an item goes out as a module event, which
-   * JavaScript gets right away.
+   * watched here instead: the end of an item goes out as a module event, which JavaScript
+   * gets right away, and the media session mirrors their state (see RemotePlayer).
    */
   private val endWatcher =
       object : RNVPlugin, Player.Listener {
         override fun onInstanceCreated(id: String, player: Any) {
-          (player as? Player)?.addListener(this)
+          val created = player as? Player ?: return
+          created.addListener(this)
+          onMainThread {
+            players += created
+            sessionPlayer.attach(created)
+          }
         }
 
         override fun onInstanceRemoved(id: String, player: Any) {
-          (player as? Player)?.removeListener(this)
+          val removed = player as? Player ?: return
+          removed.removeListener(this)
+          onMainThread {
+            players -= removed
+            sessionPlayer.detach(removed)
+          }
         }
 
         override fun onEvents(player: Player, events: Player.Events) {
@@ -128,13 +139,57 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
         }
       }
 
+  /** react-native-video's players; only touched on the main thread. */
+  private val players = mutableListOf<Player>()
+
+  /**
+   * onProgress is a view event too, and JavaScript's timers stop in the background, so the
+   * position it saves for resuming stayed where the app was left. While the app is away,
+   * the position of whatever plays goes out every few seconds instead.
+   */
+  private val progressTicker =
+      object : Runnable {
+        override fun run() {
+          players.filter { it.isPlaying }.forEach { emitProgress(it) }
+          mainHandler.postDelayed(this, PROGRESS_INTERVAL_MS)
+        }
+      }
+
+  private val lifecycleListener =
+      object : LifecycleEventListener {
+        override fun onHostResume() {
+          mainHandler.removeCallbacks(progressTicker)
+        }
+
+        override fun onHostPause() {
+          mainHandler.removeCallbacks(progressTicker)
+          mainHandler.postDelayed(progressTicker, PROGRESS_INTERVAL_MS)
+        }
+
+        override fun onHostDestroy() {
+          mainHandler.removeCallbacks(progressTicker)
+        }
+      }
+
   init {
     reactContext.addActivityEventListener(activityListener)
     // react-native-video announces its players on the main thread; registering there too
-    // keeps its plugin list from being touched by two threads at once.
+    // keeps its plugin list from being touched by two threads at once. The lifecycle
+    // listener may be called back at once, so it also waits until the module is built.
     UiThreadUtil.runOnUiThread {
       ReactNativeVideoManager.getInstance().registerPlugin(endWatcher)
+      reactContext.addLifecycleEventListener(lifecycleListener)
     }
+  }
+
+  private fun emitProgress(player: Player) {
+    emitOnPlaybackProgress(
+        Arguments.createMap().apply {
+          putString("uri", player.currentMediaItem?.localConfiguration?.uri?.toString() ?: "")
+          putDouble("positionMs", player.currentPosition.toDouble())
+          putDouble("bufferedMs", player.bufferedPosition.toDouble())
+          putDouble("durationMs", player.duration.coerceAtLeast(0).toDouble())
+        })
   }
 
   private val resolver
@@ -548,10 +603,21 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
   private val sessionPlayer
     get() = PlaybackSessionService.sharedPlayer(Looper.getMainLooper())
 
+  /**
+   * Whether the session service was asked to run since the last stop. A stopped service still
+   * reports `running` until its onDestroy, which comes later, so that alone can't tell.
+   */
+  private var sessionRequested = false
+
+  private fun onMainThread(block: () -> Unit) {
+    if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post { block() }
+  }
+
   override fun setNowPlaying(info: ReadableMap) {
     val next =
         NowPlaying(
             id = info.getString("id") ?: "",
+            uri = info.getString("uri") ?: "",
             title = info.getString("title") ?: "",
             artist = info.getString("artist") ?: "",
             artworkUri = if (info.hasKey("artworkUri")) info.getString("artworkUri") else null,
@@ -572,7 +638,9 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
             })
       }
       sessionPlayer.update(next)
-      if (!PlaybackSessionService.running) {
+      // Right after a stop the old service is still winding down; asking again brings up a
+      // new one once it is gone. Trusting `running` there left playback without a session.
+      if (!sessionRequested || !PlaybackSessionService.running) {
         startSessionService()
       }
     }
@@ -586,6 +654,7 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
     try {
       reactApplicationContext.startService(
           Intent(reactApplicationContext, PlaybackSessionService::class.java))
+      sessionRequested = true
     } catch (error: IllegalStateException) {
       // Android refuses to start services from the background; the next update retries.
       Log.w(TAG, "Could not start the playback session", error)
@@ -594,14 +663,17 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
 
   private fun stopSession() {
     sessionPlayer.update(null)
-    if (PlaybackSessionService.running) {
+    // Also cancels a start that is still on its way.
+    if (sessionRequested || PlaybackSessionService.running) {
       reactApplicationContext.stopService(
           Intent(reactApplicationContext, PlaybackSessionService::class.java))
     }
+    sessionRequested = false
   }
 
   override fun invalidate() {
     reactApplicationContext.removeActivityEventListener(activityListener)
+    reactApplicationContext.removeLifecycleEventListener(lifecycleListener)
     UiThreadUtil.runOnUiThread {
       ReactNativeVideoManager.getInstance().unregisterPlugin(endWatcher)
     }
@@ -611,7 +683,10 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
     // Lets a copy in progress finish rather than leave a half-written file behind.
     fileExecutor.shutdown()
     mainHandler.post {
+      mainHandler.removeCallbacks(progressTicker)
+      players.clear()
       sessionPlayer.onCommand = null
+      sessionPlayer.detachAll()
       stopSession()
     }
     super.invalidate()
@@ -784,6 +859,8 @@ class ZxplayerMediaModule(reactContext: ReactApplicationContext) :
     const val MAX_NEW_IDS = 500
     const val CONSENT_REQUEST_CODE = 0x5A11
     const val COPY_BUFFER_BYTES = 256 * 1024
+    /** Matches how often the app saves progress in the foreground. */
+    const val PROGRESS_INTERVAL_MS = 5000L
     val MEDIA_ROOTS =
         setOf("Movies", "DCIM", "Pictures", "Music", "Podcasts", "Audiobooks", "Recordings")
     val LEGACY_ALBUM_ART_URI: Uri = Uri.parse("content://media/external/audio/albumart")

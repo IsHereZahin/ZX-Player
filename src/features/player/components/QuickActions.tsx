@@ -17,7 +17,12 @@ import {
   typography,
 } from '../../../shared/theme';
 import { useColors } from '../../../shared/theming';
-import { formatSpeed } from '../../../shared/utils/format';
+import { formatDuration, formatSpeed } from '../../../shared/utils/format';
+import {
+  describeSleepTimer,
+  useSleepSecondsLeft,
+  type SleepTimer,
+} from '../hooks/useSleepTimer';
 import type { RepeatMode } from './PlayerSheets';
 
 const REPEAT_NAMES: Record<RepeatMode, string> = {
@@ -31,7 +36,7 @@ export interface QuickActionsProps {
   mode: 'video' | 'audio';
   speed: number;
   repeatMode: RepeatMode;
-  sleepActive: boolean;
+  sleepTimer: SleepTimer;
   backgroundPlay: boolean;
   onOpenSpeed: () => void;
   onCycleRepeat: () => void;
@@ -45,8 +50,8 @@ export interface QuickActionsProps {
 
 /**
  * Row of round shortcuts under the player's top bar. A shortcut takes the accent while its
- * feature is on (a speed other than 1×, repeat, a sleep timer, background play); the
- * chevron opens every option.
+ * feature is on (a speed other than 1×, repeat, a sleep timer, background play); a running
+ * sleep timer also shows the time left. The chevron opens every option.
  */
 export function QuickActions(props: QuickActionsProps) {
   const colors = useColors();
@@ -85,15 +90,18 @@ export function QuickActions(props: QuickActionsProps) {
         onPress={props.onCycleRepeat}
         testID="repeat-button"
       />
-      <IconButton
-        icon={TimerIcon}
-        variant="overlay"
-        size="sm"
-        active={props.sleepActive}
-        accessibilityLabel="Sleep timer"
-        onPress={props.onOpenSleep}
-        testID="sleep-button"
-      />
+      {props.sleepTimer ? (
+        <SleepTimerPill timer={props.sleepTimer} onPress={props.onOpenSleep} />
+      ) : (
+        <IconButton
+          icon={TimerIcon}
+          variant="overlay"
+          size="sm"
+          accessibilityLabel="Sleep timer"
+          onPress={props.onOpenSleep}
+          testID="sleep-button"
+        />
+      )}
       {isVideo ? (
         <>
           <IconButton
@@ -127,6 +135,41 @@ export function QuickActions(props: QuickActionsProps) {
   );
 }
 
+/** A running sleep timer counts down in place of the timer button. */
+function SleepTimerPill({
+  timer,
+  onPress,
+}: {
+  timer: NonNullable<SleepTimer>;
+  onPress: () => void;
+}) {
+  const colors = useColors();
+  const secondsLeft = useSleepSecondsLeft(timer);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Sleep timer, ${describeSleepTimer(timer)}`}
+      onPress={onPress}
+      hitSlop={8}
+      style={({ pressed }) => [
+        styles.speed,
+        styles.sleepPill,
+        { backgroundColor: colors.accent },
+        pressed && styles.pressed,
+      ]}
+      testID="sleep-button"
+    >
+      <TimerIcon size={15} color={colors.onAccent} />
+      <Text
+        style={[styles.speedText, styles.sleepText, { color: colors.onAccent }]}
+        testID="sleep-countdown"
+      >
+        {secondsLeft === null ? 'End' : formatDuration(secondsLeft)}
+      </Text>
+    </Pressable>
+  );
+}
+
 const SIZE = 36;
 
 const styles = StyleSheet.create({
@@ -155,5 +198,13 @@ const styles = StyleSheet.create({
     ...typography.captionStrong,
     fontSize: 13,
     color: playerColors.white,
+  },
+  sleepPill: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  sleepText: {
+    fontVariant: ['tabular-nums'],
   },
 });

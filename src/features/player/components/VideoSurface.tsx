@@ -154,6 +154,35 @@ function useNativeEnd(
   }, [enabled, latest]);
 }
 
+/**
+ * The view's onProgress is held back in the background as well, so the media module reports
+ * the position there instead; it goes through the same handler, which keeps the playback
+ * clock (and the position saved for resuming) moving.
+ */
+function useNativeProgress(
+  enabled: boolean,
+  uri: string,
+  onProgress: VideoEvents['onProgress'],
+) {
+  const latest = useLatestRef({ uri, onProgress });
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+    const subscription = nativeMedia.addPlaybackProgressListener(progress => {
+      if (progress.uri && progress.uri !== latest.current.uri) {
+        return;
+      }
+      latest.current.onProgress({
+        currentTime: progress.positionMs / 1000,
+        playableDuration: progress.bufferedMs / 1000,
+        seekableDuration: progress.durationMs / 1000,
+      });
+    });
+    return () => subscription.remove();
+  }, [enabled, latest]);
+}
+
 /** Which subtitle the player itself should render (external files are drawn by the app). */
 export type NativeTextTrack =
   | { kind: 'off' }
@@ -224,8 +253,9 @@ export const VideoSurface = memo(function VideoSurfaceView({
     [artist, artworkUri, startPositionSec, title, uri],
   );
   useCommandsInBackground(videoRef, source, paused);
-  const nativeEnd = endsFromMediaModule();
-  useNativeEnd(nativeEnd, uri, events.onEnd);
+  const fromMediaModule = endsFromMediaModule();
+  useNativeEnd(fromMediaModule, uri, events.onEnd);
+  useNativeProgress(fromMediaModule, uri, events.onProgress);
   const layout = resolveVideoLayout(
     aspectMode,
     container,
@@ -283,7 +313,7 @@ export const VideoSurface = memo(function VideoSurfaceView({
         onLoad={events.onLoad}
         onProgress={events.onProgress}
         onBuffer={events.onBuffer}
-        onEnd={nativeEnd ? undefined : events.onEnd}
+        onEnd={fromMediaModule ? undefined : events.onEnd}
         onError={events.onError}
         onAudioTracks={events.onAudioTracks}
         onTextTracks={events.onTextTracks}

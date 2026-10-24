@@ -16,6 +16,11 @@ import {
 } from 'react-native-gesture-handler';
 
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
+import {
+  createStore,
+  useStore,
+  type Store,
+} from '../../../shared/storage/store';
 import { useColors } from '../../../shared/theming';
 import {
   playerColors,
@@ -35,11 +40,15 @@ const TRACK_HEIGHT_ACTIVE = 8;
 const THUMB_SIZE = 16;
 const THUMB_SIZE_ACTIVE = 22;
 
+const NO_PREVIEW = createStore<number | null>(null);
+
 interface SeekBarProps {
   clock: PlaybackClock;
   duration: number;
   /** Step used by screen-reader increment / decrement actions. */
   skipSeconds: number;
+  /** A position being picked elsewhere (a swipe on the video), shown as if dragged here. */
+  preview?: Store<number | null>;
   onSeek: (time: number) => void;
   onScrubbingChange: (scrubbing: boolean) => void;
 }
@@ -49,13 +58,16 @@ export function SeekBar({
   clock,
   duration,
   skipSeconds,
+  preview = NO_PREVIEW,
   onSeek,
   onScrubbingChange,
 }: SeekBarProps) {
   const colors = useColors();
   const { currentTime, bufferedTime } = usePlaybackClock(clock);
+  const previewTime = useStore(preview, time => time);
   const [trackWidth, setTrackWidth] = useState(0);
-  const [scrubTime, setScrubTime] = useState<number | null>(null);
+  const [dragTime, setDragTime] = useState<number | null>(null);
+  const scrubTime = dragTime ?? previewTime;
   const scrubRef = useRef<number | null>(null);
   const latest = useLatestRef({
     trackWidth,
@@ -76,7 +88,7 @@ export function SeekBar({
     (x: number) => {
       const time = timeAt(x);
       scrubRef.current = time;
-      setScrubTime(time);
+      setDragTime(time);
     },
     [timeAt],
   );
@@ -99,7 +111,7 @@ export function SeekBar({
       onFinalize: () => {
         if (scrubRef.current !== null) {
           scrubRef.current = null;
-          setScrubTime(null);
+          setDragTime(null);
           latest.current.onScrubbingChange(false);
         }
       },

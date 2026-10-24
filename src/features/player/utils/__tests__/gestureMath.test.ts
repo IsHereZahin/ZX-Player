@@ -1,10 +1,14 @@
 import {
+  AXIS_DECISION_DISTANCE,
+  AXIS_DOMINANCE,
   computeLevel,
   computeSeekTarget,
+  isAtSystemEdge,
   LEVEL_DRAG_FRACTION,
   resolveDoubleTapZone,
   resolvePanIntent,
   SEEK_SECONDS_PER_SCREEN_WIDTH,
+  SYSTEM_EDGE_SIZE,
 } from '../gestureMath';
 
 describe('resolvePanIntent', () => {
@@ -18,6 +22,33 @@ describe('resolvePanIntent', () => {
     expect(resolvePanIntent(399, 800, 0, 60)).toBe('brightness');
     expect(resolvePanIntent(400, 800, 0, 60)).toBe('volume');
     expect(resolvePanIntent(790, 800, 2, -20)).toBe('volume');
+  });
+
+  it('waits while a short drag could still go either way', () => {
+    expect(resolvePanIntent(100, 800, 12, 12)).toBeNull();
+    expect(resolvePanIntent(700, 800, -10, 15)).toBeNull();
+    expect(resolvePanIntent(100, 800, 0, 0)).toBeNull();
+  });
+
+  it('decides a drag that is clearly one way, or long enough to tell', () => {
+    // A thumb's curve doesn't tip a short drag either way…
+    expect(resolvePanIntent(100, 800, 10, 10 * AXIS_DOMINANCE)).toBe(
+      'brightness',
+    );
+    expect(resolvePanIntent(700, 800, -10 * AXIS_DOMINANCE, 10)).toBe('seek');
+    // …and past the decision distance the longer axis wins.
+    expect(resolvePanIntent(100, 800, 20, 26)).toBe('brightness');
+    expect(resolvePanIntent(700, 800, 26, -20)).toBe('seek');
+    expect(Math.hypot(20, 26)).toBeGreaterThanOrEqual(AXIS_DECISION_DISTANCE);
+  });
+});
+
+describe('isAtSystemEdge', () => {
+  it('flags touches that start by the top or bottom edge', () => {
+    expect(isAtSystemEdge(SYSTEM_EDGE_SIZE - 1, 400)).toBe(true);
+    expect(isAtSystemEdge(400 - SYSTEM_EDGE_SIZE + 1, 400)).toBe(true);
+    expect(isAtSystemEdge(SYSTEM_EDGE_SIZE, 400)).toBe(false);
+    expect(isAtSystemEdge(200, 400)).toBe(false);
   });
 });
 

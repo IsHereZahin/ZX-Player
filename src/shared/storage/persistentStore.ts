@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 
 import { reportError } from '../logger';
 import { createStore, type Store } from './store';
@@ -28,9 +29,9 @@ export function createPersistentStore<T>({
   const store = createStore(initial);
   let timer: ReturnType<typeof setTimeout> | null = null;
   let dirty = false;
+  let saving: Promise<void> = Promise.resolve();
 
-  const write = async () => {
-    timer = null;
+  const save = async () => {
     if (!dirty) {
       return;
     }
@@ -40,6 +41,14 @@ export function createPersistentStore<T>({
     } catch (error) {
       reportError(`Saving "${key}" failed`, error);
     }
+  };
+
+  // One write at a time: AsyncStorage runs calls in parallel, so an older snapshot could
+  // otherwise land after a newer one.
+  const write = () => {
+    timer = null;
+    saving = saving.then(save);
+    return saving;
   };
 
   return {
@@ -53,6 +62,13 @@ export function createPersistentStore<T>({
       dirty = true;
       if (timer) {
         clearTimeout(timer);
+      }
+      // JavaScript timers stop while the app is in the background on Android, so a delayed
+      // write would wait for the app to return, and be lost if the app is closed first.
+      // Little changes there (background playback moving on), so it is written at once.
+      if (AppState.currentState === 'background') {
+        write();
+        return;
       }
       timer = setTimeout(write, writeDelayMs);
     },

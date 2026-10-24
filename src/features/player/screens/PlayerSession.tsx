@@ -19,8 +19,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAfterSheetClose } from '../../../shared/components/Sheet';
+import { useDelayedFlag } from '../../../shared/hooks/useDelayedFlag';
 import { useLatestRef } from '../../../shared/hooks/useLatestRef';
 import { useStateWithRef } from '../../../shared/hooks/useStateWithRef';
+import { createStore, useStore } from '../../../shared/storage/store';
 import { useColors } from '../../../shared/theming';
 import { spacing } from '../../../shared/theme';
 import { formatDuration } from '../../../shared/utils/format';
@@ -32,7 +34,10 @@ import { mediaTitle } from '../../library/services/mediaLibrary';
 import { useThumbnail } from '../../library/hooks/useThumbnail';
 import { getCachedThumbnail } from '../../library/services/thumbnails';
 import type { VideoItem } from '../../library/types';
-import { setBackgroundPlay } from '../../settings/backgroundPlay';
+import {
+  playsInBackground,
+  setBackgroundPlay,
+} from '../../settings/backgroundPlay';
 import {
   SUBTITLE_SCALE,
   updateSettings,
@@ -96,6 +101,11 @@ type SheetName =
 /** Space kept free under subtitles while the bottom controls are showing. */
 const CONTROLS_CLEARANCE = 128;
 const LOCK_HINT_MS = 2500;
+/**
+ * The loading spinner waits this long: a seek in a local file reloads for a moment, and a
+ * spinner flashing up at every skip looked broken.
+ */
+const SPINNER_DELAY_MS = 500;
 /** "Previous" restarts the current video instead once past this point. */
 const RESTART_THRESHOLD_SEC = 5;
 
@@ -125,6 +135,8 @@ export interface PlayerSessionProps {
   hasPrevious: boolean;
   layout: Size;
   ignoreSavedPosition: boolean;
+  /** Open paused: the item may not play where the app is (in the background). */
+  startPaused: boolean;
   speed: number;
   repeatMode: RepeatMode;
   aspectMode: AspectMode;
@@ -146,6 +158,8 @@ export interface PlayerSessionProps {
   onRotate: () => void;
   onNaturalSize: (size: Size) => void;
   onClose: () => void;
+  /** Ends playback altogether (the notification's Stop). */
+  onStop: () => void;
 }
 
 /** Everything that belongs to one video; remounted when the queue moves on. */
@@ -156,8 +170,7 @@ export function PlayerSession(props: PlayerSessionProps) {
   const settings = useSettings();
   const isAudio = video.kind === 'audio';
   const favorite = useIsFavorite(video.id);
-  // Music should not stop when the screen turns off, so audio always plays on.
-  const backgroundPlay = settings.backgroundPlay || isAudio;
+  const backgroundPlay = playsInBackground(video, settings.backgroundPlay);
   // Read once: changing the source's metadata mid-playback could make the player reload.
   const [artworkUri] = useState(() => getCachedThumbnail(video) ?? undefined);
   // The audio screen's cover and backdrop; loaded once here for both.
@@ -180,6 +193,7 @@ export function PlayerSession(props: PlayerSessionProps) {
     initialDurationSec: video.durationSec,
     startAtSec: resumeAt,
     backgroundPlay,
+    startPaused: props.startPaused,
     onEnded: handleEnded,
   });
   usePlaybackProgress(video, playback);
@@ -203,6 +217,20 @@ export function PlayerSession(props: PlayerSessionProps) {
       playback.error !== null,
   );
   const { keepAlive } = controls;
+
+  // A swipe on the video previews its target on the real seek bar, which shows on its own
+  // meanwhile; afterwards the controls stay up for a moment, as after any interaction.
+  const [seekPreview] = useState(() => createStore<number | null>(null));
+  const gestureSeeking = useStore(seekPreview, time => time !== null);
+  const previewSeek = useCallback(
+    (time: number | null) => {
+      if (time === null && seekPreview.getState() !== null) {
+        keepAlive();
+      }
+      seekPreview.setState(time);
+    },
+    [keepAlive, seekPreview],
+  );
   const { seekTo, getCurrentTime, togglePlayback, pause } = playback;
 
   // Lets the mini player show and steer this item while the player is minimised.
@@ -423,7 +451,7 @@ export function PlayerSession(props: PlayerSessionProps) {
       : '';
 
   const pictureInPicture = playback.pictureInPicture;
-  const showControls = controls.visible && !locked;
+  const showControls = (controls.visible || gestureSeeking) && !locked;
   const subtitleLayout = {
     shortSide,
     scale: subtitleScale,
@@ -431,12 +459,23 @@ export function PlayerSession(props: PlayerSessionProps) {
     bottomOffset:
       (showControls ? CONTROLS_CLEARANCE : spacing.xl) + insets.bottom,
   };
-  const showSpinner = playback.buffering && !playback.paused && !playback.error;
+  const showSpinner = useDelayedFlag(
+    playback.buffering && !playback.paused && !playback.error,
+    SPINNER_DELAY_MS,
+  );
 
-  // Notification and lock-screen controls (Previous / Play-Pause / Next).
+  // In the background the native view outlives its unmount until the app returns, so the
+  // player is paused by command before playback is torn down.
+  const stopFromNotification = useCallback(() => {
+    latest.current.videoRef.current?.pause();
+    latest.current.onStop();
+  }, [latest]);
+
+  // Notification and lock-screen controls (Previous / Play-Pause / Next / Stop).
   useMediaSession({
     enabled: backgroundPlay,
     id: video.id,
+    uri: video.uri,
     title,
     artist: (isAudio && video.artist) || 'ZX Player',
     artworkUri,
@@ -452,6 +491,7 @@ export function PlayerSession(props: PlayerSessionProps) {
     onPrevious: props.onPrevious,
     onNext: props.onNext,
     onSeek: seekTo,
+    onStop: stopFromNotification,
   });
 
   // Pinch zoom, kept within the screen for the current aspect mode and orientation.
@@ -569,6 +609,7 @@ export function PlayerSession(props: PlayerSessionProps) {
             togglePlayback={togglePlayback}
             toggleControls={toggleControls}
             onBoostChange={setBoosted}
+            onSeekPreview={previewSeek}
             getZoom={getZoom}
             onZoomChange={changeZoom}
             brightness={props.brightness}
@@ -593,10 +634,12 @@ export function PlayerSession(props: PlayerSessionProps) {
               paused={playback.paused}
               clock={playback.clock}
               duration={playback.duration}
+              seekPreview={seekPreview}
+              seekOnly={gestureSeeking && !isAudio}
               skipSeconds={settings.skipSeconds}
               speed={props.speed}
               repeatMode={props.repeatMode}
-              sleepActive={props.sleepTimer !== null}
+              sleepTimer={props.sleepTimer}
               backgroundPlay={settings.backgroundPlay}
               hasPrevious
               hasNext={props.hasNext}

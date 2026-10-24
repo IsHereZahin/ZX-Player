@@ -50,6 +50,8 @@ interface PlaybackOptions {
   startAtSec?: number | null;
   /** Keep playing when the app moves to the background. */
   backgroundPlay: boolean;
+  /** Open the item paused instead of playing it. */
+  startPaused?: boolean;
   /** Returns true when playback moves on to another item. */
   onEnded?: () => boolean;
 }
@@ -60,13 +62,14 @@ export function usePlayback({
   initialDurationSec,
   startAtSec,
   backgroundPlay,
+  startPaused = false,
   onEnded,
 }: PlaybackOptions) {
   // Where the source starts: the resume point, or where a failed attempt stopped.
   const [startAt, setStartAt] = useState(startAtSec ?? 0);
   const latest = useLatestRef({ backgroundPlay, onEnded });
 
-  const [paused, setPaused, pausedRef] = useStateWithRef(false);
+  const [paused, setPaused, pausedRef] = useStateWithRef(startPaused);
   const [ended, setEnded, endedRef] = useStateWithRef(false);
   const [duration, setDuration, durationRef] =
     useStateWithRef(initialDurationSec);
@@ -133,6 +136,13 @@ export function usePlayback({
     [clock],
   );
   const getDuration = useCallback(() => durationRef.current, [durationRef]);
+  // Progress also counts: an item that started in the background never reports loading, only
+  // the media module's progress (see VideoSurface) and its end.
+  const progressed = useRef(false);
+  const hasPosition = useCallback(
+    () => loadedRef.current || progressed.current || endedRef.current,
+    [endedRef, loadedRef],
+  );
 
   const retry = useCallback(() => {
     setStartAt(getCurrentTime());
@@ -161,11 +171,13 @@ export function usePlayback({
   );
 
   const onProgress = useCallback(
-    (data: OnProgressData) =>
+    (data: OnProgressData) => {
+      progressed.current = true;
       clock.setState({
         currentTime: data.currentTime,
         bufferedTime: data.playableDuration,
-      }),
+      });
+    },
     [clock],
   );
 
@@ -316,6 +328,7 @@ export function usePlayback({
     seekTo,
     getCurrentTime,
     getDuration,
+    hasPosition,
     retry,
     enterPictureInPicture,
     videoEvents,

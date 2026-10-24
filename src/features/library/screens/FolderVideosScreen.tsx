@@ -37,7 +37,12 @@ import { spacing } from '../../../shared/theme';
 import { makeStyles, useColors } from '../../../shared/theming';
 import { MEDIA_LIST_TUNING } from '../../../shared/utils/listTuning';
 import { shuffled } from '../../../shared/utils/shuffle';
-import { useLastPlayedId } from '../../history/watchHistory';
+import {
+  folderStartIndex,
+  historyStore,
+  useLastPlayedId,
+} from '../../history/watchHistory';
+import { settingsStore } from '../../settings/settingsStore';
 import { FAB_CLEARANCE, PlayAllButton } from '../components/PlayAllButton';
 import { SelectionBar, type SelectionAction } from '../components/SelectionBar';
 import { VideoGridCard } from '../components/VideoGridCard';
@@ -104,6 +109,14 @@ export function FolderVideosScreen({ navigation, route }: Props) {
 
   // While selecting, a press toggles an item instead of playing it.
   const onItemPress = selecting ? toggleSelected : play;
+
+  // Picks up where the folder was left: the player resumes the item's saved position.
+  const playFolder = () => {
+    const start = settingsStore.getState().resumePlayback
+      ? folderStartIndex(sorted, historyStore.getState())
+      : 0;
+    play(sorted[start]);
+  };
   const renderItem = useCallback(
     ({ item }: { item: VideoItem }) =>
       grid ? (
@@ -264,7 +277,7 @@ export function FolderVideosScreen({ navigation, route }: Props) {
         {selecting ? (
           <SelectionBar actions={selectionActions} />
         ) : (
-          <PlayAllButton onPress={() => play(sorted[0])} />
+          <PlayAllButton onPress={playFolder} />
         )}
       </>
     );

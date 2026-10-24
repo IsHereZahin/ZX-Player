@@ -17,7 +17,7 @@ Bottom tabs: Videos · Audio · Recent · Settings. With **Settings → Audio an
 
 - Folders from the device media library (Android MediaStore buckets, iOS Photos albums) plus "All videos" / "All audio", with a **Continue watching** (or **Continue listening**) rail for unfinished items. Under the header, small shortcuts open Favorites, Recently Added, Playlists and (Android 11+) the Recycle Bin. A folder holding new, unplayed files shows a "NEW" tag with their count.
 - **Audio** (Android): music, recordings and other audio files with album art and title / artist / album tags. iOS apps cannot list the device's audio files, so iOS shows videos only.
-- Folder view in **list or grid**, **sorting** by date, name (natural order, so "Episode 2" comes before "Episode 10"), duration or size, a floating **Play all** button and **Shuffle** in the header.
+- Folder view in **list or grid**, **sorting** by date, name (natural order, so "Episode 2" comes before "Episode 10"), duration or size, a floating **Play** button that picks up where the folder was left (its last played item at its saved position, or the next item once that one is finished) and **Shuffle** in the header.
 - Per-video menu: resume or play from the beginning, mark as watched or unwatched, add to Favorites, video details, remove from history, and (Android 11+) move, copy or delete.
 - **File management** (Android 11+): in a folder, a long press starts selecting; then add the selection to a playlist, copy or move it to another folder (or a new one), or delete it. Deleting moves files to Android's recycle bin for 30 days; the **Recycle Bin** screen restores them or deletes them for good. Every change goes through Android's own confirmation, so the app needs no all-files permission. Android keeps video under Movies / DCIM / Pictures and audio under Music / Podcasts / Audiobooks / Recordings, so only folders there are offered, and new folders are made in Movies or Music.
 - **Favorites**: add anything from its menu or the player's More sheet, and find it under the Favorites shortcut.
@@ -31,7 +31,7 @@ Bottom tabs: Videos · Audio · Recent · Settings. With **Settings → Audio an
 
 ### Player
 
-- **Resume where you left off**, with a "Start over" option. Progress is saved every few seconds, on pause and when closing.
+- **Resume where you left off**, with a "Start over" option. Progress is saved every few seconds, on pause and when closing. History keeps the 300 most recently played items by default (50 to 500 in Settings); the oldest go first.
 - **Queue**: previous/next, auto-play next, repeat (off / all / one). "Previous" restarts the current video after 5 s.
 - **Playback speed** 0.5×–3×, **press and hold for 2×**.
 - **Audio track** and **embedded subtitle track** selection. **External subtitles** (`.srt`, `.ass`, `.ssa`) with delay adjustment.
@@ -50,16 +50,18 @@ Each gesture can be turned off in Settings.
 | ------------------------------ | -------------------------------------------------------------------- |
 | Vertical drag, left half       | Screen brightness                                                    |
 | Vertical drag, right half      | Media volume (system HUD suppressed)                                 |
-| Horizontal drag                | Seek with a live `+0:45 · 2:25 / 10:00` overlay; applied on release  |
+| Horizontal drag                | Seek: the seek bar follows the finger with a `+0:45 · 2:25 / 10:00` readout; applied on release |
 | Double tap, left / right third | Skip back / forward (interval set in Settings); repeated taps add up |
 | Double tap, centre             | Play / pause                                                         |
 | Press and hold                 | 2× speed while held                                                  |
 | Pinch                          | Zoom up to 4×; while zoomed, a drag moves the picture                |
 | Single tap                     | Show / hide controls                                                 |
 
+A drag is assigned to one control once its direction is clear: as soon as it is twice as long on one axis as on the other, or, if it is still ambiguous after 30 points, by its longer axis. Nothing happens before that, so a thumb's slight curve no longer picks the wrong control. Vertical drags that start within 24 points of the top or bottom edge are left to the system (status bar, home gesture). Seeking and levels count from where the drag locked on, so nothing jumps at that point. Double-tap skips show chevrons lighting up on the tapped side with the total ("20 seconds"); the loading spinner only appears if loading lasts over half a second, so seeks don't flash it. A running sleep timer counts down on its quick-action button.
+
 ### Settings
 
-Saved on the device: theme (system, light, dark), audio and video in separate tabs or together, resume playback, auto-play next, background play, skip interval, default aspect ratio, each gesture, subtitle size and background, clear watch history.
+Saved on the device: theme (system, light, dark), audio and video in separate tabs or together, resume playback, auto-play next, background play, skip interval, default aspect ratio, each gesture, subtitle size and background, history limit, clear watch history.
 
 **Settings → About ZX Player** shows the installed version (read from the package, so it always matches the build), the developer and the website, and has **Check for Updates**. That button fetches `version.json` from the website (see Releasing an update) and either offers the newer version, with its notes and a Download button that opens the APK link in the browser, or says the app is up to date. It is the only time the app goes online.
 
@@ -200,13 +202,16 @@ __mocks__/                    Jest mocks for every native module
 
 Icons are imported one module at a time from `src/shared/icons.ts`, because Metro would otherwise bundle every Lucide icon. Some Lucide names (e.g. `history`) exist only as type aliases, so `src/shared/__tests__/icons.test.ts` checks that each import has a runtime module.
 
-Background play on Android runs through ZX Player's own media session (`zxplayer-media`: a Media3 `MediaSessionService` with a stand-in player that mirrors the real one). It gives the notification and lock screen **Previous / Play-Pause / Next** (react-native-video's own notification only seeks ±10 s), and as a foreground service it keeps playback alive with the screen off. iOS uses react-native-video's Now Playing integration and the `audio` background mode.
+Background play on Android runs through ZX Player's own media session (`zxplayer-media`: a Media3 `MediaSessionService` with a stand-in player that mirrors the real one). It gives the notification and lock screen **Previous / Play-Pause / Next / Stop** (react-native-video's own notification only seeks ±10 s), and as a foreground service it keeps playback alive with the screen off. Stop is a custom session command, since Android 13+ media controls only show extra buttons that are custom actions. The stand-in player takes play state, buffering and position from react-native-video's player itself (handed over by the plugin below) once that player is on the reported URI; what JavaScript reports is only the fallback, because it learns these from view events. iOS uses react-native-video's Now Playing integration and the `audio` background mode.
 
-In the background two React Native limits apply. View updates are held until the app returns, so `VideoSurface` sends the next source and play/pause through react-native-video's commands. View events reach JavaScript only on a screen frame (`FabricEventDispatcher`), so none arrive in the background, or at all with the screen off, and react-native-video's `onEnd` never comes. `zxplayer-media` therefore registers a react-native-video plugin that watches each player and emits `onPlaybackEnded` (with the item's URI) as a module event, which JavaScript gets at once. On Android it is the only end signal: the view's `onEnd` is not used, since the held-back one would land on return and skip an item.
+In the background two React Native limits apply. View updates are held until the app returns, so `VideoSurface` sends the next source and play/pause through react-native-video's commands. View events reach JavaScript only on a screen frame (`FabricEventDispatcher`), so none arrive in the background, or at all with the screen off, and react-native-video's `onEnd` never comes. `zxplayer-media` therefore registers a react-native-video plugin that watches each player and emits `onPlaybackEnded` (with the item's URI) as a module event, which JavaScript gets at once. On Android it is the only end signal: the view's `onEnd` is not used, since the held-back one would land on return and skip an item. The view's `onProgress` is held back as well, so while the app is in the background the module sends `onPlaybackProgress` (URI and position) every 5 s; `VideoSurface` passes it to the same handler, which keeps the playback clock and the saved resume position moving. JavaScript timers also stop in the background on Android, so progress is saved as that clock moves, and persistent stores write at once there instead of after their debounce. Moving on in the background from an item allowed to play there (audio) to one that isn't (a video without background play) opens it paused, since its props would not reach the native view until the app returns.
 
 On Android the library comes from `zxplayer-media`, which reads names, sizes, durations, resolutions and audio tags straight from MediaStore columns. It loads thumbnails from the system thumbnail cache and keeps a JPEG copy in the app cache. No video file is opened while scanning, so large libraries list quickly. iOS, and Android builds without the module, use camera-roll.
 
-`patches/` holds fixes to dependencies, applied by `patch-package` after every `npm install`. `react-native-video+6.19.3.patch` makes Media3's built-in controller start disabled. react-native-video created it enabled and only applied `controls={false}` after attaching the player, so Media3 showed its controller (a 60 % black backdrop) once as each player started. React Native doesn't lay out native children, so that backdrop was drawn at stale bounds: a dark block over the left part of the video the first time the controls appeared. When upgrading react-native-video, check whether the patch is still needed.
+`patches/` holds fixes to dependencies, applied by `patch-package` after every `npm install`. When upgrading either library, check whether its patch is still needed.
+
+- `react-native-svg+15.16.0.patch` clears the shapes' cached paths when an SVG view changes size. Shapes resolve percentage lengths (`width="100%"`) once and keep the path, so a drawing laid out before a rotation kept its old width. The player's control scrims mount while the screen is still upright and the screen then turns for a landscape video, so the scrims covered only the left ~45 % of the screen: the dark block on the left when a video started, until the controls were shown again. The same applied to the screens' header glow.
+- `react-native-video+6.19.3.patch` makes Media3's built-in controller start disabled. react-native-video created it enabled and only applied `controls={false}` after attaching the player, so Media3 could show its controller (a 60 % black backdrop) as a player started.
 
 Brightness on Android uses a window override, so it only affects ZX Player and needs no `WRITE_SETTINGS` permission. On iOS brightness is device-wide, so the original level is restored when the player closes or the app is backgrounded.
 

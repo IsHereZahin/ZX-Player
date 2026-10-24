@@ -23,7 +23,9 @@ import {
   spacing,
   typography,
 } from '../../../shared/theme';
+import type { Store } from '../../../shared/storage/store';
 import type { VideoItem } from '../../library/types';
+import type { SleepTimer } from '../hooks/useSleepTimer';
 import type { PlaybackClock } from '../playbackClock';
 import { AudioControls } from './AudioControls';
 import type { RepeatMode } from './PlayerSheets';
@@ -46,10 +48,14 @@ export interface PlayerControlsProps {
   paused: boolean;
   clock: PlaybackClock;
   duration: number;
+  /** Where a swipe on the video would seek to, shown on the seek bar while it lasts. */
+  seekPreview: Store<number | null>;
+  /** A swipe is seeking: only the seek bar shows, so nothing covers the position readout. */
+  seekOnly: boolean;
   skipSeconds: number;
   speed: number;
   repeatMode: RepeatMode;
-  sleepActive: boolean;
+  sleepTimer: SleepTimer;
   backgroundPlay: boolean;
   hasPrevious: boolean;
   hasNext: boolean;
@@ -94,6 +100,29 @@ function VideoControls(props: PlayerControlsProps) {
     paddingLeft: Math.max(insets.left, spacing.md),
     paddingRight: Math.max(insets.right, spacing.md),
   };
+  const seekBar = (
+    <SeekBar
+      clock={props.clock}
+      duration={props.duration}
+      skipSeconds={props.skipSeconds}
+      preview={props.seekPreview}
+      onSeek={props.onSeek}
+      onScrubbingChange={props.onScrubbingChange}
+    />
+  );
+
+  if (props.seekOnly) {
+    return (
+      <View
+        style={[styles.seekOnly, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}
+        pointerEvents="none"
+        testID="player-controls-seek-only"
+      >
+        <Scrim edge="bottom" height={insets.bottom + 140} />
+        <View style={sidePadding}>{seekBar}</View>
+      </View>
+    );
+  }
 
   return (
     <View
@@ -150,7 +179,7 @@ function VideoControls(props: PlayerControlsProps) {
           mode="video"
           speed={props.speed}
           repeatMode={props.repeatMode}
-          sleepActive={props.sleepActive}
+          sleepTimer={props.sleepTimer}
           backgroundPlay={props.backgroundPlay}
           onOpenSpeed={props.onOpenSpeed}
           onCycleRepeat={props.onCycleRepeat}
@@ -230,13 +259,7 @@ function VideoControls(props: PlayerControlsProps) {
           { paddingBottom: Math.max(insets.bottom, spacing.md) },
         ]}
       >
-        <SeekBar
-          clock={props.clock}
-          duration={props.duration}
-          skipSeconds={props.skipSeconds}
-          onSeek={props.onSeek}
-          onScrubbingChange={props.onScrubbingChange}
-        />
+        {seekBar}
         <View style={styles.actions}>
           <IconButton
             icon={LockIcon}
@@ -266,6 +289,10 @@ function VideoControls(props: PlayerControlsProps) {
 }
 
 const styles = StyleSheet.create({
+  seekOnly: {
+    ...StyleSheet.absoluteFill,
+    justifyContent: 'flex-end',
+  },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',

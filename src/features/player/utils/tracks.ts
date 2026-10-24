@@ -60,3 +60,18 @@ export function trackDetails(track: MediaTrack): string | undefined {
 }
 
 export const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 3] as const;
+
+const MIN_SPEED = PLAYBACK_SPEEDS[0];
+const MAX_SPEED = PLAYBACK_SPEEDS[PLAYBACK_SPEEDS.length - 1];
+/** Fine adjustment between the presets. */
+export const SPEED_STEP = 0.05;
+
+/** One step faster (1) or slower (-1), on the 0.05 grid and within the offered range. */
+export function stepSpeed(speed: number, direction: 1 | -1): number {
+  const next = Math.round((speed + direction * SPEED_STEP) / SPEED_STEP) * SPEED_STEP;
+  return Math.min(MAX_SPEED, Math.max(MIN_SPEED, Number(next.toFixed(2))));
+}
+
+export function canStepSpeed(speed: number, direction: 1 | -1): boolean {
+  return direction > 0 ? speed < MAX_SPEED : speed > MIN_SPEED;
+}

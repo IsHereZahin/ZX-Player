@@ -1,0 +1,15 @@
+diff --git a/node_modules/react-native-svg/android/src/main/java/com/horcrux/svg/SvgView.java b/node_modules/react-native-svg/android/src/main/java/com/horcrux/svg/SvgView.java
+index f04da14..3258ce6 100644
+--- a/node_modules/react-native-svg/android/src/main/java/com/horcrux/svg/SvgView.java
++++ b/node_modules/react-native-svg/android/src/main/java/com/horcrux/svg/SvgView.java
+@@ -159,6 +159,10 @@ public class SvgView extends ReactViewGroup implements ReactCompoundView, ReactC
+   @Override
+   protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+     super.onSizeChanged(w, h, oldw, oldh);
++    // Shapes resolve percentage lengths ("100%") against the canvas when they first build
++    // their path, and keep that path. Without this, a drawing laid out before a rotation
++    // kept its old width after it, e.g. a full-width gradient covering only the left part.
++    clearChildCache();
+     this.invalidate();
+   }
+ 

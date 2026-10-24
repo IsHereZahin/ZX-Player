@@ -24,13 +24,17 @@ import {
 import {
   computeLevel,
   computeSeekTarget,
+  isAtSystemEdge,
   resolveDoubleTapZone,
   resolvePanIntent,
   type PanIntent,
 } from '../utils/gestureMath';
 import type { LevelControl } from './levelControl';
 
-/** Movement before a touch counts as a drag; below this it can still be a tap. */
+/**
+ * Movement before a touch counts as a drag; below this it can still be a tap. Which control
+ * the drag is for is decided separately, once its direction is clear (resolvePanIntent).
+ */
 const PAN_ACTIVATION_DISTANCE = 12;
 const DOUBLE_TAP_MAX_DELAY_MS = 250;
 const HOLD_FOR_SPEED_MS = 400;
@@ -67,6 +71,8 @@ export interface PlayerGestureOptions {
   togglePlayback: () => void;
   toggleControls: () => void;
   onBoostChange: (active: boolean) => void;
+  /** Where a seeking drag would land, for the seek bar to show; null once it ends. */
+  onSeekPreview: (time: number | null) => void;
   getZoom: () => Zoom;
   onZoomChange: (zoom: Zoom) => void;
   brightness: LevelControl;
@@ -74,9 +80,16 @@ export interface PlayerGestureOptions {
 }
 
 interface PanSession {
-  /** `move` pans a zoomed-in picture. */
-  intent: PanIntent | 'move' | null;
+  /**
+   * null while the drag's direction is still unclear; `move` pans a zoomed-in picture;
+   * `none` is a drag for a control that is off (or a system edge), which does nothing.
+   */
+  intent: PanIntent | 'move' | 'none' | null;
   startX: number;
+  startY: number;
+  /** Translation when the drag locked onto its control; seeking and levels count from it. */
+  lockX: number;
+  lockY: number;
   startZoom: Zoom;
   startTime: number;
   startLevel: number;
@@ -85,8 +98,9 @@ interface PanSession {
 
 /**
  * Gesture map for the video surface:
- * - vertical drag, left half → brightness; right half → volume
- * - horizontal drag → seek, committed on release
+ * - vertical drag, left half → brightness; right half → volume (not from the top or bottom
+ *   edge, where the system's own gestures start)
+ * - horizontal drag → seek, previewed on the seek bar and committed on release
  * - double tap: left / right zone → skip back / forward, centre → play/pause
  * - press and hold → 2× speed while held
  * - pinch → zoom (1–4×); while zoomed, a drag moves the picture instead
@@ -105,6 +119,9 @@ export function usePlayerGestures(options: PlayerGestureOptions) {
   const session = useRef<PanSession>({
     intent: null,
     startX: 0,
+    startY: 0,
+    lockX: 0,
+    lockY: 0,
     startZoom: NO_ZOOM,
     startTime: 0,
     startLevel: 0,
@@ -146,7 +163,11 @@ export function usePlayerGestures(options: PlayerGestureOptions) {
     (translationX: number, translationY: number) => {
       const current = session.current;
       const { layout, duration, brightness, volume } = latest.current;
+      // From where the drag locked on, so the position or level doesn't jump at that point.
+      const dragX = translationX - current.lockX;
+      const dragY = translationY - current.lockY;
       if (current.intent === 'move') {
+        // The picture follows the finger from the moment it touched down.
         latest.current.onZoomChange({
           scale: current.startZoom.scale,
           offsetX: current.startZoom.offsetX + translationX,
@@ -155,10 +176,11 @@ export function usePlayerGestures(options: PlayerGestureOptions) {
       } else if (current.intent === 'seek') {
         current.target = computeSeekTarget(
           current.startTime,
-          translationX,
+          dragX,
           layout.width,
           duration,
         );
+        latest.current.onSeekPreview(current.target);
         showFeedback({
           kind: 'seek',
           target: current.target,
@@ -170,16 +192,52 @@ export function usePlayerGestures(options: PlayerGestureOptions) {
         current.intent === 'volume'
       ) {
         const control = current.intent === 'brightness' ? brightness : volume;
-        const level = computeLevel(
-          current.startLevel,
-          translationY,
-          layout.height,
-        );
+        const level = computeLevel(current.startLevel, dragY, layout.height);
         control.setLevel(level);
         showFeedback({ kind: current.intent, level });
       }
     },
     [latest, showFeedback],
+  );
+
+  /** Locks the drag onto a control once its direction is clear; false while it isn't. */
+  const lockPan = useCallback(
+    (translationX: number, translationY: number) => {
+      const {
+        layout,
+        getCurrentTime,
+        brightness,
+        volume,
+        toggles: enabled,
+      } = latest.current;
+      const current = session.current;
+      const intent = resolvePanIntent(
+        current.startX,
+        layout.width,
+        translationX,
+        translationY,
+      );
+      if (!intent) {
+        return false;
+      }
+      const control =
+        intent === 'brightness' ? brightness : intent === 'volume' ? volume : null;
+      const allowed =
+        intent === 'seek'
+          ? enabled.seek
+          : !isAtSystemEdge(current.startY, layout.height) &&
+            (intent === 'brightness'
+              ? enabled.brightness && brightness.available
+              : enabled.volume && volume.available);
+      current.intent = allowed ? intent : 'none';
+      current.lockX = translationX;
+      current.lockY = translationY;
+      current.startTime = getCurrentTime();
+      current.target = current.startTime;
+      current.startLevel = control ? control.getLevel() : 0;
+      return true;
+    },
+    [latest],
   );
 
   const panConfig = useMemo<PanGestureConfig>(
@@ -191,15 +249,9 @@ export function usePlayerGestures(options: PlayerGestureOptions) {
       maxPointers: 1,
       onBegin: event => {
         session.current.startX = event.x;
+        session.current.startY = event.y;
       },
       onActivate: event => {
-        const {
-          layout,
-          getCurrentTime,
-          brightness,
-          volume,
-          toggles: enabled,
-        } = latest.current;
         const current = session.current;
         const zoom = latest.current.getZoom();
         if (zoom.scale > 1) {
@@ -208,31 +260,20 @@ export function usePlayerGestures(options: PlayerGestureOptions) {
           applyPan(event.translationX, event.translationY);
           return;
         }
-        const intent = resolvePanIntent(
-          current.startX,
-          layout.width,
-          event.translationX,
-          event.translationY,
-        );
-        const control =
-          intent === 'brightness'
-            ? brightness
-            : intent === 'volume'
-            ? volume
-            : null;
-        const allowed =
-          intent === 'seek'
-            ? enabled.seek
-            : intent === 'brightness'
-            ? enabled.brightness && brightness.available
-            : enabled.volume && volume.available;
-        current.intent = allowed ? intent : null;
-        current.startTime = getCurrentTime();
-        current.target = current.startTime;
-        current.startLevel = control ? control.getLevel() : 0;
+        current.intent = null;
+        if (lockPan(event.translationX, event.translationY)) {
+          applyPan(event.translationX, event.translationY);
+        }
+      },
+      onUpdate: event => {
+        if (
+          session.current.intent === null &&
+          !lockPan(event.translationX, event.translationY)
+        ) {
+          return;
+        }
         applyPan(event.translationX, event.translationY);
       },
-      onUpdate: event => applyPan(event.translationX, event.translationY),
       onDeactivate: event => {
         const current = session.current;
         if (current.intent === 'seek' && !event.canceled) {
@@ -240,13 +281,17 @@ export function usePlayerGestures(options: PlayerGestureOptions) {
         }
       },
       onFinalize: () => {
-        if (session.current.intent && session.current.intent !== 'move') {
+        const { intent } = session.current;
+        if (intent === 'seek') {
+          latest.current.onSeekPreview(null);
+        }
+        if (intent && intent !== 'move' && intent !== 'none') {
           hideFeedbackSoon();
         }
         session.current.intent = null;
       },
     }),
-    [applyPan, hideFeedbackSoon, latest, panEnabled],
+    [applyPan, hideFeedbackSoon, latest, lockPan, panEnabled],
   );
 
   const pinchConfig = useMemo<PinchGestureConfig>(

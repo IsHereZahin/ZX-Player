@@ -5,20 +5,34 @@ import {
   leaveFullPlayer,
   nowPlayingStore,
   setPlayerOrientation,
+  stopPlayback,
 } from '../features/player/nowPlaying';
 import { PlayerScreen } from '../features/player/screens/PlayerScreen';
 import { useStore } from '../shared/storage/store';
 import { navigationRef } from './navigation/navigationRef';
 
-/** Leaves the full player the same way the system back button does. */
-function closeFullPlayer() {
-  if (
+function isShowingFullPlayer(): boolean {
+  return (
     navigationRef.isReady() &&
     navigationRef.getCurrentRoute()?.name === 'Player'
-  ) {
+  );
+}
+
+/** Leaves the full player the same way the system back button does. */
+function closeFullPlayer() {
+  if (isShowingFullPlayer()) {
     navigationRef.goBack();
   } else {
     leaveFullPlayer();
+  }
+}
+
+/** Ends playback (the notification's Stop), taking the full player off screen if it is up. */
+function stopAndClose() {
+  const showing = isShowingFullPlayer();
+  stopPlayback();
+  if (showing) {
+    navigationRef.goBack();
   }
 }
 
@@ -48,6 +62,7 @@ export function PlayerHost() {
         startFromBeginning={request.startFromBeginning}
         minimized={minimized}
         onClose={closeFullPlayer}
+        onStop={stopAndClose}
         onOrientationChange={setPlayerOrientation}
       />
     </View>

@@ -50,7 +50,9 @@ import {
   type AspectMode,
 } from '../utils/aspectRatio';
 import {
+  canStepSpeed,
   PLAYBACK_SPEEDS,
+  stepSpeed,
   trackDetails,
   trackLabel,
   type MediaTrack,
@@ -237,12 +239,17 @@ interface SpeedSheetProps extends BaseSheetProps {
   onChange: (speed: number) => void;
 }
 
+/**
+ * A large readout with fine steps (0.05×) either side, and the usual speeds below: a
+ * preset applies and closes the sheet, a step adjusts in place.
+ */
 export function SpeedSheet({
   visible,
   onClose,
   speed,
   onChange,
 }: SpeedSheetProps) {
+  const colors = useColors();
   return (
     <Sheet
       visible={visible}
@@ -250,20 +257,71 @@ export function SpeedSheet({
       title="Playback speed"
       testID="speed-sheet"
     >
-      <View style={styles.padded}>
-        <SegmentedControl
-          options={PLAYBACK_SPEEDS.map(value => ({
-            value,
-            label: formatSpeed(value),
-          }))}
-          value={speed}
-          onChange={value => {
-            onChange(value);
-            onClose();
-          }}
-          accessibilityLabel="Playback speed"
-          testID="speed-option"
+      <View style={styles.speedStepper}>
+        <IconButton
+          icon={MinusIcon}
+          variant="tonal"
+          size="md"
+          accessibilityLabel="Slower"
+          disabled={!canStepSpeed(speed, -1)}
+          onPress={() => onChange(stepSpeed(speed, -1))}
+          testID="speed-slower"
         />
+        <View style={styles.speedReadout}>
+          <Text style={styles.speedValue} testID="speed-value">
+            {formatSpeed(speed)}
+          </Text>
+          <Text style={styles.speedCaption}>
+            {speed === 1 ? 'Normal' : speed < 1 ? 'Slower' : 'Faster'}
+          </Text>
+        </View>
+        <IconButton
+          icon={PlusIcon}
+          variant="tonal"
+          size="md"
+          accessibilityLabel="Faster"
+          disabled={!canStepSpeed(speed, 1)}
+          onPress={() => onChange(stepSpeed(speed, 1))}
+          testID="speed-faster"
+        />
+      </View>
+      <View
+        style={styles.speedPresets}
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Playback speed"
+      >
+        {PLAYBACK_SPEEDS.map(value => {
+          const selected = value === speed;
+          const label = value === 1 ? 'Normal' : formatSpeed(value);
+          return (
+            <View key={value} style={styles.speedCell}>
+              <Pressable
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                accessibilityLabel={label}
+                onPress={() => {
+                  onChange(value);
+                  onClose();
+                }}
+                style={({ pressed }) => [
+                  styles.speedPreset,
+                  selected && { backgroundColor: colors.accent },
+                  pressed && styles.speedPresetPressed,
+                ]}
+                testID={`speed-option-${value}`}
+              >
+                <Text
+                  style={[
+                    styles.speedPresetText,
+                    selected && { color: colors.onAccent },
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            </View>
+          );
+        })}
       </View>
     </Sheet>
   );
@@ -663,6 +721,51 @@ const styles = StyleSheet.create({
     minWidth: 76,
     color: playerColors.textPrimary,
     textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+  },
+  speedStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.lg,
+  },
+  speedReadout: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  speedValue: {
+    ...typography.largeTitle,
+    color: playerColors.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  speedCaption: {
+    ...typography.footnote,
+    color: playerColors.textSecondary,
+  },
+  speedPresets: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  speedCell: {
+    width: '25%',
+    padding: spacing.xs,
+  },
+  speedPreset: {
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: playerColors.sheetCell,
+  },
+  speedPresetPressed: {
+    opacity: 0.7,
+  },
+  speedPresetText: {
+    ...typography.subheadlineStrong,
+    color: playerColors.textPrimary,
     fontVariant: ['tabular-nums'],
   },
 });

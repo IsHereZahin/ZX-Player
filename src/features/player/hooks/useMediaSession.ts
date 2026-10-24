@@ -25,6 +25,8 @@ interface MediaSessionOptions {
   /** Only while playback may continue in the background. */
   enabled: boolean;
   id: string;
+  /** The source URI, which lets the session follow the native player itself. */
+  uri: string;
   title: string;
   artist: string;
   artworkUri?: string;
@@ -40,6 +42,7 @@ interface MediaSessionOptions {
   onPrevious: () => void;
   onNext: () => void;
   onSeek: (seconds: number) => void;
+  onStop: () => void;
 }
 
 /** The session works out the position from the last update; resend after a bigger jump. */
@@ -50,6 +53,7 @@ export function useMediaSession(options: MediaSessionOptions): void {
   const {
     enabled,
     id,
+    uri,
     title,
     artist,
     artworkUri,
@@ -75,6 +79,7 @@ export function useMediaSession(options: MediaSessionOptions): void {
       lastSent = { position, at: Date.now() };
       nativeMedia.setNowPlaying({
         id,
+        uri,
         title,
         artist,
         artworkUri: artworkUri ?? null,
@@ -114,6 +119,7 @@ export function useMediaSession(options: MediaSessionOptions): void {
     paused,
     speed,
     title,
+    uri,
   ]);
 
   useEffect(() => {
@@ -138,6 +144,9 @@ export function useMediaSession(options: MediaSessionOptions): void {
             break;
           case 'seek':
             handlers.onSeek(positionMs / 1000);
+            break;
+          case 'stop':
+            handlers.onStop();
             break;
         }
       },

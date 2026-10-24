@@ -60,6 +60,11 @@ export type FileOperationResult = {
 /** What the notification and lock screen show (Android media session). */
 export type NowPlayingInfo = {
   id: string;
+  /**
+   * The source URI handed to react-native-video. Once its player is on this item, the
+   * session takes play state and position from that player instead of the fields below.
+   */
+  uri: string;
   title: string;
   artist: string;
   artworkUri: string | null;
@@ -74,7 +79,7 @@ export type NowPlayingInfo = {
 
 /** A button pressed in the notification or on the lock screen. */
 export type RemoteCommand = {
-  /** "play", "pause", "previous", "next" or "seek". */
+  /** "play", "pause", "previous", "next", "seek" or "stop". */
   command: string;
   positionMs: number;
 };
@@ -83,6 +88,17 @@ export type RemoteCommand = {
 export type PlaybackEnded = {
   /** The item's URI, as it was handed to the player; empty when unknown. */
   uri: string;
+};
+
+/** Where react-native-video's player is, sent every few seconds while the app is away. */
+export type PlaybackProgress = {
+  /** The item's URI, as it was handed to the player; empty when unknown. */
+  uri: string;
+  positionMs: number;
+  /** How far the player has loaded ahead. */
+  bufferedMs: number;
+  /** 0 while unknown. */
+  durationMs: number;
 };
 
 export interface Spec extends TurboModule {
@@ -136,6 +152,11 @@ export interface Spec extends TurboModule {
    * when react-native-video's own onEnd (delivered on a screen frame) does not.
    */
   readonly onPlaybackEnded: CodegenTypes.EventEmitter<PlaybackEnded>;
+  /**
+   * The playing item's position, every few seconds while the app is in the background,
+   * where react-native-video's own onProgress doesn't arrive.
+   */
+  readonly onPlaybackProgress: CodegenTypes.EventEmitter<PlaybackProgress>;
 }
 
 export default TurboModuleRegistry.get<Spec>('ZxplayerMedia');

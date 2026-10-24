@@ -27,10 +27,15 @@ import {
   sampleSong,
   sampleVideo,
 } from '../../../../test/fixtures';
-import { historyStore, recordProgress } from '../../../history/watchHistory';
+import {
+  historyStore,
+  isFinished,
+  recordProgress,
+} from '../../../history/watchHistory';
 import { favoritesStore } from '../../../library/favorites';
 import type { VideoItem } from '../../../library/types';
 import { settingsStore, updateSettings } from '../../../settings/settingsStore';
+import { startPlayback } from '../../nowPlaying';
 import { PlayerScreen } from '../PlayerScreen';
 
 const { mockVideoRef } = jest.requireMock<{
@@ -50,10 +55,15 @@ interface PlayerParams {
 }
 
 const onClose = jest.fn();
+const onStop = jest.fn();
 const onOrientationChange = jest.fn();
 
-const { __sendPlaybackEnded: sendPlaybackEnded } = jest.requireMock<{
+const {
+  __sendPlaybackEnded: sendPlaybackEnded,
+  __sendPlaybackProgress: sendPlaybackProgress,
+} = jest.requireMock<{
   __sendPlaybackEnded: (uri: string) => void;
+  __sendPlaybackProgress: (uri: string, positionMs: number) => void;
 }>('zxplayer-media');
 
 const video = () => screen.getByTestId('video-surface');
@@ -91,6 +101,7 @@ async function renderPlayer(
       startIndex={0}
       {...params}
       onClose={onClose}
+      onStop={onStop}
       onOrientationChange={onOrientationChange}
     />,
     { wrapper: GestureHandlerRootView },
@@ -240,6 +251,7 @@ describe('controls', () => {
         queue={[makeVideo('9', { width: 1080, height: 1920 })]}
         startIndex={0}
         onClose={onClose}
+        onStop={onStop}
         onOrientationChange={onOrientationChange}
       />,
       { wrapper: GestureHandlerRootView },
@@ -292,6 +304,18 @@ describe('controls', () => {
     expect(screen.getByLabelText('Playback speed 1.5×')).toBeOnTheScreen();
   });
 
+  it('fine-tunes the speed in 0.05× steps', async () => {
+    await renderPlayer();
+    await fireEvent.press(screen.getByTestId('speed-button'));
+    await fireEvent.press(screen.getByTestId('speed-faster'));
+    await fireEvent.press(screen.getByTestId('speed-faster'));
+
+    expect(video().props.rate).toBe(1.1);
+    expect(screen.getByTestId('speed-value')).toHaveTextContent('1.1×');
+    // The presets apply and close; the steps stay open for more.
+    expect(screen.getByTestId('speed-sheet')).toBeOnTheScreen();
+  });
+
   it('offers round quick actions under the top bar', async () => {
     updateSettings({ backgroundPlay: false });
     await renderPlayer();
@@ -312,6 +336,17 @@ describe('controls', () => {
 
     await fireEvent.press(screen.getByTestId('sleep-button'));
     expect(screen.getByTestId('sleep-sheet')).toBeOnTheScreen();
+  });
+
+  it('counts down a running sleep timer on its button', async () => {
+    await renderPlayer();
+    expect(screen.queryByTestId('sleep-countdown')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('sleep-button'));
+    await fireEvent.press(screen.getByTestId('sleep-15'));
+
+    expect(screen.getByTestId('sleep-countdown')).toHaveTextContent('15:00');
+    expect(screen.getByLabelText('Sleep timer, 15 min left')).toBeOnTheScreen();
   });
 
   it('shows a handle at the playback position', async () => {
@@ -464,6 +499,7 @@ describe('queue', () => {
         startIndex={0}
         minimized
         onClose={onClose}
+        onStop={onStop}
         onOrientationChange={onOrientationChange}
       />,
     );
@@ -675,18 +711,84 @@ describe('gestures', () => {
     await renderPlayer();
     await progressTo(100);
 
+    // Counted from where the drag locked on (20 points in), so nothing jumps there.
     const drag = await runGesture('player-pan', [
       ['begin', { x: 300, y: 200 }],
       ['activate', { x: 320, y: 200, translationX: 20, translationY: 2 }],
-      ['update', { x: 700, y: 200, translationX: 400, translationY: 5 }],
+      ['update', { x: 720, y: 200, translationX: 420, translationY: 5 }],
     ]);
     expect(screen.getByTestId('gesture-feedback-seek')).toHaveTextContent(
       '+0:452:25 / 10:00',
+    );
+    // The real seek bar follows the drag, on its own so nothing covers the readout.
+    expect(screen.getByTestId('player-controls-seek-only')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Playback position')).toHaveAccessibilityValue(
+      { now: 145 },
     );
     expect(mockVideoRef.seek).not.toHaveBeenCalled();
 
     await drag.continueWith([['end', {}]]);
     expect(mockVideoRef.seek).toHaveBeenLastCalledWith(145);
+    expect(screen.getByTestId('player-controls')).toBeOnTheScreen();
+  });
+
+  it('waits until a drag that starts at an angle shows its direction', async () => {
+    await renderPlayer();
+    await progressTo(100);
+
+    const drag = await runGesture('player-pan', [
+      ['begin', { x: 100, y: 200 }],
+      // Could still be either: nothing happens yet.
+      ['activate', { x: 110, y: 188, translationX: 10, translationY: -12 }],
+    ]);
+    expect(screen.queryByTestId('gesture-feedback-seek')).toBeNull();
+    expect(screen.queryByTestId('gesture-feedback-brightness')).toBeNull();
+
+    // Clearly sideways now: it seeks from here, and brightness stays as it was.
+    await drag.continueWith([
+      ['update', { x: 130, y: 186, translationX: 30, translationY: -14 }],
+      ['update', { x: 530, y: 180, translationX: 430, translationY: -20 }],
+    ]);
+    expect(screen.getByTestId('gesture-feedback-seek')).toBeOnTheScreen();
+    expect(setBrightness).not.toHaveBeenCalled();
+
+    await drag.continueWith([['end', {}]]);
+    expect(mockVideoRef.seek).toHaveBeenLastCalledWith(145);
+  });
+
+  it('still adjusts brightness with a vertical drag that curves a little', async () => {
+    await renderPlayer();
+
+    await runGesture('player-pan', [
+      ['begin', { x: 100, y: 300 }],
+      ['activate', { x: 106, y: 290, translationX: 6, translationY: -10 }],
+      ['update', { x: 118, y: 270, translationX: 18, translationY: -30 }],
+      ['update', { x: 130, y: 160, translationX: 30, translationY: -140 }],
+      ['end', {}],
+    ]);
+    expect(setBrightness).toHaveBeenCalled();
+    expect(mockVideoRef.seek).not.toHaveBeenCalled();
+  });
+
+  it('leaves vertical drags from the top and bottom edges to the system', async () => {
+    await renderPlayer();
+
+    await runGesture('player-pan', [
+      ['begin', { x: 100, y: 10 }],
+      ['activate', { x: 100, y: 40, translationX: 0, translationY: 30 }],
+      ['update', { x: 100, y: 150, translationX: 0, translationY: 140 }],
+      ['end', {}],
+    ]);
+    await runGesture('player-pan', [
+      ['begin', { x: 700, y: 390 }],
+      ['activate', { x: 700, y: 360, translationX: 0, translationY: -30 }],
+      ['end', {}],
+    ]);
+
+    expect(setBrightness).not.toHaveBeenCalled();
+    expect(setVolume).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('gesture-feedback-brightness')).toBeNull();
+    expect(screen.queryByTestId('gesture-feedback-volume')).toBeNull();
   });
 
   it('adjusts brightness on the left and volume on the right', async () => {
@@ -706,7 +808,7 @@ describe('gestures', () => {
     await runGesture('player-pan', [
       ['begin', { x: 700, y: 100 }],
       ['activate', { x: 700, y: 120, translationX: 1, translationY: 20 }],
-      ['update', { x: 700, y: 170, translationX: 1, translationY: 70 }],
+      ['update', { x: 700, y: 190, translationX: 1, translationY: 90 }],
       ['end', {}],
     ]);
     expect(setVolume).toHaveBeenLastCalledWith(0.25, {
@@ -740,7 +842,7 @@ describe('gestures', () => {
     await runGesture('player-double-tap', tap(760));
     expect(mockVideoRef.seek).toHaveBeenLastCalledWith(220);
     expect(screen.getByTestId('gesture-feedback-skip')).toHaveTextContent(
-      '+20 sec',
+      '20 seconds',
     );
 
     await runGesture('player-double-tap', tap(400));
@@ -1049,6 +1151,8 @@ describe('notification and lock-screen controls', () => {
     expect(setNowPlaying).toHaveBeenLastCalledWith(
       expect.objectContaining({
         id: '2',
+        // Lets the session follow the native player, which keeps reporting in the background.
+        uri: 'content://media/external/video/media/2',
         title: 'Video 2',
         playing: true,
         hasPrevious: true,
@@ -1083,6 +1187,16 @@ describe('notification and lock-screen controls', () => {
 
     await act(async () => press('seek', 30000));
     expect(mockVideoRef.seek).toHaveBeenLastCalledWith(30);
+  });
+
+  it('stops playback from the notification', async () => {
+    await renderPlayer();
+
+    await act(async () => press('stop'));
+
+    // In the background the native view outlives its unmount, so it is paused by command.
+    expect(mockVideoRef.pause).toHaveBeenCalledTimes(1);
+    expect(onStop).toHaveBeenCalledTimes(1);
   });
 
   describe('with the app in the background', () => {
@@ -1143,6 +1257,50 @@ describe('notification and lock-screen controls', () => {
       await act(async () => press('play'));
       expect(mockVideoRef.resume).toHaveBeenCalledTimes(1);
     });
+
+    it('opens a video paused after music when videos may not play in the background', async () => {
+      updateSettings({ backgroundPlay: false });
+      await renderPlayer(
+        { queue: [sampleSong, makeVideo('9')] },
+        { naturalSize: { width: 0, height: 0, orientation: 'landscape' } },
+      );
+      await endItem();
+
+      expect(mockVideoRef.setSource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          uri: 'content://media/external/video/media/9',
+        }),
+      );
+      expect(mockVideoRef.pause).toHaveBeenCalledTimes(1);
+      expect(video().props.paused).toBe(true);
+    });
+
+    it('records items that played only in the background', async () => {
+      await renderPlayer({ queue: queueOf(3) });
+      await endItem();
+      // Item 2 started in the background: its load is never reported, only its end.
+      await endItem();
+
+      expect(isFinished(historyStore.getState()['2'])).toBe(true);
+      expect(screen.getByText('Video 3')).toBeOnTheScreen();
+    });
+
+    it('saves the position of background playback for resuming', async () => {
+      await renderPlayer({ queue: queueOf(2) });
+      await endItem();
+
+      // Item 2 started in the background: only the media module says where it is.
+      await act(async () =>
+        sendPlaybackProgress('content://media/external/video/media/2', 42000),
+      );
+      expect(historyStore.getState()['2'].positionSec).toBe(42);
+
+      // Progress of an item that already gave way changes nothing.
+      await act(async () =>
+        sendPlaybackProgress('content://media/external/video/media/1', 9000),
+      );
+      expect(isFinished(historyStore.getState()['1'])).toBe(true);
+    });
   });
 
   it('leaves the source to the view props in the foreground', async () => {
@@ -1181,6 +1339,13 @@ describe('notification and lock-screen controls', () => {
     const result = await renderPlayer();
     await result.unmount();
     expect(clearNowPlaying).toHaveBeenCalled();
+  });
+
+  it('leaves the notification to a queue that replaces this one', async () => {
+    const result = await renderPlayer();
+    startPlayback([makeVideo('7')], 0);
+    await result.unmount();
+    expect(clearNowPlaying).not.toHaveBeenCalled();
   });
 
   it('leaves Now Playing to the video player on iOS', async () => {

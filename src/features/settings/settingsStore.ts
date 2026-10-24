@@ -16,6 +16,10 @@ export type SkipInterval = (typeof SKIP_INTERVALS)[number];
 export const SUBTITLE_SIZES = ['small', 'medium', 'large'] as const;
 export type SubtitleSize = (typeof SUBTITLE_SIZES)[number];
 
+/** How many videos watch history keeps; past that, the least recently played go. */
+export const HISTORY_LIMITS = [50, 100, 300, 500] as const;
+export type HistoryLimit = (typeof HISTORY_LIMITS)[number];
+
 /** `system` follows the device's light / dark setting. */
 export const APPEARANCES = ['system', 'light', 'dark'] as const;
 export type Appearance = (typeof APPEARANCES)[number];
@@ -41,6 +45,7 @@ export interface Settings {
   gestureZoom: boolean;
   subtitleSize: SubtitleSize;
   subtitleBackground: boolean;
+  historyLimit: HistoryLimit;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -60,6 +65,7 @@ export const DEFAULT_SETTINGS: Settings = {
   gestureZoom: true,
   subtitleSize: 'medium',
   subtitleBackground: true,
+  historyLimit: 300,
 };
 
 type BooleanKey = {
@@ -100,6 +106,7 @@ export function parseSettings(raw: unknown): Settings {
     gestureZoom: bool('gestureZoom'),
     subtitleSize: oneOf('subtitleSize', SUBTITLE_SIZES),
     subtitleBackground: bool('subtitleBackground'),
+    historyLimit: oneOf('historyLimit', HISTORY_LIMITS),
   };
 }
 

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="zx_playback_channel_name">Playback</string>
+    <string name="zx_stop_playback">Stop</string>
 </resources>

@@ -4,6 +4,7 @@ import type {
   NativeMediaPage,
   NativeTrashedItem,
   PlaybackEnded,
+  PlaybackProgress,
   RemoteCommand,
 } from 'zxplayer-media';
 
@@ -67,4 +68,23 @@ export const addPlaybackEndedListener = jest.fn(
 /** Test hook: the native player reports that the item at `uri` ended. */
 export function __sendPlaybackEnded(uri: string): void {
   endedListeners.forEach(listener => listener({ uri }));
+}
+
+const progressListeners = new Set<(event: PlaybackProgress) => void>();
+export const addPlaybackProgressListener = jest.fn(
+  (listener: (event: PlaybackProgress) => void) => {
+    progressListeners.add(listener);
+    return { remove: () => progressListeners.delete(listener) };
+  },
+);
+
+/** Test hook: the native player reports where the item at `uri` is (app in the background). */
+export function __sendPlaybackProgress(
+  uri: string,
+  positionMs: number,
+  durationMs = 600000,
+): void {
+  progressListeners.forEach(listener =>
+    listener({ uri, positionMs, bufferedMs: positionMs, durationMs }),
+  );
 }

@@ -1,18 +1,24 @@
 import { makeVideo, sampleSong } from '../../../test/fixtures';
 import type { VideoItem } from '../../library/types';
 import {
+  DEFAULT_SETTINGS,
+  settingsStore,
+} from '../../settings/settingsStore';
+import {
   clearHistory,
   clearProgress,
+  folderStartIndex,
   historyStore,
   isFinished,
   isInProgress,
   markWatched,
-  MAX_HISTORY_ENTRIES,
   parseHistory,
   recordProgress,
   removeFromHistory,
   resumePosition,
+  setHistoryLimit,
   watchProgress,
+  type WatchHistory,
 } from '../watchHistory';
 
 const video = makeVideo('1', { durationSec: 600 });
@@ -34,12 +40,31 @@ describe('recording progress', () => {
   });
 
   it('keeps only the most recent entries', () => {
-    for (let i = 0; i <= MAX_HISTORY_ENTRIES; i += 1) {
+    const limit = DEFAULT_SETTINGS.historyLimit;
+    for (let i = 0; i <= limit; i += 1) {
       recordProgress(makeVideo(String(i)), 10, 100, i);
     }
     const ids = Object.keys(historyStore.getState());
-    expect(ids).toHaveLength(MAX_HISTORY_ENTRIES);
+    expect(ids).toHaveLength(limit);
     expect(ids).not.toContain('0');
+  });
+
+  it('drops the oldest entries at once when the limit is lowered', () => {
+    for (let i = 0; i < 80; i += 1) {
+      recordProgress(makeVideo(String(i)), 10, 100, i);
+    }
+    setHistoryLimit(50);
+
+    expect(settingsStore.getState().historyLimit).toBe(50);
+    const ids = Object.keys(historyStore.getState());
+    expect(ids).toHaveLength(50);
+    expect(ids).toContain('79');
+    expect(ids).not.toContain('29');
+
+    // New entries keep to the new limit.
+    recordProgress(makeVideo('new'), 10, 100, 100);
+    expect(Object.keys(historyStore.getState())).toHaveLength(50);
+    expect(historyStore.getState()['30']).toBeUndefined();
   });
 
   it('marks watched, clears progress, removes and clears entries', () => {
@@ -82,6 +107,43 @@ describe('resume rules', () => {
   it('treats the last seconds of short clips as finished', () => {
     expect(isFinished(entry(52, 60))).toBe(true);
     expect(isFinished(entry(40, 60))).toBe(false);
+  });
+});
+
+describe('folderStartIndex', () => {
+  const folder = ['1', '2', '3', '4'].map(id =>
+    makeVideo(id, { durationSec: 600 }),
+  );
+  const played = (
+    id: string,
+    positionSec: number,
+    lastPlayedAt: number,
+  ): WatchHistory => ({
+    [id]: {
+      video: makeVideo(id, { durationSec: 600 }),
+      positionSec,
+      durationSec: 600,
+      lastPlayedAt,
+    },
+  });
+
+  it('starts at the first item when nothing in the folder was played', () => {
+    expect(folderStartIndex(folder, {})).toBe(0);
+    expect(folderStartIndex(folder, played('elsewhere', 100, 9))).toBe(0);
+  });
+
+  it('returns to the most recently played item while it is unfinished', () => {
+    const history = { ...played('1', 600, 1), ...played('3', 120, 2) };
+    expect(folderStartIndex(folder, history)).toBe(2);
+  });
+
+  it('moves on to the next item once the last one played is finished', () => {
+    const history = { ...played('3', 120, 1), ...played('2', 600, 2) };
+    expect(folderStartIndex(folder, history)).toBe(2);
+  });
+
+  it('starts over after the last item is finished', () => {
+    expect(folderStartIndex(folder, played('4', 600, 1))).toBe(0);
   });
 });
 
